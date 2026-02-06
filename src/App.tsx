@@ -19,6 +19,7 @@ import Reports from "./pages/Reports";
 import ReportEditor from "./pages/ReportEditor";
 import PublicReport from "./pages/PublicReport";
 import PublicShare from "./pages/PublicShare";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ function AppRoutes() {
       <Route path="/service-calls/:id/edit" element={<ProtectedRoute><ServiceCallForm /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
       <Route path="/reports/:id" element={<ProtectedRoute><ReportEditor /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>
