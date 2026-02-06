@@ -14,6 +14,7 @@ interface DiagnosisTabProps {
   serviceCallId: string;
   callData: any;
   onDataUpdate: (data: any) => void;
+  readOnly?: boolean;
 }
 
 const DETECTION_METHODS = [
@@ -46,7 +47,7 @@ const URGENCY_OPTIONS = [
   { value: "monitor", label: "ניטור", icon: Eye, color: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700" },
 ];
 
-export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate }: DiagnosisTabProps) => {
+export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly = false }: DiagnosisTabProps) => {
   // Existing fields
   const [selectedMethods, setSelectedMethods] = useState<string[]>([]);
   const [findings, setFindings] = useState("");
@@ -359,20 +360,24 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate }: Diagnosi
       </Card>
 
       {/* Save Button */}
-      <Button onClick={saveDiagnosis} disabled={saving} className="h-12 w-full sm:w-auto">
-        {saving ? "שומר..." : "שמור אבחון מקצועי"}
-      </Button>
+      {!readOnly && (
+        <Button onClick={saveDiagnosis} disabled={saving} className="h-12 w-full sm:w-auto">
+          {saving ? "שומר..." : "שמור אבחון מקצועי"}
+        </Button>
+      )}
 
       {/* 11. Customer Signature */}
-      <SignaturePad
-        serviceCallId={serviceCallId}
-        existingSignaturePath={signaturePath}
-        existingSignatureDate={signatureDate}
-        onSigned={(path, date) => {
-          setSignaturePath(path);
-          setSignatureDate(date);
-        }}
-      />
+      {!readOnly && (
+        <SignaturePad
+          serviceCallId={serviceCallId}
+          existingSignaturePath={signaturePath}
+          existingSignatureDate={signatureDate}
+          onSigned={(path, date) => {
+            setSignaturePath(path);
+            setSignatureDate(date);
+          }}
+        />
+      )}
     </div>
   );
 };
