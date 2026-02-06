@@ -12,21 +12,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Copy, Check, UserPlus, Shield, Wrench, ClipboardList, UserX } from "lucide-react";
+import { Users, Copy, Check, UserPlus, Shield, Wrench, ClipboardList, UserX, HardHat, Settings2 } from "lucide-react";
+import { ContractorAccessDialog } from "./ContractorAccessDialog";
 
 interface UserProfile {
   user_id: string;
   full_name: string | null;
   phone: string | null;
-  role: "admin" | "technician" | "secretary" | null;
+  role: "admin" | "technician" | "secretary" | "contractor" | null;
 }
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: "מנהל",
-  technician: "טכנאי",
-  secretary: "מזכירה",
-  none: "ללא תפקיד (אורח)",
-};
 
 const getPublicBaseUrl = (): string => {
   const origin = window.location.origin;
@@ -46,6 +40,11 @@ export function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [contractorDialog, setContractorDialog] = useState<{
+    open: boolean;
+    userId: string;
+    name: string;
+  }>({ open: false, userId: "", name: "" });
 
   const signupUrl = `${getPublicBaseUrl()}/auth`;
 
@@ -69,7 +68,7 @@ export function UserManagement() {
       .from("user_roles")
       .select("user_id, role");
 
-    const roleMap = new Map<string, "admin" | "technician" | "secretary">();
+    const roleMap = new Map<string, "admin" | "technician" | "secretary" | "contractor">();
     roles?.forEach((r) => roleMap.set(r.user_id, r.role as any));
 
     const merged: UserProfile[] = (profiles || []).map((p) => ({
@@ -89,7 +88,6 @@ export function UserManagement() {
       return;
     }
 
-    // Prevent removing admin role from other admins (only current admin can manage)
     const targetUser = users.find(u => u.user_id === targetUserId);
     if (targetUser?.role === "admin" && newRole !== "admin") {
       toast({ title: "שגיאה", description: "לא ניתן להסיר תפקיד מנהל ממשתמש אחר", variant: "destructive" });
@@ -148,15 +146,6 @@ export function UserManagement() {
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
-  const getRoleIcon = (role: string | null) => {
-    switch (role) {
-      case "admin": return <Shield className="w-3 h-3" />;
-      case "technician": return <Wrench className="w-3 h-3" />;
-      case "secretary": return <ClipboardList className="w-3 h-3" />;
-      default: return <UserX className="w-3 h-3" />;
-    }
-  };
-
   if (loading) {
     return (
       <Card>
@@ -187,6 +176,10 @@ export function UserManagement() {
             <div className="flex items-start gap-2">
               <Badge variant="secondary" className="shrink-0 gap-1"><ClipboardList className="w-3 h-3" /> מזכירה</Badge>
               <span className="text-muted-foreground">צפייה בכל המידע, יכולה לפתוח לקוח חדש בלבד</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Badge variant="secondary" className="shrink-0 gap-1"><HardHat className="w-3 h-3" /> קבלן</Badge>
+              <span className="text-muted-foreground">צפייה בלקוחות שהוקצו לו בלבד, לא יכול לשנות דבר</span>
             </div>
             <div className="flex items-start gap-2">
               <Badge variant="outline" className="shrink-0 gap-1"><UserX className="w-3 h-3" /> ללא תפקיד</Badge>
@@ -272,37 +265,61 @@ export function UserManagement() {
                         <Shield className="w-3 h-3" /> מנהל
                       </Badge>
                     ) : (
-                      <Select
-                        value={u.role || "none"}
-                        onValueChange={(val) => handleRoleChange(u.user_id, val)}
-                        disabled={updating === u.user_id}
-                      >
-                        <SelectTrigger className="w-36 h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="technician">
-                            <span className="flex items-center gap-1.5">
-                              <Wrench className="w-3 h-3" /> טכנאי
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="secretary">
-                            <span className="flex items-center gap-1.5">
-                              <ClipboardList className="w-3 h-3" /> מזכירה
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="admin">
-                            <span className="flex items-center gap-1.5">
-                              <Shield className="w-3 h-3" /> מנהל
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="none">
-                            <span className="flex items-center gap-1.5 text-muted-foreground">
-                              <UserX className="w-3 h-3" /> ללא תפקיד
-                            </span>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-1.5">
+                        <Select
+                          value={u.role || "none"}
+                          onValueChange={(val) => handleRoleChange(u.user_id, val)}
+                          disabled={updating === u.user_id}
+                        >
+                          <SelectTrigger className="w-32 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="technician">
+                              <span className="flex items-center gap-1.5">
+                                <Wrench className="w-3 h-3" /> טכנאי
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="secretary">
+                              <span className="flex items-center gap-1.5">
+                                <ClipboardList className="w-3 h-3" /> מזכירה
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="contractor">
+                              <span className="flex items-center gap-1.5">
+                                <HardHat className="w-3 h-3" /> קבלן
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="admin">
+                              <span className="flex items-center gap-1.5">
+                                <Shield className="w-3 h-3" /> מנהל
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="none">
+                              <span className="flex items-center gap-1.5 text-muted-foreground">
+                                <UserX className="w-3 h-3" /> ללא תפקיד
+                              </span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {u.role === "contractor" && (
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="ניהול גישת לקוחות"
+                            onClick={() =>
+                              setContractorDialog({
+                                open: true,
+                                userId: u.user_id,
+                                name: u.full_name || "קבלן",
+                              })
+                            }
+                          >
+                            <Settings2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -314,6 +331,16 @@ export function UserManagement() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Contractor access dialog */}
+      <ContractorAccessDialog
+        open={contractorDialog.open}
+        onOpenChange={(open) =>
+          setContractorDialog((prev) => ({ ...prev, open }))
+        }
+        contractorUserId={contractorDialog.userId}
+        contractorName={contractorDialog.name}
+      />
     </div>
   );
 }

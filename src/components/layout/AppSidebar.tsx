@@ -22,7 +22,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { icon: LayoutDashboard, label: "לוח בקרה", path: "/", roles: "all" },
   { icon: Users, label: "לקוחות", path: "/customers", roles: "all" },
-  { icon: Wrench, label: "קריאות שירות", path: "/service-calls", roles: ["admin", "technician", "secretary"] },
+  { icon: Wrench, label: "קריאות שירות", path: "/service-calls", roles: ["admin", "technician", "secretary", "contractor"] },
   { icon: FileText, label: "דוחות", path: "/reports", roles: ["admin", "technician", "secretary"] },
 ];
 
