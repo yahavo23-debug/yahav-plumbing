@@ -18,6 +18,7 @@ import { Tables } from "@/integrations/supabase/types";
 import {
   ArrowRight, Edit, FileText, Calendar, User, MapPin, Phone,
 } from "lucide-react";
+import { QuotesList } from "@/components/quotes/QuotesList";
 
 type Photo = Tables<"service_call_photos">;
 type Video = Tables<"service_call_videos">;
@@ -331,11 +332,7 @@ const ServiceCallDetail = () => {
 
         {/* 4. Quotes */}
         <TabsContent value="quotes">
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-center text-muted-foreground py-8">הצעות מחיר — בקרוב</p>
-            </CardContent>
-          </Card>
+          <QuotesList serviceCallId={id!} />
         </TabsContent>
 
         {/* 5. Reports */}
