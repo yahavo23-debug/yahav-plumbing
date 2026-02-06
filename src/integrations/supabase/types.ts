@@ -309,6 +309,50 @@ export type Database = {
           },
         ]
       }
+      service_call_shares: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          revoked_at: string | null
+          service_call_id: string
+          share_token: string
+          share_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          revoked_at?: string | null
+          service_call_id: string
+          share_token?: string
+          share_type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          revoked_at?: string | null
+          service_call_id?: string
+          share_token?: string
+          share_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_call_shares_service_call_id_fkey"
+            columns: ["service_call_id"]
+            isOneToOne: false
+            referencedRelation: "service_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_call_videos: {
         Row: {
           created_at: string

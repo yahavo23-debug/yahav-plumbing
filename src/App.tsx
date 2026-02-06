@@ -18,6 +18,7 @@ import ServiceCallDetail from "./pages/ServiceCallDetail";
 import Reports from "./pages/Reports";
 import ReportEditor from "./pages/ReportEditor";
 import PublicReport from "./pages/PublicReport";
+import PublicShare from "./pages/PublicShare";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ function AppRoutes() {
       {/* Public routes */}
       <Route path="/auth" element={<Auth />} />
       <Route path="/r/:token" element={<PublicReport />} />
+      <Route path="/s/:token" element={<PublicShare />} />
 
       {/* Protected routes */}
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

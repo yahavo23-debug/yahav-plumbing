@@ -1,1 +1,7 @@
 project_id = "xglagkbblribtztkkovo"
+
+[functions.get-public-report]
+verify_jwt = false
+
+[functions.get-public-share]
+verify_jwt = false
