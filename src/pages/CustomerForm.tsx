@@ -48,12 +48,19 @@ const CustomerForm = () => {
         const { error } = await supabase.from("customers").update(form).eq("id", id!);
         if (error) throw error;
         toast({ title: "עודכן בהצלחה", description: "פרטי הלקוח עודכנו" });
+        navigate(`/customers/${id}`);
       } else {
-        const { error } = await supabase.from("customers").insert({ ...form, created_by: user.id });
+        const { data, error } = await supabase.from("customers").insert({ ...form, created_by: user.id }).select().single();
         if (error) throw error;
         toast({ title: "נוצר בהצלחה", description: "הלקוח נוסף למערכת" });
+        // If returning from service-call flow, redirect to create a call
+        const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+        if (returnTo === "service-call" && data) {
+          navigate(`/service-calls/new/${data.id}`);
+        } else {
+          navigate("/customers");
+        }
       }
-      navigate("/customers");
     } catch (err: any) {
       console.error("Customer save error:", err);
       toast({ title: "שגיאה", description: err.message || "אירעה שגיאה בשמירה", variant: "destructive" });
@@ -66,8 +73,8 @@ const CustomerForm = () => {
 
   return (
     <AppLayout title={isEdit ? "עריכת לקוח" : "לקוח חדש"}>
-      <Button variant="ghost" onClick={() => navigate("/customers")} className="mb-4 gap-2">
-        <ArrowRight className="w-4 h-4" /> חזרה ללקוחות
+      <Button variant="ghost" onClick={() => navigate(isEdit ? `/customers/${id}` : "/customers")} className="mb-4 gap-2">
+        <ArrowRight className="w-4 h-4" /> חזרה
       </Button>
       <Card className="max-w-2xl">
         <CardHeader>

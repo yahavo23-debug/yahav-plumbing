@@ -274,11 +274,14 @@ export type Database = {
       service_calls: {
         Row: {
           assigned_to: string | null
+          call_number: number
+          cause_assessment: string | null
           completed_date: string | null
           created_at: string
           created_by: string
           customer_id: string
           description: string | null
+          detection_method: string | null
           findings: string | null
           id: string
           job_type: string
@@ -291,11 +294,14 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          call_number: number
+          cause_assessment?: string | null
           completed_date?: string | null
           created_at?: string
           created_by: string
           customer_id: string
           description?: string | null
+          detection_method?: string | null
           findings?: string | null
           id?: string
           job_type: string
@@ -308,11 +314,14 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          call_number?: number
+          cause_assessment?: string | null
           completed_date?: string | null
           created_at?: string
           created_by?: string
           customer_id?: string
           description?: string | null
+          detection_method?: string | null
           findings?: string | null
           id?: string
           job_type?: string

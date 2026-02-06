@@ -10,6 +10,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import CustomerForm from "./pages/CustomerForm";
+import CustomerDetail from "./pages/CustomerDetail";
+import CustomerSelect from "./pages/CustomerSelect";
 import ServiceCalls from "./pages/ServiceCalls";
 import ServiceCallForm from "./pages/ServiceCallForm";
 import ServiceCallDetail from "./pages/ServiceCallDetail";
@@ -49,9 +51,11 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
       <Route path="/customers/new" element={<ProtectedRoute><CustomerForm /></ProtectedRoute>} />
-      <Route path="/customers/:id" element={<ProtectedRoute><CustomerForm /></ProtectedRoute>} />
+      <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
+      <Route path="/customers/:id/edit" element={<ProtectedRoute><CustomerForm /></ProtectedRoute>} />
       <Route path="/service-calls" element={<ProtectedRoute><ServiceCalls /></ProtectedRoute>} />
-      <Route path="/service-calls/new" element={<ProtectedRoute><ServiceCallForm /></ProtectedRoute>} />
+      <Route path="/service-calls/new" element={<ProtectedRoute><CustomerSelect /></ProtectedRoute>} />
+      <Route path="/service-calls/new/:customerId" element={<ProtectedRoute><ServiceCallForm /></ProtectedRoute>} />
       <Route path="/service-calls/:id" element={<ProtectedRoute><ServiceCallDetail /></ProtectedRoute>} />
       <Route path="/service-calls/:id/edit" element={<ProtectedRoute><ServiceCallForm /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
