@@ -261,7 +261,7 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate }: Diagnosi
       {/* 5. Exact Leak Location */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">מיקום מדויק של הנזילה *</CardTitle>
+          <CardTitle className="text-base">מיקום מדויק של הנזילה</CardTitle>
         </CardHeader>
         <CardContent>
           <Textarea
