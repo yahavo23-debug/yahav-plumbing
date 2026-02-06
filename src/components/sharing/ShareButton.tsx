@@ -25,6 +25,21 @@ const shareTypeLabels: Record<string, string> = {
   report: "דוחות",
 };
 
+// Get the public-facing base URL for share links
+const getPublicBaseUrl = (): string => {
+  const origin = window.location.origin;
+  // If we're in a preview/dev environment, use the published URL
+  if (
+    origin.includes("preview--") ||
+    origin.includes("lovableproject.com") ||
+    origin.includes("localhost")
+  ) {
+    return "https://soft-spark-story.lovable.app";
+  }
+  // In production (published app or custom domain), use the current origin
+  return origin;
+};
+
 export const ShareButton = ({ serviceCallId, shareType, label }: ShareButtonProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -66,7 +81,8 @@ export const ShareButton = ({ serviceCallId, shareType, label }: ShareButtonProp
         token = data.share_token;
       }
 
-      const url = `${window.location.origin}/s/${token}`;
+      const baseUrl = getPublicBaseUrl();
+      const url = `${baseUrl}/s/${token}`;
       setShareUrl(url);
       setDialogOpen(true);
     } catch (err: any) {
