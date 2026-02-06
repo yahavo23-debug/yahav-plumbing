@@ -25,7 +25,9 @@ interface Quote {
   notes: string | null;
   valid_until: string | null;
   created_at: string;
-  total?: number;
+  subtotal: number;
+  discount_percent: number;
+  total_with_vat: number;
 }
 
 const statusLabels: Record<string, string> = {
@@ -84,15 +86,23 @@ export const QuotesList = ({ serviceCallId }: QuotesListProps) => {
     }
 
     setQuotes(
-      (quotesData as any[]).map((q) => ({
-        id: q.id,
-        title: q.title,
-        status: q.status,
-        notes: q.notes,
-        valid_until: q.valid_until,
-        created_at: q.created_at,
-        total: itemsByQuote[q.id] || 0,
-      }))
+      (quotesData as any[]).map((q) => {
+        const subtotal = itemsByQuote[q.id] || 0;
+        const discount = Number(q.discount_percent) || 0;
+        const afterDiscount = subtotal * (1 - discount / 100);
+        const totalWithVat = afterDiscount * 1.18;
+        return {
+          id: q.id,
+          title: q.title,
+          status: q.status,
+          notes: q.notes,
+          valid_until: q.valid_until,
+          created_at: q.created_at,
+          subtotal,
+          discount_percent: discount,
+          total_with_vat: totalWithVat,
+        };
+      })
     );
     setLoading(false);
   }, [serviceCallId]);
@@ -184,7 +194,10 @@ export const QuotesList = ({ serviceCallId }: QuotesListProps) => {
                       </Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>₪{(quote.total || 0).toFixed(2)}</span>
+                      <span className="font-medium text-foreground">₪{quote.total_with_vat.toFixed(2)}</span>
+                      {quote.discount_percent > 0 && (
+                        <span className="text-destructive text-xs">הנחה {quote.discount_percent}%</span>
+                      )}
                       <span>{new Date(quote.created_at).toLocaleDateString("he-IL")}</span>
                       {quote.valid_until && (
                         <span>

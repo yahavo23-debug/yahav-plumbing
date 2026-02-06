@@ -125,6 +125,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          discount_percent: number
           id: string
           notes: string | null
           service_call_id: string
@@ -136,6 +137,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          discount_percent?: number
           id?: string
           notes?: string | null
           service_call_id: string
@@ -147,6 +149,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          discount_percent?: number
           id?: string
           notes?: string | null
           service_call_id?: string
