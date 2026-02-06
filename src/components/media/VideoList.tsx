@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,12 +39,35 @@ function formatFileSize(bytes: number | null): string {
 
 export function VideoList({ videos, onDelete }: VideoListProps) {
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const { user } = useAuth();
 
-  const getVideoUrl = (storagePath: string) => {
-    const { data } = supabase.storage.from("videos").getPublicUrl(storagePath);
-    return data.publicUrl;
-  };
+  // Generate signed URLs for all videos
+  useEffect(() => {
+    if (videos.length === 0) return;
+
+    const fetchUrls = async () => {
+      const paths = videos.map((v) => v.storage_path);
+      const { data, error } = await supabase.storage
+        .from("videos")
+        .createSignedUrls(paths, 3600);
+
+      if (error || !data) {
+        console.error("Failed to create signed video URLs:", error);
+        return;
+      }
+
+      const urlMap: Record<string, string> = {};
+      data.forEach((item, i) => {
+        if (item.signedUrl) {
+          urlMap[videos[i].id] = item.signedUrl;
+        }
+      });
+      setSignedUrls(urlMap);
+    };
+
+    fetchUrls();
+  }, [videos]);
 
   const handleDelete = async (video: VideoRecord, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -63,6 +86,9 @@ export function VideoList({ videos, onDelete }: VideoListProps) {
     return <p className="text-center text-muted-foreground py-8">אין סרטונים עדיין</p>;
   }
 
+  const playingVideo = playingId ? videos.find((v) => v.id === playingId) : null;
+  const playingUrl = playingId ? signedUrls[playingId] : null;
+
   return (
     <>
       <div className="space-y-3">
@@ -70,7 +96,7 @@ export function VideoList({ videos, onDelete }: VideoListProps) {
           <div
             key={video.id}
             className="flex items-center gap-4 p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors cursor-pointer"
-            onClick={() => setPlayingId(video.id)}
+            onClick={() => signedUrls[video.id] && setPlayingId(video.id)}
           >
             <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center shrink-0">
               <Film className="w-8 h-8 text-muted-foreground" />
@@ -88,7 +114,7 @@ export function VideoList({ videos, onDelete }: VideoListProps) {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Button variant="ghost" size="icon" className="text-primary" onClick={(e) => { e.stopPropagation(); setPlayingId(video.id); }}>
+              <Button variant="ghost" size="icon" className="text-primary" onClick={(e) => { e.stopPropagation(); if (signedUrls[video.id]) setPlayingId(video.id); }}>
                 <Play className="w-5 h-5" />
               </Button>
               {onDelete && (
@@ -101,10 +127,10 @@ export function VideoList({ videos, onDelete }: VideoListProps) {
         ))}
       </div>
 
-      {playingId && (
+      {playingId && playingUrl && (
         <VideoPlayer
-          url={getVideoUrl(videos.find((v) => v.id === playingId)!.storage_path)}
-          title={videos.find((v) => v.id === playingId)?.title || "סרטון"}
+          url={playingUrl}
+          title={playingVideo?.title || "סרטון"}
           open={!!playingId}
           onClose={() => setPlayingId(null)}
         />
