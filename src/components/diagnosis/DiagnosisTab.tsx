@@ -165,20 +165,23 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
               onChange={(e) => setWaterPressureStatus(e.target.value)}
               placeholder="לדוגמה: לחץ תקין 3.5 בר"
               className="mt-1"
+              readOnly={readOnly}
             />
           </div>
           <div className="flex flex-wrap gap-6">
             <div className="flex items-center gap-3">
               <Switch
                 checked={propertyOccupied === true}
-                onCheckedChange={(checked) => setPropertyOccupied(checked)}
+                onCheckedChange={(checked) => !readOnly && setPropertyOccupied(checked)}
+                disabled={readOnly}
               />
               <Label className="text-sm">נכס מאוכלס</Label>
             </div>
             <div className="flex items-center gap-3">
               <Switch
                 checked={mainValveClosed === true}
-                onCheckedChange={(checked) => setMainValveClosed(checked)}
+                onCheckedChange={(checked) => !readOnly && setMainValveClosed(checked)}
+                disabled={readOnly}
               />
               <Label className="text-sm">ברז ראשי סגור</Label>
             </div>
@@ -191,6 +194,7 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
               placeholder="לדוגמה: אין גישה לקומה 2, ריהוט כבד חוסם קיר מערבי"
               rows={2}
               className="mt-1"
+              readOnly={readOnly}
             />
           </div>
         </CardContent>
@@ -212,8 +216,9 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
                   variant={isSelected ? "default" : "outline"}
                   size="sm"
                   className="h-9 px-4"
+                  disabled={readOnly}
                   onClick={() =>
-                    setSelectedMethods((prev) =>
+                    !readOnly && setSelectedMethods((prev) =>
                       isSelected ? prev.filter((m) => m !== method) : [...prev, method]
                     )
                   }
@@ -238,6 +243,7 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
             placeholder="תאר את הממצאים שנמצאו"
             rows={4}
             maxLength={2000}
+            readOnly={readOnly}
           />
         </CardContent>
       </Card>
@@ -256,6 +262,7 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
             placeholder="מה לדעתך גרם לבעייה?"
             rows={3}
             maxLength={2000}
+            readOnly={readOnly}
           />
         </CardContent>
       </Card>
@@ -276,7 +283,8 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
                   variant={isSelected ? "default" : "outline"}
                   size="sm"
                   className="h-9 px-4"
-                  onClick={() => toggleDamage(opt.value)}
+                  disabled={readOnly}
+                  onClick={() => !readOnly && toggleDamage(opt.value)}
                 >
                   {opt.label}
                 </Button>
@@ -290,6 +298,7 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
                 onChange={(e) => setVisibleDamageOther(e.target.value)}
                 placeholder="פרט נזק אחר..."
                 rows={3}
+                readOnly={readOnly}
               />
             </div>
           )}
@@ -316,7 +325,8 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
                       ? opt.color + " font-semibold"
                       : ""
                   }`}
-                  onClick={() => setUrgencyLevel(opt.value)}
+                  disabled={readOnly}
+                  onClick={() => !readOnly && setUrgencyLevel(opt.value)}
                 >
                   <Icon className="w-4 h-4" />
                   {opt.label}
@@ -339,6 +349,7 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
             placeholder="מה ההמלצה לתיקון"
             rows={4}
             maxLength={2000}
+            readOnly={readOnly}
           />
         </CardContent>
       </Card>
@@ -355,6 +366,7 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
             placeholder="פרט אזורים שלא נבדקו ומדוע (להגנה משפטית)"
             rows={2}
             maxLength={1000}
+            readOnly={readOnly}
           />
         </CardContent>
       </Card>
