@@ -46,9 +46,10 @@ const statusColors: Record<string, string> = {
 
 interface QuotesListProps {
   serviceCallId: string;
+  readOnly?: boolean;
 }
 
-export const QuotesList = ({ serviceCallId }: QuotesListProps) => {
+export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps) => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -141,7 +142,7 @@ export const QuotesList = ({ serviceCallId }: QuotesListProps) => {
     loadQuotes();
   };
 
-  if (creating || editingId) {
+  if (!readOnly && (creating || editingId)) {
     return (
       <QuoteEditor
         serviceCallId={serviceCallId}
@@ -163,9 +164,11 @@ export const QuotesList = ({ serviceCallId }: QuotesListProps) => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-base font-medium">הצעות מחיר ({quotes.length})</h3>
-        <Button onClick={() => setCreating(true)} className="gap-2" size="sm">
-          <Plus className="w-4 h-4" /> הצעה חדשה
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setCreating(true)} className="gap-2" size="sm">
+            <Plus className="w-4 h-4" /> הצעה חדשה
+          </Button>
+        )}
       </div>
 
       {quotes.length === 0 ? (
@@ -173,9 +176,11 @@ export const QuotesList = ({ serviceCallId }: QuotesListProps) => {
           <CardContent className="p-8 text-center">
             <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
             <p className="text-muted-foreground">אין הצעות מחיר עדיין</p>
-            <Button onClick={() => setCreating(true)} variant="outline" className="mt-4 gap-2">
-              <Plus className="w-4 h-4" /> צור הצעה ראשונה
-            </Button>
+            {!readOnly && (
+              <Button onClick={() => setCreating(true)} variant="outline" className="mt-4 gap-2">
+                <Plus className="w-4 h-4" /> צור הצעה ראשונה
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -206,66 +211,68 @@ export const QuotesList = ({ serviceCallId }: QuotesListProps) => {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {quote.status === "draft" && (
+                  {!readOnly && (
+                    <div className="flex items-center gap-1">
+                      {quote.status === "draft" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStatusChange(quote.id, "sent")}
+                        >
+                          שלח
+                        </Button>
+                      )}
+                      {quote.status === "sent" && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleStatusChange(quote.id, "approved")}
+                            className="text-success"
+                          >
+                            אשר
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleStatusChange(quote.id, "rejected")}
+                            className="text-destructive"
+                          >
+                            דחה
+                          </Button>
+                        </>
+                      )}
                       <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleStatusChange(quote.id, "sent")}
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setEditingId(quote.id)}
                       >
-                        שלח
+                        <Edit className="w-4 h-4" />
                       </Button>
-                    )}
-                    {quote.status === "sent" && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleStatusChange(quote.id, "approved")}
-                          className="text-success"
-                        >
-                          אשר
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleStatusChange(quote.id, "rejected")}
-                          className="text-destructive"
-                        >
-                          דחה
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setEditingId(quote.id)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>מחיקת הצעת מחיר</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            האם למחוק את הצעת המחיר? פעולה זו אינה ניתנת לביטול.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>ביטול</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(quote.id)}>
-                            מחק
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>מחיקת הצעת מחיר</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              האם למחוק את הצעת המחיר? פעולה זו אינה ניתנת לביטול.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>ביטול</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(quote.id)}>
+                              מחק
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

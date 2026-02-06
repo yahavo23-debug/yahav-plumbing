@@ -338,7 +338,7 @@ const ServiceCallDetail = () => {
               <ShareButton serviceCallId={id!} shareType="quotes" />
             </div>
           )}
-          <QuotesList serviceCallId={id!} />
+          <QuotesList serviceCallId={id!} readOnly={isContractor} />
         </TabsContent>
 
         {/* 5. Reports */}
