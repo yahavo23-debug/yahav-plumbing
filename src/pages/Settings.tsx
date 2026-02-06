@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { User, Shield } from "lucide-react";
+import { UserManagement } from "@/components/settings/UserManagement";
 
 const Settings = () => {
   const { user, isAdmin } = useAuth();
@@ -115,6 +116,9 @@ const Settings = () => {
             </p>
           </CardContent>
         </Card>
+
+        {/* Admin-only: User Management */}
+        {isAdmin && <UserManagement />}
       </div>
     </AppLayout>
   );
