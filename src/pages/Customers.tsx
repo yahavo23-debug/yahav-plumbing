@@ -20,6 +20,7 @@ const Customers = () => {
   const navigate = useNavigate();
   const { user, role, isAdmin } = useAuth();
   const { logAction } = useAuditLog();
+  const isContractor = role === "contractor";
 
   // Secretary and admin can create customers
   const canCreate = isAdmin || role === "secretary";
@@ -91,23 +92,28 @@ const Customers = () => {
             >
               <CardContent className="p-4">
                 <h3 className="font-semibold text-lg mb-2">{customer.name}</h3>
-                <div className="space-y-1 text-sm text-muted-foreground">
-                  {customer.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5" /> {customer.phone}
-                    </div>
-                  )}
-                  {customer.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5" /> {customer.email}
-                    </div>
-                  )}
-                  {(customer.city || customer.address) && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-3.5 h-3.5" /> {customer.city} {customer.address}
-                    </div>
-                  )}
-                </div>
+                {!isContractor && (
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    {customer.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5" /> {customer.phone}
+                      </div>
+                    )}
+                    {customer.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-3.5 h-3.5" /> {customer.email}
+                      </div>
+                    )}
+                    {(customer.city || customer.address) && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5" /> {customer.city} {customer.address}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {isContractor && customer.city && (
+                  <p className="text-sm text-muted-foreground">{customer.city}</p>
+                )}
               </CardContent>
             </Card>
           ))}
