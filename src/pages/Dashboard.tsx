@@ -22,7 +22,8 @@ const Dashboard = () => {
   const [recentCalls, setRecentCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin, role } = useAuth();
+  const canCreate = isAdmin || role === "technician" || role === "secretary";
 
   useEffect(() => {
     if (!user) return;
@@ -92,14 +93,20 @@ const Dashboard = () => {
       </div>
 
       {/* Quick actions */}
-      <div className="flex flex-wrap gap-3 mb-8">
-        <Button size="lg" onClick={() => navigate("/customers/new")} className="h-12 gap-2">
-          <Plus className="w-5 h-5" /> לקוח חדש
-        </Button>
-        <Button size="lg" onClick={() => navigate("/service-calls/new")} variant="outline" className="h-12 gap-2">
-          <Wrench className="w-5 h-5" /> קריאת שירות חדשה
-        </Button>
-      </div>
+      {canCreate && (
+        <div className="flex flex-wrap gap-3 mb-8">
+          {(isAdmin || role === "secretary") && (
+            <Button size="lg" onClick={() => navigate("/customers/new")} className="h-12 gap-2">
+              <Plus className="w-5 h-5" /> לקוח חדש
+            </Button>
+          )}
+          {(isAdmin || role === "technician") && (
+            <Button size="lg" onClick={() => navigate("/service-calls/new")} variant="outline" className="h-12 gap-2">
+              <Wrench className="w-5 h-5" /> קריאת שירות חדשה
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Recent calls */}
       <Card>

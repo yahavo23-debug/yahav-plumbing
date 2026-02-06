@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { AuthProvider, useAuth, AppRole } from "@/hooks/useAuth";
 import { NoAccessScreen } from "@/components/layout/NoAccessScreen";
 
 // Pages
@@ -25,7 +25,7 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: AppRole[] }) {
   const { user, loading, role } = useAuth();
 
   if (loading) {
@@ -45,6 +45,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <NoAccessScreen />;
   }
 
+  // Role-based route guard
+  if (allowedRoles && !allowedRoles.includes(role)) {
+    return <Navigate to="/" replace />;
+  }
+
   return <>{children}</>;
 }
 
@@ -59,16 +64,16 @@ function AppRoutes() {
       {/* Protected routes */}
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-      <Route path="/customers/new" element={<ProtectedRoute><CustomerForm /></ProtectedRoute>} />
+      <Route path="/customers/new" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><CustomerForm /></ProtectedRoute>} />
       <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
-      <Route path="/customers/:id/edit" element={<ProtectedRoute><CustomerForm /></ProtectedRoute>} />
-      <Route path="/service-calls" element={<ProtectedRoute><ServiceCalls /></ProtectedRoute>} />
-      <Route path="/service-calls/new" element={<ProtectedRoute><CustomerSelect /></ProtectedRoute>} />
-      <Route path="/service-calls/new/:customerId" element={<ProtectedRoute><ServiceCallForm /></ProtectedRoute>} />
+      <Route path="/customers/:id/edit" element={<ProtectedRoute allowedRoles={["admin"]}><CustomerForm /></ProtectedRoute>} />
+      <Route path="/service-calls" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary", "contractor"]}><ServiceCalls /></ProtectedRoute>} />
+      <Route path="/service-calls/new" element={<ProtectedRoute allowedRoles={["admin", "technician"]}><CustomerSelect /></ProtectedRoute>} />
+      <Route path="/service-calls/new/:customerId" element={<ProtectedRoute allowedRoles={["admin", "technician"]}><ServiceCallForm /></ProtectedRoute>} />
       <Route path="/service-calls/:id" element={<ProtectedRoute><ServiceCallDetail /></ProtectedRoute>} />
-      <Route path="/service-calls/:id/edit" element={<ProtectedRoute><ServiceCallForm /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-      <Route path="/reports/:id" element={<ProtectedRoute><ReportEditor /></ProtectedRoute>} />
+      <Route path="/service-calls/:id/edit" element={<ProtectedRoute allowedRoles={["admin", "technician"]}><ServiceCallForm /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><Reports /></ProtectedRoute>} />
+      <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ReportEditor /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
       <Route path="*" element={<NotFound />} />

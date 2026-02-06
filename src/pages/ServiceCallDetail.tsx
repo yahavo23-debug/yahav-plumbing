@@ -54,7 +54,10 @@ const serviceTypeLabels: Record<string, string> = {
 const ServiceCallDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, role, isAdmin } = useAuth();
+  const isContractor = role === "contractor";
+  const canEdit = isAdmin || role === "technician";
+  const canUpload = isAdmin || role === "technician";
   const [call, setCall] = useState<any>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
@@ -150,14 +153,16 @@ const ServiceCallDetail = () => {
         <Button variant="ghost" onClick={() => navigate(`/customers/${call.customer_id}`)} className="gap-2">
           <ArrowRight className="w-4 h-4" /> חזרה ללקוח
         </Button>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate(`/service-calls/${id}/edit`)} className="gap-2">
-            <Edit className="w-4 h-4" /> עריכה
-          </Button>
-          <Button onClick={handleCreateReport} className="gap-2">
-            <FileText className="w-4 h-4" /> דוח עבודה
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate(`/service-calls/${id}/edit`)} className="gap-2">
+              <Edit className="w-4 h-4" /> עריכה
+            </Button>
+            <Button onClick={handleCreateReport} className="gap-2">
+              <FileText className="w-4 h-4" /> דוח עבודה
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Info summary */}
@@ -219,62 +224,71 @@ const ServiceCallDetail = () => {
 
         {/* 1. Call Details */}
         <TabsContent value="details">
-          <div className="flex justify-end mb-3">
-            <ShareButton serviceCallId={id!} shareType="details" />
-          </div>
+          {!isContractor && (
+            <div className="flex justify-end mb-3">
+              <ShareButton serviceCallId={id!} shareType="details" />
+            </div>
+          )}
           <Card>
             <CardContent className="p-6 space-y-4">
               <div>
                 <Label className="text-muted-foreground text-xs">תיאור התלונה</Label>
                 <Textarea
                   value={call.description || ""}
-                  onChange={(e) => setCall({ ...call, description: e.target.value })}
+                  onChange={(e) => !isContractor && setCall({ ...call, description: e.target.value })}
                   placeholder="תאר את התלונה..."
                   rows={4}
                   className="mt-1"
+                  readOnly={isContractor}
                 />
               </div>
               <div>
                 <Label className="text-muted-foreground text-xs">הערות</Label>
                 <Textarea
                   value={(call as any).notes || ""}
-                  onChange={(e) => setCall({ ...call, notes: e.target.value })}
+                  onChange={(e) => !isContractor && setCall({ ...call, notes: e.target.value })}
                   placeholder="הערות נוספות..."
                   rows={3}
                   className="mt-1"
+                  readOnly={isContractor}
                 />
               </div>
-              <Button
-                onClick={async () => {
-                  const { error } = await supabase
-                    .from("service_calls")
-                    .update({
-                      description: call.description?.trim() || null,
-                      notes: (call as any).notes?.trim() || null,
-                    } as any)
-                    .eq("id", id!);
-                  if (error) {
-                    toast({ title: "שגיאה", description: "לא ניתן לשמור", variant: "destructive" });
-                  } else {
-                    toast({ title: "נשמר", description: "פרטי הקריאה עודכנו" });
-                  }
-                }}
-                className="h-10"
-              >
-                שמור פרטים
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from("service_calls")
+                      .update({
+                        description: call.description?.trim() || null,
+                        notes: (call as any).notes?.trim() || null,
+                      } as any)
+                      .eq("id", id!);
+                    if (error) {
+                      toast({ title: "שגיאה", description: "לא ניתן לשמור", variant: "destructive" });
+                    } else {
+                      toast({ title: "נשמר", description: "פרטי הקריאה עודכנו" });
+                    }
+                  }}
+                  className="h-10"
+                >
+                  שמור פרטים
+                </Button>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* 2. Diagnosis */}
         <TabsContent value="diagnosis">
-          <div className="flex justify-end mb-3">
-            <ShareButton serviceCallId={id!} shareType="diagnosis" />
-          </div>
+          {!isContractor && (
+            <div className="flex justify-end mb-3">
+              <ShareButton serviceCallId={id!} shareType="diagnosis" />
+            </div>
+          )}
           <DiagnosisTab
             serviceCallId={id!}
             callData={call}
+            readOnly={isContractor}
             onDataUpdate={(updated) => {
               setCall(updated);
               setFindings(updated.findings || "");
@@ -285,41 +299,55 @@ const ServiceCallDetail = () => {
 
         {/* 3. Media */}
         <TabsContent value="media">
-          <div className="flex justify-end mb-3">
-            <ShareButton serviceCallId={id!} shareType="media" />
-          </div>
-          <MediaUploader serviceCallId={id!} type="photo" onUploadComplete={refreshPhotos} />
+          {!isContractor && (
+            <div className="flex justify-end mb-3">
+              <ShareButton serviceCallId={id!} shareType="media" />
+            </div>
+          )}
+          {canUpload && (
+            <MediaUploader serviceCallId={id!} type="photo" onUploadComplete={refreshPhotos} />
+          )}
           <div className="mt-4">
-            <PhotoGrid photos={photos} onDelete={(deletedId) => setPhotos(p => p.filter(x => x.id !== deletedId))} />
+            <PhotoGrid photos={photos} onDelete={canEdit ? (deletedId) => setPhotos(p => p.filter(x => x.id !== deletedId)) : undefined} />
           </div>
           <div className="mt-6">
-            <MediaUploader serviceCallId={id!} type="video" onUploadComplete={refreshVideos} />
+            {canUpload && (
+              <MediaUploader serviceCallId={id!} type="video" onUploadComplete={refreshVideos} />
+            )}
             <div className="mt-4">
-              <VideoList videos={videos} onDelete={(deletedId) => setVideos(v => v.filter(x => x.id !== deletedId))} />
+              <VideoList videos={videos} onDelete={canEdit ? (deletedId) => setVideos(v => v.filter(x => x.id !== deletedId)) : undefined} />
             </div>
           </div>
         </TabsContent>
 
         {/* 4. Quotes */}
         <TabsContent value="quotes">
-          <div className="flex justify-end mb-3">
-            <ShareButton serviceCallId={id!} shareType="quotes" />
-          </div>
+          {!isContractor && (
+            <div className="flex justify-end mb-3">
+              <ShareButton serviceCallId={id!} shareType="quotes" />
+            </div>
+          )}
           <QuotesList serviceCallId={id!} />
         </TabsContent>
 
         {/* 5. Reports */}
         <TabsContent value="reports">
-          <div className="flex justify-end mb-3">
-            <ShareButton serviceCallId={id!} shareType="report" />
-          </div>
-          <Card>
-            <CardContent className="p-6">
-              <Button onClick={handleCreateReport} className="gap-2">
-                <FileText className="w-4 h-4" /> צור / פתח דוח עבודה
-              </Button>
-            </CardContent>
-          </Card>
+          {!isContractor && (
+            <div className="flex justify-end mb-3">
+              <ShareButton serviceCallId={id!} shareType="report" />
+            </div>
+          )}
+          {canEdit ? (
+            <Card>
+              <CardContent className="p-6">
+                <Button onClick={handleCreateReport} className="gap-2">
+                  <FileText className="w-4 h-4" /> צור / פתח דוח עבודה
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">אין לך הרשאה ליצור דוחות</p>
+          )}
         </TabsContent>
       </Tabs>
     </AppLayout>
