@@ -231,32 +231,6 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate }: Diagnosi
         </CardContent>
       </Card>
 
-      {/* 4. Diagnosis Confidence */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">רמת ודאות האבחון *</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {CONFIDENCE_OPTIONS.map((opt) => (
-              <Button
-                key={opt.value}
-                type="button"
-                variant="outline"
-                size="sm"
-                className={`h-10 px-5 border ${
-                  diagnosisConfidence === opt.value
-                    ? opt.color + " font-semibold"
-                    : ""
-                }`}
-                onClick={() => setDiagnosisConfidence(opt.value)}
-              >
-                {opt.label}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
 
       {/* 6. Cause Assessment */}
