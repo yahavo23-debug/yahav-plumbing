@@ -258,21 +258,6 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate }: Diagnosi
         </CardContent>
       </Card>
 
-      {/* 5. Exact Leak Location */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">מיקום מדויק של הנזילה</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={leakLocation}
-            onChange={(e) => setLeakLocation(e.target.value)}
-            placeholder="לדוגמה: קיר צפוני בסלון, גובה 1.2 מ׳ מהרצפה, ליד שקע החשמל"
-            rows={2}
-            maxLength={1000}
-          />
-        </CardContent>
-      </Card>
 
       {/* 6. Cause Assessment */}
       <Card>
