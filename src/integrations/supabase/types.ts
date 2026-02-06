@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      contractor_customer_access: {
+        Row: {
+          contractor_user_id: string
+          created_at: string
+          created_by: string
+          customer_id: string
+          id: string
+        }
+        Insert: {
+          contractor_user_id: string
+          created_at?: string
+          created_by: string
+          customer_id: string
+          id?: string
+        }
+        Update: {
+          contractor_user_id?: string
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contractor_customer_access_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -570,6 +602,11 @@ export type Database = {
         Args: { _service_call_id: string; _user_id: string }
         Returns: boolean
       }
+      contractor_can_access_customer: {
+        Args: { _customer_id: string; _user_id: string }
+        Returns: boolean
+      }
+      get_customer_for_sc: { Args: { _sc_id: string }; Returns: string }
       get_sc_id_for_photo: { Args: { _photo_id: string }; Returns: string }
       get_sc_id_for_quote: { Args: { _quote_id: string }; Returns: string }
       get_sc_id_for_report: { Args: { _report_id: string }; Returns: string }

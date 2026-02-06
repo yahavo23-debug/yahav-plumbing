@@ -8,13 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { User, Shield, Wrench, ClipboardList } from "lucide-react";
+import { User, Shield, Wrench, ClipboardList, HardHat } from "lucide-react";
 import { UserManagement } from "@/components/settings/UserManagement";
 
 const ROLE_DISPLAY: Record<string, { label: string; icon: React.ReactNode }> = {
   admin: { label: "מנהל", icon: <Shield className="w-3.5 h-3.5" /> },
   technician: { label: "טכנאי", icon: <Wrench className="w-3.5 h-3.5" /> },
   secretary: { label: "מזכירה", icon: <ClipboardList className="w-3.5 h-3.5" /> },
+  contractor: { label: "קבלן", icon: <HardHat className="w-3.5 h-3.5" /> },
 };
 
 const Settings = () => {
