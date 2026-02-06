@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -219,21 +220,45 @@ const ServiceCallDetail = () => {
         <TabsContent value="details">
           <Card>
             <CardContent className="p-6 space-y-4">
-              {call.description && (
-                <div>
-                  <Label className="text-muted-foreground text-xs">תיאור התלונה</Label>
-                  <p className="mt-1 whitespace-pre-wrap">{call.description}</p>
-                </div>
-              )}
-              {(call as any).notes && (
-                <div>
-                  <Label className="text-muted-foreground text-xs">הערות</Label>
-                  <p className="mt-1 whitespace-pre-wrap text-sm">{(call as any).notes}</p>
-                </div>
-              )}
-              {!call.description && !(call as any).notes && (
-                <p className="text-muted-foreground text-center py-4">אין פרטים נוספים</p>
-              )}
+              <div>
+                <Label className="text-muted-foreground text-xs">תיאור התלונה</Label>
+                <Textarea
+                  value={call.description || ""}
+                  onChange={(e) => setCall({ ...call, description: e.target.value })}
+                  placeholder="תאר את התלונה..."
+                  rows={4}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs">הערות</Label>
+                <Textarea
+                  value={(call as any).notes || ""}
+                  onChange={(e) => setCall({ ...call, notes: e.target.value })}
+                  placeholder="הערות נוספות..."
+                  rows={3}
+                  className="mt-1"
+                />
+              </div>
+              <Button
+                onClick={async () => {
+                  const { error } = await supabase
+                    .from("service_calls")
+                    .update({
+                      description: call.description?.trim() || null,
+                      notes: (call as any).notes?.trim() || null,
+                    } as any)
+                    .eq("id", id!);
+                  if (error) {
+                    toast({ title: "שגיאה", description: "לא ניתן לשמור", variant: "destructive" });
+                  } else {
+                    toast({ title: "נשמר", description: "פרטי הקריאה עודכנו" });
+                  }
+                }}
+                className="h-10"
+              >
+                שמור פרטים
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
