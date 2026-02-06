@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { toast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
 import {
@@ -47,6 +48,7 @@ const CustomerDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isAdmin, role } = useAuth();
+  const { logAction } = useAuditLog();
   const canEdit = isAdmin;
   const canCreateCall = isAdmin || role === "technician";
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -73,6 +75,14 @@ const CustomerDetail = () => {
     setCustomer(custRes.data);
     setCalls(callsRes.data || []);
     setLoading(false);
+
+    // Audit log for contractor views
+    logAction({
+      action: "view_customer",
+      resource_type: "customer",
+      resource_id: id!,
+      resource_label: custRes.data.name,
+    });
   };
 
   if (loading) {

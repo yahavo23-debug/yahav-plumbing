@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { User, Shield, Wrench, ClipboardList, HardHat } from "lucide-react";
 import { UserManagement } from "@/components/settings/UserManagement";
+import { AuditLogViewer } from "@/components/settings/AuditLogViewer";
 
 const ROLE_DISPLAY: Record<string, { label: string; icon: React.ReactNode }> = {
   admin: { label: "מנהל", icon: <Shield className="w-3.5 h-3.5" /> },
@@ -133,6 +134,9 @@ const Settings = () => {
 
         {/* Admin-only: User Management */}
         {isAdmin && <UserManagement />}
+
+        {/* Admin-only: Audit Log */}
+        {isAdmin && <AuditLogViewer />}
       </div>
     </AppLayout>
   );
