@@ -5,9 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -19,6 +17,7 @@ import {
   ArrowRight, Edit, FileText, Calendar, User, MapPin, Phone,
 } from "lucide-react";
 import { QuotesList } from "@/components/quotes/QuotesList";
+import { DiagnosisTab } from "@/components/diagnosis/DiagnosisTab";
 
 type Photo = Tables<"service_call_photos">;
 type Video = Tables<"service_call_videos">;
@@ -58,12 +57,10 @@ const ServiceCallDetail = () => {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  
 
-  // Diagnosis fields
-  const [selectedMethods, setSelectedMethods] = useState<string[]>([]);
+  // Keep findings/recommendations for report creation
   const [findings, setFindings] = useState("");
-  const [causeAssessment, setCauseAssessment] = useState("");
   const [recommendations, setRecommendations] = useState("");
 
   useEffect(() => {
@@ -86,9 +83,7 @@ const ServiceCallDetail = () => {
 
     const data = callRes.data;
     setCall(data);
-    setSelectedMethods((data as any).detection_method ? (data as any).detection_method.split(",").map((s: string) => s.trim()).filter(Boolean) : []);
     setFindings(data.findings || "");
-    setCauseAssessment((data as any).cause_assessment || "");
     setRecommendations(data.recommendations || "");
     setPhotos(photosRes.data || []);
     setVideos(videosRes.data || []);
@@ -105,23 +100,6 @@ const ServiceCallDetail = () => {
     setVideos(data || []);
   }, [id]);
 
-  const saveDiagnosis = async () => {
-    setSaving(true);
-    const { error } = await supabase.from("service_calls")
-      .update({
-        detection_method: selectedMethods.length > 0 ? selectedMethods.join(", ") : null,
-        findings: findings.trim() || null,
-        cause_assessment: causeAssessment.trim() || null,
-        recommendations: recommendations.trim() || null,
-      } as any)
-      .eq("id", id!);
-    if (error) {
-      toast({ title: "שגיאה", description: "לא ניתן לשמור", variant: "destructive" });
-    } else {
-      toast({ title: "נשמר", description: "האבחון עודכן בהצלחה" });
-    }
-    setSaving(false);
-  };
 
   const handleCreateReport = async () => {
     if (!user || !id) return;
@@ -262,90 +240,15 @@ const ServiceCallDetail = () => {
 
         {/* 2. Diagnosis */}
         <TabsContent value="diagnosis">
-          <div className="space-y-6">
-            {/* Detection Methods - Toggle Buttons */}
-            <Card>
-              <CardHeader><CardTitle className="text-base">שיטת איתור</CardTitle></CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "מצלמה תרמית",
-                    "גז עקיבה",
-                    "מצלמת ביוב",
-                    "שעון לחץ",
-                    "האזנה אקוסטית",
-                    "בדיקה ויזואלית",
-                  ].map((method) => {
-                    const isSelected = selectedMethods.includes(method);
-                    return (
-                      <Button
-                        key={method}
-                        type="button"
-                        variant={isSelected ? "default" : "outline"}
-                        size="sm"
-                        className="h-9 px-4"
-                        onClick={() =>
-                          setSelectedMethods((prev) =>
-                            isSelected
-                              ? prev.filter((m) => m !== method)
-                              : [...prev, method]
-                          )
-                        }
-                      >
-                        {method}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Findings */}
-            <Card>
-              <CardHeader><CardTitle className="text-base">ממצאים</CardTitle></CardHeader>
-              <CardContent>
-                <Textarea
-                  value={findings}
-                  onChange={(e) => setFindings(e.target.value)}
-                  placeholder="תאר את הממצאים שנמצאו"
-                  rows={4}
-                  maxLength={2000}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Cause Assessment */}
-            <Card>
-              <CardHeader><CardTitle className="text-base">הערכת סיבה</CardTitle></CardHeader>
-              <CardContent>
-                <Textarea
-                  value={causeAssessment}
-                  onChange={(e) => setCauseAssessment(e.target.value)}
-                  placeholder="מה לדעתך גרם לבעייה?"
-                  rows={3}
-                  maxLength={2000}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Recommendations */}
-            <Card>
-              <CardHeader><CardTitle className="text-base">המלצה</CardTitle></CardHeader>
-              <CardContent>
-                <Textarea
-                  value={recommendations}
-                  onChange={(e) => setRecommendations(e.target.value)}
-                  placeholder="מה ההמלצה לתיקון"
-                  rows={4}
-                  maxLength={2000}
-                />
-              </CardContent>
-            </Card>
-
-            <Button onClick={saveDiagnosis} disabled={saving} className="h-12">
-              {saving ? "שומר..." : "שמור אבחון"}
-            </Button>
-          </div>
+          <DiagnosisTab
+            serviceCallId={id!}
+            callData={call}
+            onDataUpdate={(updated) => {
+              setCall(updated);
+              setFindings(updated.findings || "");
+              setRecommendations(updated.recommendations || "");
+            }}
+          />
         </TabsContent>
 
         {/* 3. Media */}
