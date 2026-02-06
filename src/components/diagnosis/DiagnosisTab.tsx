@@ -284,11 +284,11 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate }: Diagnosi
           </div>
           {visibleDamage.includes("other") && (
             <div className="mt-3">
-              <Input
+              <Textarea
                 value={visibleDamageOther}
                 onChange={(e) => setVisibleDamageOther(e.target.value)}
                 placeholder="פרט נזק אחר..."
-                className="max-w-md"
+                rows={3}
               />
             </div>
           )}
