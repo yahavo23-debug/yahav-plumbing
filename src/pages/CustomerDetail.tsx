@@ -49,6 +49,7 @@ const CustomerDetail = () => {
   const navigate = useNavigate();
   const { user, isAdmin, role } = useAuth();
   const { logAction } = useAuditLog();
+  const isContractor = role === "contractor";
   const canEdit = isAdmin;
   const canCreateCall = isAdmin || role === "technician";
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -182,30 +183,39 @@ const CustomerDetail = () => {
               <CardTitle className="text-base">פרטי לקוח</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                {customer.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-muted-foreground" />
-                    <span dir="ltr">{customer.phone}</span>
-                  </div>
-                )}
-                {customer.email && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    <span dir="ltr">{customer.email}</span>
-                  </div>
-                )}
-                {(customer.city || customer.address) && (
-                  <div className="flex items-center gap-2 sm:col-span-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <span>{[customer.city, customer.address].filter(Boolean).join(", ")}</span>
-                  </div>
-                )}
-              </div>
-              {customer.notes && (
-                <div className="pt-2 border-t border-border">
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{customer.notes}</p>
+              {isContractor ? (
+                <div className="text-sm text-muted-foreground">
+                  <p>שם: {customer.name}</p>
+                  {customer.city && <p>עיר: {customer.city}</p>}
                 </div>
+              ) : (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {customer.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span dir="ltr">{customer.phone}</span>
+                      </div>
+                    )}
+                    {customer.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-muted-foreground" />
+                        <span dir="ltr">{customer.email}</span>
+                      </div>
+                    )}
+                    {(customer.city || customer.address) && (
+                      <div className="flex items-center gap-2 sm:col-span-2">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span>{[customer.city, customer.address].filter(Boolean).join(", ")}</span>
+                      </div>
+                    )}
+                  </div>
+                  {customer.notes && (
+                    <div className="pt-2 border-t border-border">
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{customer.notes}</p>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
