@@ -358,6 +358,7 @@ export type Database = {
       }
       service_calls: {
         Row: {
+          areas_not_inspected: string | null
           assigned_to: string | null
           call_number: number
           cause_assessment: string | null
@@ -365,19 +366,30 @@ export type Database = {
           created_at: string
           created_by: string
           customer_id: string
+          customer_signature_date: string | null
+          customer_signature_path: string | null
           description: string | null
           detection_method: string | null
+          diagnosis_confidence: string | null
           findings: string | null
           id: string
           job_type: string
+          leak_location: string | null
+          main_valve_closed: boolean | null
           notes: string | null
           priority: string
+          property_occupied: boolean | null
           recommendations: string | null
           scheduled_date: string | null
           status: string
+          test_limitations: string | null
           updated_at: string
+          urgency_level: string | null
+          visible_damage: string[] | null
+          water_pressure_status: string | null
         }
         Insert: {
+          areas_not_inspected?: string | null
           assigned_to?: string | null
           call_number: number
           cause_assessment?: string | null
@@ -385,19 +397,30 @@ export type Database = {
           created_at?: string
           created_by: string
           customer_id: string
+          customer_signature_date?: string | null
+          customer_signature_path?: string | null
           description?: string | null
           detection_method?: string | null
+          diagnosis_confidence?: string | null
           findings?: string | null
           id?: string
           job_type: string
+          leak_location?: string | null
+          main_valve_closed?: boolean | null
           notes?: string | null
           priority?: string
+          property_occupied?: boolean | null
           recommendations?: string | null
           scheduled_date?: string | null
           status?: string
+          test_limitations?: string | null
           updated_at?: string
+          urgency_level?: string | null
+          visible_damage?: string[] | null
+          water_pressure_status?: string | null
         }
         Update: {
+          areas_not_inspected?: string | null
           assigned_to?: string | null
           call_number?: number
           cause_assessment?: string | null
@@ -405,17 +428,27 @@ export type Database = {
           created_at?: string
           created_by?: string
           customer_id?: string
+          customer_signature_date?: string | null
+          customer_signature_path?: string | null
           description?: string | null
           detection_method?: string | null
+          diagnosis_confidence?: string | null
           findings?: string | null
           id?: string
           job_type?: string
+          leak_location?: string | null
+          main_valve_closed?: boolean | null
           notes?: string | null
           priority?: string
+          property_occupied?: boolean | null
           recommendations?: string | null
           scheduled_date?: string | null
           status?: string
+          test_limitations?: string | null
           updated_at?: string
+          urgency_level?: string | null
+          visible_damage?: string[] | null
+          water_pressure_status?: string | null
         }
         Relationships: [
           {
