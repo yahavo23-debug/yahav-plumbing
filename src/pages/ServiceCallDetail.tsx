@@ -61,7 +61,7 @@ const ServiceCallDetail = () => {
   const [saving, setSaving] = useState(false);
 
   // Diagnosis fields
-  const [detectionMethod, setDetectionMethod] = useState("");
+  const [selectedMethods, setSelectedMethods] = useState<string[]>([]);
   const [findings, setFindings] = useState("");
   const [causeAssessment, setCauseAssessment] = useState("");
   const [recommendations, setRecommendations] = useState("");
@@ -86,7 +86,7 @@ const ServiceCallDetail = () => {
 
     const data = callRes.data;
     setCall(data);
-    setDetectionMethod((data as any).detection_method || "");
+    setSelectedMethods((data as any).detection_method ? (data as any).detection_method.split(",").map((s: string) => s.trim()).filter(Boolean) : []);
     setFindings(data.findings || "");
     setCauseAssessment((data as any).cause_assessment || "");
     setRecommendations(data.recommendations || "");
@@ -109,7 +109,7 @@ const ServiceCallDetail = () => {
     setSaving(true);
     const { error } = await supabase.from("service_calls")
       .update({
-        detection_method: detectionMethod.trim() || null,
+        detection_method: selectedMethods.length > 0 ? selectedMethods.join(", ") : null,
         findings: findings.trim() || null,
         cause_assessment: causeAssessment.trim() || null,
         recommendations: recommendations.trim() || null,
@@ -262,58 +262,90 @@ const ServiceCallDetail = () => {
 
         {/* 2. Diagnosis */}
         <TabsContent value="diagnosis">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-6">
+            {/* Detection Methods - Toggle Buttons */}
             <Card>
               <CardHeader><CardTitle className="text-base">שיטת איתור</CardTitle></CardHeader>
               <CardContent>
-                <Input
-                  value={detectionMethod}
-                  onChange={(e) => setDetectionMethod(e.target.value)}
-                  placeholder="למשל: מצלמה תרמית, גז עקיבה..."
-                  maxLength={200}
-                />
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "מצלמה תרמית",
+                    "גז עקיבה",
+                    "מצלמת ביוב",
+                    "שעון לחץ",
+                    "האזנה אקוסטית",
+                    "בדיקה ויזואלית",
+                  ].map((method) => {
+                    const isSelected = selectedMethods.includes(method);
+                    return (
+                      <Button
+                        key={method}
+                        type="button"
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        className="h-9 px-4"
+                        onClick={() =>
+                          setSelectedMethods((prev) =>
+                            isSelected
+                              ? prev.filter((m) => m !== method)
+                              : [...prev, method]
+                          )
+                        }
+                      >
+                        {method}
+                      </Button>
+                    );
+                  })}
+                </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader><CardTitle className="text-base">הערכת סיבה</CardTitle></CardHeader>
-              <CardContent>
-                <Textarea
-                  value={causeAssessment}
-                  onChange={(e) => setCauseAssessment(e.target.value)}
-                  placeholder="הסיבה המשוערת לתקלה..."
-                  rows={3}
-                  maxLength={2000}
-                />
-              </CardContent>
-            </Card>
+
+            {/* Findings */}
             <Card>
               <CardHeader><CardTitle className="text-base">ממצאים</CardTitle></CardHeader>
               <CardContent>
                 <Textarea
                   value={findings}
                   onChange={(e) => setFindings(e.target.value)}
-                  placeholder="תאר את הממצאים..."
+                  placeholder="תאר את הממצאים שנמצאו"
                   rows={4}
                   maxLength={2000}
                 />
               </CardContent>
             </Card>
+
+            {/* Cause Assessment */}
             <Card>
-              <CardHeader><CardTitle className="text-base">המלצות</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">הערכת סיבה</CardTitle></CardHeader>
+              <CardContent>
+                <Textarea
+                  value={causeAssessment}
+                  onChange={(e) => setCauseAssessment(e.target.value)}
+                  placeholder="מה לדעתך גרם לבעייה?"
+                  rows={3}
+                  maxLength={2000}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Recommendations */}
+            <Card>
+              <CardHeader><CardTitle className="text-base">המלצה</CardTitle></CardHeader>
               <CardContent>
                 <Textarea
                   value={recommendations}
                   onChange={(e) => setRecommendations(e.target.value)}
-                  placeholder="תאר את ההמלצות..."
+                  placeholder="מה ההמלצה לתיקון"
                   rows={4}
                   maxLength={2000}
                 />
               </CardContent>
             </Card>
+
+            <Button onClick={saveDiagnosis} disabled={saving} className="h-12">
+              {saving ? "שומר..." : "שמור אבחון"}
+            </Button>
           </div>
-          <Button onClick={saveDiagnosis} disabled={saving} className="mt-4 h-12">
-            {saving ? "שומר..." : "שמור אבחון"}
-          </Button>
         </TabsContent>
 
         {/* 3. Media */}
