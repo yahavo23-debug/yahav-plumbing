@@ -63,6 +63,7 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate }: Diagnosi
   const [visibleDamage, setVisibleDamage] = useState<string[]>([]);
   const [urgencyLevel, setUrgencyLevel] = useState("");
   const [areasNotInspected, setAreasNotInspected] = useState("");
+  const [visibleDamageOther, setVisibleDamageOther] = useState("");
 
   // Signature
   const [signaturePath, setSignaturePath] = useState<string | null>(null);
@@ -83,7 +84,10 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate }: Diagnosi
     setTestLimitations(d.test_limitations || "");
     setDiagnosisConfidence(d.diagnosis_confidence || "");
     setLeakLocation(d.leak_location || "");
-    setVisibleDamage(d.visible_damage || []);
+    const dmg = d.visible_damage || [];
+    setVisibleDamage(dmg);
+    const otherEntry = dmg.find((v: string) => v.startsWith("other:"));
+    setVisibleDamageOther(otherEntry ? otherEntry.replace("other:", "") : "");
     setUrgencyLevel(d.urgency_level || "");
     setAreasNotInspected(d.areas_not_inspected || "");
     setSignaturePath(d.customer_signature_path || null);
@@ -105,7 +109,13 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate }: Diagnosi
         test_limitations: testLimitations.trim() || null,
         diagnosis_confidence: diagnosisConfidence || null,
         leak_location: leakLocation.trim() || null,
-        visible_damage: visibleDamage.length > 0 ? visibleDamage : null,
+        visible_damage: (() => {
+          const dmg = visibleDamage.filter(v => v !== "other" && !v.startsWith("other:"));
+          if (visibleDamage.includes("other")) {
+            dmg.push(visibleDamageOther.trim() ? `other:${visibleDamageOther.trim()}` : "other");
+          }
+          return dmg.length > 0 ? dmg : null;
+        })(),
         urgency_level: urgencyLevel || null,
         areas_not_inspected: areasNotInspected.trim() || null,
       } as any)
@@ -272,6 +282,16 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate }: Diagnosi
               );
             })}
           </div>
+          {visibleDamage.includes("other") && (
+            <div className="mt-3">
+              <Input
+                value={visibleDamageOther}
+                onChange={(e) => setVisibleDamageOther(e.target.value)}
+                placeholder="פרט נזק אחר..."
+                className="max-w-md"
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
