@@ -51,7 +51,9 @@ export function PhotoLightbox({ photos, initialIndex, open, onClose, canDownload
 
   if (!open || photos.length === 0) return null;
 
-  const photo = photos[index];
+  const safeIndex = Math.min(index, photos.length - 1);
+  const photo = photos[safeIndex];
+  if (!photo) return null;
   const tagLabels: Record<string, string> = {
     before: "לפני", after: "אחרי", finding: "ממצא", other: "אחר",
   };
@@ -84,8 +86,8 @@ export function PhotoLightbox({ photos, initialIndex, open, onClose, canDownload
           {/* Top bar */}
           <div className="flex items-center justify-between p-4 text-white" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-3">
-              <span className="text-sm opacity-70">{index + 1} / {photos.length}</span>
-              {photo.tag && (
+              <span className="text-sm opacity-70">{safeIndex + 1} / {photos.length}</span>
+              {photo?.tag && (
                 <span className="px-2 py-0.5 rounded bg-white/20 text-xs">
                   {tagLabels[photo.tag] || photo.tag}
                 </span>
@@ -131,7 +133,7 @@ export function PhotoLightbox({ photos, initialIndex, open, onClose, canDownload
           )}
 
           {/* Navigation arrows - RTL aware */}
-          {index > 0 && (
+          {safeIndex > 0 && (
             <button
               className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
               onClick={(e) => { e.stopPropagation(); setIndex((i) => i - 1); setScale(1); }}
@@ -139,7 +141,7 @@ export function PhotoLightbox({ photos, initialIndex, open, onClose, canDownload
               <ChevronLeft className="w-6 h-6" />
             </button>
           )}
-          {index < photos.length - 1 && (
+          {safeIndex < photos.length - 1 && (
             <button
               className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
               onClick={(e) => { e.stopPropagation(); setIndex((i) => i + 1); setScale(1); }}
