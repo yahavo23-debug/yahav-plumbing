@@ -29,7 +29,7 @@ const VISIBLE_DAMAGE_OPTIONS = [
   { value: "moisture", label: "רטיבות" },
   { value: "mold", label: "עובש" },
   { value: "peeling_paint", label: "צבע מתקלף" },
-  { value: "swollen_flooring", label: "ריצוף תפוח" },
+  { value: "swollen_flooring", label: "ריצוף פתוח" },
   { value: "ceiling_damage", label: "נזק בתקרה" },
   { value: "other", label: "אחר" },
 ];
