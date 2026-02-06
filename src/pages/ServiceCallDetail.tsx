@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { QuotesList } from "@/components/quotes/QuotesList";
 import { DiagnosisTab } from "@/components/diagnosis/DiagnosisTab";
+import { ShareButton } from "@/components/sharing/ShareButton";
 
 type Photo = Tables<"service_call_photos">;
 type Video = Tables<"service_call_videos">;
@@ -218,6 +219,9 @@ const ServiceCallDetail = () => {
 
         {/* 1. Call Details */}
         <TabsContent value="details">
+          <div className="flex justify-end mb-3">
+            <ShareButton serviceCallId={id!} shareType="details" />
+          </div>
           <Card>
             <CardContent className="p-6 space-y-4">
               <div>
@@ -265,6 +269,9 @@ const ServiceCallDetail = () => {
 
         {/* 2. Diagnosis */}
         <TabsContent value="diagnosis">
+          <div className="flex justify-end mb-3">
+            <ShareButton serviceCallId={id!} shareType="diagnosis" />
+          </div>
           <DiagnosisTab
             serviceCallId={id!}
             callData={call}
@@ -278,6 +285,9 @@ const ServiceCallDetail = () => {
 
         {/* 3. Media */}
         <TabsContent value="media">
+          <div className="flex justify-end mb-3">
+            <ShareButton serviceCallId={id!} shareType="media" />
+          </div>
           <MediaUploader serviceCallId={id!} type="photo" onUploadComplete={refreshPhotos} />
           <div className="mt-4">
             <PhotoGrid photos={photos} onDelete={(deletedId) => setPhotos(p => p.filter(x => x.id !== deletedId))} />
@@ -292,11 +302,17 @@ const ServiceCallDetail = () => {
 
         {/* 4. Quotes */}
         <TabsContent value="quotes">
+          <div className="flex justify-end mb-3">
+            <ShareButton serviceCallId={id!} shareType="quotes" />
+          </div>
           <QuotesList serviceCallId={id!} />
         </TabsContent>
 
         {/* 5. Reports */}
         <TabsContent value="reports">
+          <div className="flex justify-end mb-3">
+            <ShareButton serviceCallId={id!} shareType="report" />
+          </div>
           <Card>
             <CardContent className="p-6">
               <Button onClick={handleCreateReport} className="gap-2">
