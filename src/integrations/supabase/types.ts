@@ -282,6 +282,8 @@ export type Database = {
           findings: string | null
           id: string
           job_type: string
+          notes: string | null
+          priority: string
           recommendations: string | null
           scheduled_date: string | null
           status: string
@@ -297,6 +299,8 @@ export type Database = {
           findings?: string | null
           id?: string
           job_type: string
+          notes?: string | null
+          priority?: string
           recommendations?: string | null
           scheduled_date?: string | null
           status?: string
@@ -312,6 +316,8 @@ export type Database = {
           findings?: string | null
           id?: string
           job_type?: string
+          notes?: string | null
+          priority?: string
           recommendations?: string | null
           scheduled_date?: string | null
           status?: string
