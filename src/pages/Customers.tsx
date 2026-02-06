@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Search, Phone, MapPin, Mail } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
@@ -18,6 +19,7 @@ const Customers = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user, role, isAdmin } = useAuth();
+  const { logAction } = useAuditLog();
 
   // Secretary and admin can create customers
   const canCreate = isAdmin || role === "secretary";
@@ -38,6 +40,12 @@ const Customers = () => {
       toast({ title: "שגיאה", description: "לא ניתן לטעון את רשימת הלקוחות", variant: "destructive" });
     } else {
       setCustomers(data || []);
+      // Audit log for contractor viewing customer list
+      logAction({
+        action: "view_customer_list",
+        resource_type: "customer_list",
+        resource_label: `${(data || []).length} לקוחות`,
+      });
     }
     setLoading(false);
   };

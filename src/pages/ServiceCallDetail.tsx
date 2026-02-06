@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { toast } from "@/hooks/use-toast";
 import { PhotoGrid } from "@/components/media/PhotoGrid";
 import { VideoList } from "@/components/media/VideoList";
@@ -55,6 +56,7 @@ const ServiceCallDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, role, isAdmin } = useAuth();
+  const { logAction } = useAuditLog();
   const isContractor = role === "contractor";
   const canEdit = isAdmin || role === "technician";
   const canUpload = isAdmin || role === "technician";
@@ -93,6 +95,15 @@ const ServiceCallDetail = () => {
     setPhotos(photosRes.data || []);
     setVideos(videosRes.data || []);
     setLoading(false);
+
+    // Audit log for contractor views
+    const customerName = (data.customers as any)?.name || "";
+    logAction({
+      action: "view_service_call",
+      resource_type: "service_call",
+      resource_id: id!,
+      resource_label: `#${data.call_number} - ${customerName}`,
+    });
   };
 
   const refreshPhotos = useCallback(async () => {
