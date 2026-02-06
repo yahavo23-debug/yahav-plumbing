@@ -12,16 +12,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Copy, Check, UserPlus, Shield, Wrench } from "lucide-react";
+import { Users, Copy, Check, UserPlus, Shield, Wrench, ClipboardList, UserX } from "lucide-react";
 
 interface UserProfile {
   user_id: string;
   full_name: string | null;
   phone: string | null;
-  role: "admin" | "technician" | null;
+  role: "admin" | "technician" | "secretary" | null;
 }
 
-// Get the public-facing base URL
+const ROLE_LABELS: Record<string, string> = {
+  admin: "מנהל",
+  technician: "טכנאי",
+  secretary: "מזכירה",
+  none: "ללא תפקיד (אורח)",
+};
+
 const getPublicBaseUrl = (): string => {
   const origin = window.location.origin;
   if (
@@ -48,7 +54,6 @@ export function UserManagement() {
   }, []);
 
   const loadUsers = async () => {
-    // Load all profiles (admin can see all)
     const { data: profiles, error: pErr } = await supabase
       .from("profiles")
       .select("user_id, full_name, phone")
@@ -60,13 +65,12 @@ export function UserManagement() {
       return;
     }
 
-    // Load all roles
     const { data: roles } = await supabase
       .from("user_roles")
       .select("user_id, role");
 
-    const roleMap = new Map<string, "admin" | "technician">();
-    roles?.forEach((r) => roleMap.set(r.user_id, r.role));
+    const roleMap = new Map<string, "admin" | "technician" | "secretary">();
+    roles?.forEach((r) => roleMap.set(r.user_id, r.role as any));
 
     const merged: UserProfile[] = (profiles || []).map((p) => ({
       user_id: p.user_id,
@@ -85,18 +89,23 @@ export function UserManagement() {
       return;
     }
 
+    // Prevent removing admin role from other admins (only current admin can manage)
+    const targetUser = users.find(u => u.user_id === targetUserId);
+    if (targetUser?.role === "admin" && newRole !== "admin") {
+      toast({ title: "שגיאה", description: "לא ניתן להסיר תפקיד מנהל ממשתמש אחר", variant: "destructive" });
+      return;
+    }
+
     setUpdating(targetUserId);
 
     try {
       if (newRole === "none") {
-        // Remove role
         const { error } = await supabase
           .from("user_roles")
           .delete()
           .eq("user_id", targetUserId);
         if (error) throw error;
       } else {
-        // Check if role exists
         const { data: existing } = await supabase
           .from("user_roles")
           .select("id")
@@ -106,13 +115,13 @@ export function UserManagement() {
         if (existing && existing.length > 0) {
           const { error } = await supabase
             .from("user_roles")
-            .update({ role: newRole as "admin" | "technician" })
+            .update({ role: newRole as any })
             .eq("user_id", targetUserId);
           if (error) throw error;
         } else {
           const { error } = await supabase
             .from("user_roles")
-            .insert({ user_id: targetUserId, role: newRole as "admin" | "technician" });
+            .insert({ user_id: targetUserId, role: newRole as any });
           if (error) throw error;
         }
       }
@@ -139,6 +148,15 @@ export function UserManagement() {
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
+  const getRoleIcon = (role: string | null) => {
+    switch (role) {
+      case "admin": return <Shield className="w-3 h-3" />;
+      case "technician": return <Wrench className="w-3 h-3" />;
+      case "secretary": return <ClipboardList className="w-3 h-3" />;
+      default: return <UserX className="w-3 h-3" />;
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -149,6 +167,35 @@ export function UserManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Role explanation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="w-4 h-4" /> סוגי הרשאות
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-2 text-sm">
+            <div className="flex items-start gap-2">
+              <Badge variant="default" className="shrink-0 gap-1"><Shield className="w-3 h-3" /> מנהל</Badge>
+              <span className="text-muted-foreground">גישה מלאה לכל המערכת, כולל ניהול משתמשים והרשאות</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Badge variant="secondary" className="shrink-0 gap-1"><Wrench className="w-3 h-3" /> טכנאי</Badge>
+              <span className="text-muted-foreground">צפייה ועבודה על קריאות שירות שהוקצו לו, לא יכול למחוק</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Badge variant="secondary" className="shrink-0 gap-1"><ClipboardList className="w-3 h-3" /> מזכירה</Badge>
+              <span className="text-muted-foreground">צפייה בכל המידע, יכולה לפתוח לקוח חדש בלבד</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Badge variant="outline" className="shrink-0 gap-1"><UserX className="w-3 h-3" /> ללא תפקיד</Badge>
+              <span className="text-muted-foreground">אין גישה למערכת - ממתין לאישור מנהל</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Invite link */}
       <Card>
         <CardHeader>
@@ -196,6 +243,7 @@ export function UserManagement() {
           <div className="divide-y divide-border">
             {users.map((u) => {
               const isCurrentUser = u.user_id === user?.id;
+              const isTargetAdmin = u.role === "admin" && !isCurrentUser;
               return (
                 <div key={u.user_id} className="flex items-center justify-between py-3 gap-3">
                   <div className="flex-1 min-w-0">
@@ -205,6 +253,9 @@ export function UserManagement() {
                       </span>
                       {isCurrentUser && (
                         <Badge variant="secondary" className="text-xs shrink-0">אתה</Badge>
+                      )}
+                      {!u.role && !isCurrentUser && (
+                        <Badge variant="outline" className="text-xs shrink-0 text-orange-600 border-orange-300">ממתין</Badge>
                       )}
                     </div>
                     {u.phone && (
@@ -216,28 +267,39 @@ export function UserManagement() {
                       <Badge className="gap-1">
                         <Shield className="w-3 h-3" /> מנהל
                       </Badge>
+                    ) : isTargetAdmin ? (
+                      <Badge className="gap-1">
+                        <Shield className="w-3 h-3" /> מנהל
+                      </Badge>
                     ) : (
                       <Select
                         value={u.role || "none"}
                         onValueChange={(val) => handleRoleChange(u.user_id, val)}
                         disabled={updating === u.user_id}
                       >
-                        <SelectTrigger className="w-32 h-8 text-xs">
+                        <SelectTrigger className="w-36 h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="admin">
-                            <span className="flex items-center gap-1.5">
-                              <Shield className="w-3 h-3" /> מנהל
-                            </span>
-                          </SelectItem>
                           <SelectItem value="technician">
                             <span className="flex items-center gap-1.5">
                               <Wrench className="w-3 h-3" /> טכנאי
                             </span>
                           </SelectItem>
+                          <SelectItem value="secretary">
+                            <span className="flex items-center gap-1.5">
+                              <ClipboardList className="w-3 h-3" /> מזכירה
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="admin">
+                            <span className="flex items-center gap-1.5">
+                              <Shield className="w-3 h-3" /> מנהל
+                            </span>
+                          </SelectItem>
                           <SelectItem value="none">
-                            <span className="text-muted-foreground">ללא תפקיד</span>
+                            <span className="flex items-center gap-1.5 text-muted-foreground">
+                              <UserX className="w-3 h-3" /> ללא תפקיד
+                            </span>
                           </SelectItem>
                         </SelectContent>
                       </Select>
