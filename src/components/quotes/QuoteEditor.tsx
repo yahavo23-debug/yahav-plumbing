@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Trash2, Save, X } from "lucide-react";
 
+const VAT_RATE = 0.18;
+
 interface QuoteItem {
   id?: string;
   description: string;
@@ -29,6 +31,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [validUntil, setValidUntil] = useState("");
+  const [discountPercent, setDiscountPercent] = useState(0);
   const [items, setItems] = useState<QuoteItem[]>([
     { description: "", quantity: 1, unit_price: 0, sort_order: 0 },
   ]);
@@ -50,6 +53,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
       setTitle(q.title || "");
       setNotes(q.notes || "");
       setValidUntil(q.valid_until || "");
+      setDiscountPercent(Number(q.discount_percent) || 0);
     }
     if (itemsRes.data && itemsRes.data.length > 0) {
       setItems(
@@ -83,10 +87,15 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
     );
   };
 
-  const totalAmount = items.reduce(
+  // Calculations
+  const subtotal = items.reduce(
     (sum, item) => sum + item.quantity * item.unit_price,
     0
   );
+  const discountAmount = subtotal * (discountPercent / 100);
+  const afterDiscount = subtotal - discountAmount;
+  const vatAmount = afterDiscount * VAT_RATE;
+  const totalWithVat = afterDiscount + vatAmount;
 
   const handleSave = async () => {
     if (!user) return;
@@ -96,18 +105,17 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
       let finalQuoteId = quoteId;
 
       if (quoteId) {
-        // Update existing
         const { error } = await supabase
           .from("quotes")
           .update({
             title: title.trim() || "הצעת מחיר",
             notes: notes.trim() || null,
             valid_until: validUntil || null,
+            discount_percent: discountPercent,
           } as any)
           .eq("id", quoteId);
         if (error) throw error;
       } else {
-        // Insert new
         const { data, error } = await supabase
           .from("quotes")
           .insert({
@@ -115,6 +123,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
             title: title.trim() || "הצעת מחיר",
             notes: notes.trim() || null,
             valid_until: validUntil || null,
+            discount_percent: discountPercent,
             created_by: user.id,
           } as any)
           .select()
@@ -241,10 +250,55 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
           </Button>
         </div>
 
-        {/* Total */}
-        <div className="flex justify-between items-center p-3 bg-muted/30 rounded-md">
-          <span className="font-semibold">סה"כ</span>
-          <span className="text-lg font-bold">₪{totalAmount.toFixed(2)}</span>
+        {/* Totals summary */}
+        <div className="rounded-md border bg-muted/20 divide-y">
+          {/* Subtotal */}
+          <div className="flex justify-between items-center px-4 py-2.5">
+            <span className="text-sm text-muted-foreground">סה"כ לפני מע"מ</span>
+            <span className="text-sm font-medium">₪{subtotal.toFixed(2)}</span>
+          </div>
+
+          {/* Discount */}
+          <div className="flex justify-between items-center px-4 py-2.5 gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">הנחה</span>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  value={discountPercent}
+                  onChange={(e) => setDiscountPercent(Math.min(100, Math.max(0, Number(e.target.value))))}
+                  className="h-8 w-20 text-center"
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            </div>
+            {discountAmount > 0 && (
+              <span className="text-sm font-medium text-destructive">-₪{discountAmount.toFixed(2)}</span>
+            )}
+          </div>
+
+          {/* After discount (only show if discount applied) */}
+          {discountPercent > 0 && (
+            <div className="flex justify-between items-center px-4 py-2.5">
+              <span className="text-sm text-muted-foreground">לאחר הנחה</span>
+              <span className="text-sm font-medium">₪{afterDiscount.toFixed(2)}</span>
+            </div>
+          )}
+
+          {/* VAT */}
+          <div className="flex justify-between items-center px-4 py-2.5">
+            <span className="text-sm text-muted-foreground">מע"מ (18%)</span>
+            <span className="text-sm font-medium">₪{vatAmount.toFixed(2)}</span>
+          </div>
+
+          {/* Total with VAT */}
+          <div className="flex justify-between items-center px-4 py-3 bg-muted/40">
+            <span className="font-semibold">סה"כ כולל מע"מ</span>
+            <span className="text-lg font-bold">₪{totalWithVat.toFixed(2)}</span>
+          </div>
         </div>
 
         {/* Notes */}
