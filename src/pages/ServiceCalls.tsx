@@ -26,7 +26,8 @@ const ServiceCalls = () => {
   const [filter, setFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin, role } = useAuth();
+  const canCreate = isAdmin || role === "technician";
 
   useEffect(() => {
     if (!user) return;
@@ -61,9 +62,11 @@ const ServiceCalls = () => {
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="חיפוש..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" />
         </div>
-        <Button onClick={() => navigate("/service-calls/new")} className="h-10 gap-2">
-          <Plus className="w-4 h-4" /> קריאה חדשה
-        </Button>
+        {canCreate && (
+          <Button onClick={() => navigate("/service-calls/new")} className="h-10 gap-2">
+            <Plus className="w-4 h-4" /> קריאה חדשה
+          </Button>
+        )}
       </div>
 
       {/* Status filters */}

@@ -46,7 +46,9 @@ const serviceTypeLabels: Record<string, string> = {
 const CustomerDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin, role } = useAuth();
+  const canEdit = isAdmin;
+  const canCreateCall = isAdmin || role === "technician";
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [calls, setCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,9 +87,11 @@ const CustomerDetail = () => {
         <Button variant="ghost" onClick={() => navigate("/customers")} className="gap-2">
           <ArrowRight className="w-4 h-4" /> חזרה ללקוחות
         </Button>
-        <Button variant="outline" onClick={() => navigate(`/customers/${id}/edit`)} className="gap-2">
-          <Edit className="w-4 h-4" /> עריכה
-        </Button>
+        {canEdit && (
+          <Button variant="outline" onClick={() => navigate(`/customers/${id}/edit`)} className="gap-2">
+            <Edit className="w-4 h-4" /> עריכה
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="calls" dir="rtl">
@@ -102,11 +106,13 @@ const CustomerDetail = () => {
 
         {/* Service Calls Tab (DEFAULT) */}
         <TabsContent value="calls">
-          <div className="flex justify-end mb-4">
-            <Button onClick={() => navigate(`/service-calls/new/${id}`)} className="gap-2">
-              <Plus className="w-4 h-4" /> קריאה חדשה
-            </Button>
-          </div>
+          {canCreateCall && (
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => navigate(`/service-calls/new/${id}`)} className="gap-2">
+                <Plus className="w-4 h-4" /> קריאה חדשה
+              </Button>
+            </div>
+          )}
 
           {calls.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">אין קריאות שירות ללקוח זה</p>

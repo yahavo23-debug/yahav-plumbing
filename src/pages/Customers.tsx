@@ -17,7 +17,10 @@ const Customers = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, role, isAdmin } = useAuth();
+
+  // Secretary and admin can create customers
+  const canCreate = isAdmin || role === "secretary";
 
   useEffect(() => {
     if (!user) return;
@@ -59,9 +62,11 @@ const Customers = () => {
             className="pr-10"
           />
         </div>
-        <Button onClick={() => navigate("/customers/new")} className="h-10 gap-2">
-          <Plus className="w-4 h-4" /> לקוח חדש
-        </Button>
+        {canCreate && (
+          <Button onClick={() => navigate("/customers/new")} className="h-10 gap-2">
+            <Plus className="w-4 h-4" /> לקוח חדש
+          </Button>
+        )}
       </div>
 
       {loading ? (

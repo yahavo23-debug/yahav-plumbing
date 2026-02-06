@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, AppRole } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -12,11 +12,18 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const navItems = [
-  { icon: LayoutDashboard, label: "לוח בקרה", path: "/" },
-  { icon: Users, label: "לקוחות", path: "/customers" },
-  { icon: Wrench, label: "קריאות שירות", path: "/service-calls" },
-  { icon: FileText, label: "דוחות", path: "/reports" },
+interface NavItem {
+  icon: typeof LayoutDashboard;
+  label: string;
+  path: string;
+  roles: AppRole[] | "all"; // which roles can see this item
+}
+
+const navItems: NavItem[] = [
+  { icon: LayoutDashboard, label: "לוח בקרה", path: "/", roles: "all" },
+  { icon: Users, label: "לקוחות", path: "/customers", roles: "all" },
+  { icon: Wrench, label: "קריאות שירות", path: "/service-calls", roles: ["admin", "technician", "secretary"] },
+  { icon: FileText, label: "דוחות", path: "/reports", roles: ["admin", "technician", "secretary"] },
 ];
 
 interface AppSidebarProps {
@@ -27,7 +34,11 @@ interface AppSidebarProps {
 export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signOut, user } = useAuth();
+  const { signOut, role } = useAuth();
+
+  const visibleItems = navItems.filter(
+    (item) => item.roles === "all" || (role && item.roles.includes(role))
+  );
 
   return (
     <aside
@@ -51,7 +62,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 p-2 space-y-1 mt-2">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive = location.pathname === item.path ||
             (item.path !== "/" && location.pathname.startsWith(item.path));
           return (

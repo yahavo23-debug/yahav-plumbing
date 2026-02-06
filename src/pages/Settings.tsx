@@ -4,14 +4,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { User, Shield } from "lucide-react";
+import { User, Shield, Wrench, ClipboardList } from "lucide-react";
 import { UserManagement } from "@/components/settings/UserManagement";
 
+const ROLE_DISPLAY: Record<string, { label: string; icon: React.ReactNode }> = {
+  admin: { label: "מנהל", icon: <Shield className="w-3.5 h-3.5" /> },
+  technician: { label: "טכנאי", icon: <Wrench className="w-3.5 h-3.5" /> },
+  secretary: { label: "מזכירה", icon: <ClipboardList className="w-3.5 h-3.5" /> },
+};
+
 const Settings = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, role } = useAuth();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(true);
@@ -59,6 +66,8 @@ const Settings = () => {
   if (loading) {
     return <AppLayout title="הגדרות"><p className="text-center py-8 text-muted-foreground">טוען...</p></AppLayout>;
   }
+
+  const roleInfo = role ? ROLE_DISPLAY[role] : null;
 
   return (
     <AppLayout title="הגדרות">
@@ -108,12 +117,16 @@ const Settings = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm">
-              <strong>תפקיד:</strong>{" "}
-              <span className={isAdmin ? "text-primary font-medium" : "text-muted-foreground"}>
-                {isAdmin ? "מנהל" : "טכנאי"}
-              </span>
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">תפקיד:</span>
+              {roleInfo ? (
+                <Badge variant={isAdmin ? "default" : "secondary"} className="gap-1">
+                  {roleInfo.icon} {roleInfo.label}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-muted-foreground">ללא תפקיד</Badge>
+              )}
+            </div>
           </CardContent>
         </Card>
 
