@@ -96,13 +96,6 @@ export function UserManagement() {
     // Fetch emails from edge function
     let emailMap = new Map<string, string>();
     try {
-      const { data: emailData, error: emailError } = await supabase.functions.invoke("admin-users", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        body: undefined,
-      });
-
-      // The invoke with GET doesn't support query params well, let's use fetch
       const session = (await supabase.auth.getSession()).data.session;
       if (session) {
         const res = await fetch(
