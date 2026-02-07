@@ -44,6 +44,69 @@ export type Database = {
         }
         Relationships: []
       }
+      branding_settings: {
+        Row: {
+          id: string
+          is_singleton: boolean | null
+          logo_path: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          is_singleton?: boolean | null
+          logo_path?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_singleton?: boolean | null
+          logo_path?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      change_audit_logs: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          operation: string
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          operation: string
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          operation?: string
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       contractor_customer_access: {
         Row: {
           contractor_user_id: string
@@ -72,6 +135,60 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          customer_id: string
+          description: string | null
+          entry_date: string
+          entry_type: string
+          id: string
+          is_locked: boolean | null
+          service_call_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string
+          customer_id: string
+          description?: string | null
+          entry_date?: string
+          entry_type: string
+          id?: string
+          is_locked?: boolean | null
+          service_call_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          description?: string | null
+          entry_date?: string
+          entry_type?: string
+          id?: string
+          is_locked?: boolean | null
+          service_call_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_ledger_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_ledger_service_call_id_fkey"
+            columns: ["service_call_id"]
+            isOneToOne: false
+            referencedRelation: "service_calls"
             referencedColumns: ["id"]
           },
         ]

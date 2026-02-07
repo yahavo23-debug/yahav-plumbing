@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import { User, Shield, Wrench, ClipboardList, HardHat } from "lucide-react";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { AuditLogViewer } from "@/components/settings/AuditLogViewer";
+import { LogoUpload } from "@/components/settings/LogoUpload";
 
 const ROLE_DISPLAY: Record<string, { label: string; icon: React.ReactNode }> = {
   admin: { label: "מנהל", icon: <Shield className="w-3.5 h-3.5" /> },
@@ -147,6 +148,9 @@ const Settings = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Admin-only: Logo */}
+        {isAdmin && <LogoUpload />}
 
         {/* Admin-only: User Management */}
         {isAdmin && <UserManagement />}

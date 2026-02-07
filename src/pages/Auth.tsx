@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Wrench } from "lucide-react";
+import { useLogo } from "@/hooks/useLogo";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,6 +17,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
+  const { logoUrl } = useLogo();
 
   if (user) {
     navigate("/", { replace: true });
@@ -69,9 +71,13 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
-            <Wrench className="w-8 h-8 text-primary-foreground" />
-          </div>
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="mx-auto w-16 h-16 rounded-2xl object-contain" />
+          ) : (
+            <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
+              <Wrench className="w-8 h-8 text-primary-foreground" />
+            </div>
+          )}
           <CardTitle className="text-2xl font-bold">
             {isLogin ? "כניסה למערכת" : "הרשמה"}
           </CardTitle>

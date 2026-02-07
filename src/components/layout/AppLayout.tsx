@@ -30,7 +30,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
 
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className={cn("min-h-screen bg-background", isContractor && "contractor-lockdown")}>
         {isContractor && <ContractorBanner />}
         {/* Mobile header */}
         <header className="sticky top-0 z-30 h-14 bg-card border-b border-border flex items-center px-4 gap-3">
@@ -53,7 +53,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={cn("min-h-screen bg-background", isContractor && "contractor-lockdown")}>
       <AppSidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
       <main
         className={cn(
