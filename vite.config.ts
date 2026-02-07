@@ -34,6 +34,6 @@ export default defineConfig(({ mode }) => ({
       "date-fns",
       "date-fns/locale",
     ],
-    force: true,
+    
   },
 }));
