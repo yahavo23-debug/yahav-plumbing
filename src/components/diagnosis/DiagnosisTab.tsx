@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SignaturePad } from "./SignaturePad";
-import { Shield, AlertTriangle, Eye } from "lucide-react";
+import { Shield, AlertTriangle, Eye, Check } from "lucide-react";
 
 interface DiagnosisTabProps {
   serviceCallId: string;
@@ -250,6 +250,26 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
           </CardContent>
         </Card>
 
+        {/* Leak Location */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">מיקום הנזילה</CardTitle></CardHeader>
+          <CardContent><ReadOnlyText value={leakLocation} /></CardContent>
+        </Card>
+
+        {/* Confidence Level */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">רמת ודאות האבחון</CardTitle></CardHeader>
+          <CardContent>
+            {confidenceOpt ? (
+              <Badge className={`${confidenceOpt.color} text-sm px-4 py-1.5`}>
+                {confidenceOpt.label}
+              </Badge>
+            ) : (
+              <p className="text-sm text-muted-foreground">—</p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* 9. Recommendations */}
         <Card>
           <CardHeader><CardTitle className="text-base">המלצה</CardTitle></CardHeader>
@@ -260,6 +280,26 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
         <Card>
           <CardHeader><CardTitle className="text-base">אזורים שלא נבדקו</CardTitle></CardHeader>
           <CardContent><ReadOnlyText value={areasNotInspected} /></CardContent>
+        </Card>
+
+        {/* Customer Signature */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              {signaturePath ? (
+                <><Check className="w-4 h-4 text-success" /> אישור לקוח — חתימה התקבלה</>
+              ) : (
+                "אישור לקוח — טרם נחתם"
+              )}
+            </CardTitle>
+          </CardHeader>
+          {signatureDate && (
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                נחתם בתאריך: {new Date(signatureDate).toLocaleString("he-IL")}
+              </p>
+            </CardContent>
+          )}
         </Card>
       </div>
     );
