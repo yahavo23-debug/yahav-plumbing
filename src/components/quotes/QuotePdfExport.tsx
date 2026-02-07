@@ -65,7 +65,16 @@ export function QuotePdfExport({ quoteId, serviceCallId }: QuotePdfExportProps) 
         const validDate = new Date(quote.valid_until);
         const diffMs = validDate.getTime() - now.getTime();
         const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-        validDaysText = String(diffDays);
+      validDaysText = String(diffDays);
+      }
+
+      // Get signature URL if exists
+      let signatureUrl: string | null = null;
+      if (quote.signature_path) {
+        const { data: sigData } = await supabase.storage
+          .from("signatures")
+          .createSignedUrl(quote.signature_path, 300);
+        if (sigData?.signedUrl) signatureUrl = sigData.signedUrl;
       }
 
       // Build HTML
@@ -88,6 +97,7 @@ export function QuotePdfExport({ quoteId, serviceCallId }: QuotePdfExportProps) 
         dateStr,
         validDaysText,
         logoUrl,
+        signatureUrl,
       });
 
       // Wait for images
@@ -180,11 +190,12 @@ function buildQuoteHtml(data: {
   dateStr: string;
   validDaysText: string;
   logoUrl: string | null;
+  signatureUrl: string | null;
 }) {
   const {
     quote, items, sc, customer,
     subtotal, discountPercent, discountAmount, afterDiscount, vatAmount, total,
-    dateStr, validDaysText, logoUrl,
+    dateStr, validDaysText, logoUrl, signatureUrl,
   } = data;
 
   const address = [customer?.city, customer?.address].filter(Boolean).join(" ");
@@ -339,24 +350,47 @@ function buildQuoteHtml(data: {
 
   // 5) Customer approval
   html += sectionTitle("5", "אישור לקוח");
-  html += `
-    <div style="margin-top:8px;font-size:13px;">
-      <div style="display:flex;gap:40px;margin-bottom:16px;">
-        <div style="flex:1;">
-          <span style="color:#666;">שם מאשר:</span>
-          <div style="border-bottom:1px solid #333;min-height:24px;margin-top:4px;"></div>
+
+  if (signatureUrl && quote.signed_at) {
+    // Signed — show embedded signature
+    const signedDate = new Date(quote.signed_at).toLocaleString("he-IL");
+    html += `
+      <div style="margin-top:8px;font-size:13px;">
+        <div style="display:flex;gap:40px;margin-bottom:16px;">
+          <div style="flex:1;">
+            <span style="color:#666;">נחתמה בתאריך:</span>
+            <div style="margin-top:4px;font-weight:600;">${signedDate}</div>
+          </div>
         </div>
-        <div style="flex:1;">
-          <span style="color:#666;">תאריך:</span>
-          <div style="border-bottom:1px solid #333;min-height:24px;margin-top:4px;"></div>
+        <div>
+          <span style="color:#666;">חתימת לקוח:</span>
+          <div style="margin-top:8px;border:1px solid #e0e0e0;border-radius:6px;padding:8px;background:#fafafa;display:inline-block;">
+            <img src="${signatureUrl}" style="max-height:80px;max-width:280px;" crossorigin="anonymous" />
+          </div>
         </div>
       </div>
-      <div>
-        <span style="color:#666;">חתימה:</span>
-        <div style="border-bottom:1px solid #333;min-height:40px;margin-top:4px;"></div>
+    `;
+  } else {
+    // Not signed — show blank fields
+    html += `
+      <div style="margin-top:8px;font-size:13px;">
+        <div style="display:flex;gap:40px;margin-bottom:16px;">
+          <div style="flex:1;">
+            <span style="color:#666;">שם מאשר:</span>
+            <div style="border-bottom:1px solid #333;min-height:24px;margin-top:4px;"></div>
+          </div>
+          <div style="flex:1;">
+            <span style="color:#666;">תאריך:</span>
+            <div style="border-bottom:1px solid #333;min-height:24px;margin-top:4px;"></div>
+          </div>
+        </div>
+        <div>
+          <span style="color:#666;">חתימה:</span>
+          <div style="border-bottom:1px solid #333;min-height:40px;margin-top:4px;"></div>
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  }
 
   // Notes
   if (quote.notes) {

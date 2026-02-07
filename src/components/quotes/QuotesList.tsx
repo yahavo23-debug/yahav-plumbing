@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { QuoteEditor } from "./QuoteEditor";
-import { Plus, Edit, Trash2, FileText } from "lucide-react";
+import { QuoteSignaturePad } from "./QuoteSignaturePad";
+import { ConvertQuoteToJob } from "./ConvertQuoteToJob";
+import { Plus, Edit, Trash2, FileText, Pen } from "lucide-react";
 import { QuotePdfExport } from "./QuotePdfExport";
 import {
   AlertDialog,
@@ -30,6 +32,8 @@ interface Quote {
   subtotal: number;
   discount_percent: number;
   total_with_vat: number;
+  signature_path: string | null;
+  signed_at: string | null;
 }
 
 const statusLabels: Record<string, string> = {
@@ -56,6 +60,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [signingQuoteId, setSigningQuoteId] = useState<string | null>(null);
 
   const loadQuotes = useCallback(async () => {
     const { data: quotesData, error } = await supabase
@@ -105,6 +110,8 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
           subtotal,
           discount_percent: discount,
           total_with_vat: totalWithVat,
+          signature_path: q.signature_path || null,
+          signed_at: q.signed_at || null,
         };
       })
     );
@@ -143,6 +150,15 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
     setCreating(false);
     setEditingId(null);
     loadQuotes();
+  };
+
+  const handleSigned = (quoteId: string, path: string, date: string) => {
+    setSigningQuoteId(null);
+    setQuotes((prev) =>
+      prev.map((q) =>
+        q.id === quoteId ? { ...q, signature_path: path, signed_at: date } : q
+      )
+    );
   };
 
   if (!readOnly && (creating || editingId)) {
@@ -193,15 +209,20 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-medium truncate">
                         #{quote.quote_number} — {quote.title || "הצעת מחיר"}
                       </span>
                       <Badge className={statusColors[quote.status]}>
                         {statusLabels[quote.status] || quote.status}
                       </Badge>
+                      {quote.signature_path && (
+                        <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
+                          ✓ נחתמה
+                        </Badge>
+                      )}
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                       <span className="font-medium text-foreground">₪{quote.total_with_vat.toFixed(2)}</span>
                       {quote.discount_percent > 0 && (
                         <span className="text-destructive text-xs">הנחה {quote.discount_percent}%</span>
@@ -215,7 +236,24 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                     </div>
                   </div>
                   {!readOnly && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {/* Convert to job — for approved or sent quotes */}
+                      {(quote.status === "approved" || quote.status === "sent") && (
+                        <ConvertQuoteToJob quoteId={quote.id} serviceCallId={serviceCallId} />
+                      )}
+
+                      {/* Signature — for sent/approved quotes without signature */}
+                      {!quote.signature_path && (quote.status === "sent" || quote.status === "approved") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() => setSigningQuoteId(signingQuoteId === quote.id ? null : quote.id)}
+                        >
+                          <Pen className="w-3.5 h-3.5" /> חתימה
+                        </Button>
+                      )}
+
                       {quote.status === "draft" && (
                         <Button
                           variant="outline"
@@ -278,6 +316,18 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                     </div>
                   )}
                 </div>
+
+                {/* Inline signature pad */}
+                {signingQuoteId === quote.id && (
+                  <div className="mt-4 border-t pt-4">
+                    <QuoteSignaturePad
+                      quoteId={quote.id}
+                      existingSignaturePath={quote.signature_path}
+                      existingSignedAt={quote.signed_at}
+                      onSigned={(path, date) => handleSigned(quote.id, path, date)}
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

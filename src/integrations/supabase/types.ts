@@ -327,6 +327,8 @@ export type Database = {
           notes: string | null
           quote_number: number
           service_call_id: string
+          signature_path: string | null
+          signed_at: string | null
           status: string
           title: string
           updated_at: string
@@ -340,6 +342,8 @@ export type Database = {
           notes?: string | null
           quote_number?: number
           service_call_id: string
+          signature_path?: string | null
+          signed_at?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -353,6 +357,8 @@ export type Database = {
           notes?: string | null
           quote_number?: number
           service_call_id?: string
+          signature_path?: string | null
+          signed_at?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -616,6 +622,7 @@ export type Database = {
           description: string | null
           detection_method: string | null
           diagnosis_confidence: string | null
+          duration_minutes: number | null
           findings: string | null
           id: string
           job_type: string
@@ -624,8 +631,10 @@ export type Database = {
           notes: string | null
           priority: string
           property_occupied: boolean | null
+          quote_id: string | null
           recommendations: string | null
           resolution_text: string | null
+          scheduled_at: string | null
           scheduled_date: string | null
           status: string
           test_limitations: string | null
@@ -649,6 +658,7 @@ export type Database = {
           description?: string | null
           detection_method?: string | null
           diagnosis_confidence?: string | null
+          duration_minutes?: number | null
           findings?: string | null
           id?: string
           job_type: string
@@ -657,8 +667,10 @@ export type Database = {
           notes?: string | null
           priority?: string
           property_occupied?: boolean | null
+          quote_id?: string | null
           recommendations?: string | null
           resolution_text?: string | null
+          scheduled_at?: string | null
           scheduled_date?: string | null
           status?: string
           test_limitations?: string | null
@@ -682,6 +694,7 @@ export type Database = {
           description?: string | null
           detection_method?: string | null
           diagnosis_confidence?: string | null
+          duration_minutes?: number | null
           findings?: string | null
           id?: string
           job_type?: string
@@ -690,8 +703,10 @@ export type Database = {
           notes?: string | null
           priority?: string
           property_occupied?: boolean | null
+          quote_id?: string | null
           recommendations?: string | null
           resolution_text?: string | null
+          scheduled_at?: string | null
           scheduled_date?: string | null
           status?: string
           test_limitations?: string | null
@@ -706,6 +721,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_calls_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]
