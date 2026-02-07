@@ -25,6 +25,15 @@ export default defineConfig(({ mode }) => ({
     ],
   },
   optimizeDeps: {
-    include: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
+    include: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "@tanstack/react-query",
+      "date-fns",
+      "date-fns/locale",
+    ],
+    force: true,
   },
 }));
