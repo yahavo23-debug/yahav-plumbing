@@ -325,6 +325,7 @@ export type Database = {
           discount_percent: number
           id: string
           notes: string | null
+          quote_number: number
           service_call_id: string
           status: string
           title: string
@@ -337,6 +338,7 @@ export type Database = {
           discount_percent?: number
           id?: string
           notes?: string | null
+          quote_number?: number
           service_call_id: string
           status?: string
           title?: string
@@ -349,6 +351,7 @@ export type Database = {
           discount_percent?: number
           id?: string
           notes?: string | null
+          quote_number?: number
           service_call_id?: string
           status?: string
           title?: string

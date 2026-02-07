@@ -21,6 +21,7 @@ import {
 
 interface Quote {
   id: string;
+  quote_number: number;
   title: string;
   status: string;
   notes: string | null;
@@ -95,6 +96,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
         const totalWithVat = afterDiscount * 1.18;
         return {
           id: q.id,
+          quote_number: q.quote_number,
           title: q.title,
           status: q.status,
           notes: q.notes,
@@ -193,7 +195,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium truncate">
-                        {quote.title || "הצעת מחיר"}
+                        #{quote.quote_number} — {quote.title || "הצעת מחיר"}
                       </span>
                       <Badge className={statusColors[quote.status]}>
                         {statusLabels[quote.status] || quote.status}
