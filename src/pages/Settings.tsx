@@ -21,6 +21,7 @@ const ROLE_DISPLAY: Record<string, { label: string; icon: React.ReactNode }> = {
 
 const Settings = () => {
   const { user, isAdmin, role } = useAuth();
+  const isContractor = role === "contractor";
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(true);
@@ -84,30 +85,45 @@ const Settings = () => {
           <CardContent className="space-y-4">
             <div>
               <Label className="text-sm">אימייל</Label>
-              <Input value={user?.email || ""} disabled className="mt-1 bg-muted" />
+              <div className="mt-1 text-sm py-2 px-3 bg-muted rounded-md">{user?.email || ""}</div>
             </div>
-            <div>
-              <Label className="text-sm">שם מלא</Label>
-              <Input
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="הכנס שם מלא"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-sm">טלפון</Label>
-              <Input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="הכנס מספר טלפון"
-                className="mt-1"
-                dir="ltr"
-              />
-            </div>
-            <Button onClick={handleSave} disabled={saving} className="h-10">
-              {saving ? "שומר..." : "שמור שינויים"}
-            </Button>
+            {isContractor ? (
+              <>
+                <div>
+                  <Label className="text-sm">שם מלא</Label>
+                  <div className="mt-1 text-sm py-2 px-3 bg-muted rounded-md">{fullName || "—"}</div>
+                </div>
+                <div>
+                  <Label className="text-sm">טלפון</Label>
+                  <div className="mt-1 text-sm py-2 px-3 bg-muted rounded-md" dir="ltr">{phone || "—"}</div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Label className="text-sm">שם מלא</Label>
+                  <Input
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="הכנס שם מלא"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">טלפון</Label>
+                  <Input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="הכנס מספר טלפון"
+                    className="mt-1"
+                    dir="ltr"
+                  />
+                </div>
+                <Button onClick={handleSave} disabled={saving} className="h-10">
+                  {saving ? "שומר..." : "שמור שינויים"}
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 

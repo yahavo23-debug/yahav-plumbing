@@ -62,15 +62,17 @@ const Customers = () => {
   return (
     <AppLayout title="לקוחות">
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="חיפוש לקוחות..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pr-10"
-          />
-        </div>
+        {!isContractor && (
+          <div className="relative flex-1">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="חיפוש לקוחות..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pr-10"
+            />
+          </div>
+        )}
         {canCreate && (
           <Button onClick={() => navigate("/customers/new")} className="h-10 gap-2">
             <Plus className="w-4 h-4" /> לקוח חדש
