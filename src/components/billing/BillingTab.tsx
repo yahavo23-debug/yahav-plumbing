@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,8 @@ import {
   CreditCard,
   Receipt,
   ArrowDownCircle,
+  Scale,
+  Clock,
 } from "lucide-react";
 
 interface LedgerEntry {
@@ -41,6 +44,7 @@ interface LedgerEntry {
 
 interface BillingTabProps {
   customerId: string;
+  onBillingChange?: () => void;
 }
 
 const entryTypeConfig: Record<
@@ -64,7 +68,7 @@ const entryTypeConfig: Record<
   },
 };
 
-export function BillingTab({ customerId }: BillingTabProps) {
+export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
   const { user, role, isAdmin } = useAuth();
   const isContractor = role === "contractor";
   const canAdd = (isAdmin || role === "secretary" || role === "technician") && !isContractor;
@@ -74,6 +78,8 @@ export function BillingTab({ customerId }: BillingTabProps) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [hasLegalAction, setHasLegalAction] = useState(false);
+  const [legalActionNote, setLegalActionNote] = useState("");
 
   const [formDate, setFormDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -83,22 +89,35 @@ export function BillingTab({ customerId }: BillingTabProps) {
   const [formDescription, setFormDescription] = useState("");
 
   const loadEntries = useCallback(async () => {
-    const { data, error } = await (supabase as any)
-      .from("customer_ledger")
-      .select("*")
-      .eq("customer_id", customerId)
-      .order("entry_date", { ascending: false });
+    const [ledgerRes, customerRes] = await Promise.all([
+      (supabase as any)
+        .from("customer_ledger")
+        .select("*")
+        .eq("customer_id", customerId)
+        .order("entry_date", { ascending: false }),
+      supabase
+        .from("customers")
+        .select("has_legal_action, legal_action_note")
+        .eq("id", customerId)
+        .single(),
+    ]);
 
-    if (error) {
-      console.error("Load ledger error:", error);
+    if (ledgerRes.error) {
+      console.error("Load ledger error:", ledgerRes.error);
       toast({
         title: "שגיאה",
         description: "לא ניתן לטעון נתוני חשבון",
         variant: "destructive",
       });
     } else {
-      setEntries((data as LedgerEntry[]) || []);
+      setEntries((ledgerRes.data as LedgerEntry[]) || []);
     }
+
+    if (customerRes.data) {
+      setHasLegalAction((customerRes.data as any).has_legal_action ?? false);
+      setLegalActionNote((customerRes.data as any).legal_action_note ?? "");
+    }
+
     setLoading(false);
   }, [customerId]);
 
@@ -137,6 +156,21 @@ export function BillingTab({ customerId }: BillingTabProps) {
           )[0]?.entry_date
       : null;
 
+  // Calculate overdue duration
+  let overdueDays = 0;
+  let overdueMonths = 0;
+  if (overdueSince) {
+    const diffMs = new Date().getTime() - new Date(overdueSince).getTime();
+    overdueDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    overdueMonths = Math.floor(overdueDays / 30);
+  }
+
+  const overdueDurationText = overdueSince
+    ? overdueMonths > 0
+      ? `${overdueMonths} חודשים (${overdueDays} ימים)`
+      : `${overdueDays} ימים`
+    : null;
+
   const handleSubmit = async () => {
     if (!user || !formAmount) return;
     setSaving(true);
@@ -159,6 +193,7 @@ export function BillingTab({ customerId }: BillingTabProps) {
       setShowForm(false);
       resetForm();
       loadEntries();
+      onBillingChange?.();
     } catch (err: any) {
       console.error("Add ledger entry error:", err);
       toast({
@@ -196,6 +231,39 @@ export function BillingTab({ customerId }: BillingTabProps) {
     setFormDescription("");
   };
 
+  const handleToggleLegalAction = async (checked: boolean) => {
+    const { error } = await supabase
+      .from("customers")
+      .update({
+        has_legal_action: checked,
+        legal_action_note: checked ? legalActionNote || null : null,
+      } as any)
+      .eq("id", customerId);
+
+    if (error) {
+      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+    } else {
+      setHasLegalAction(checked);
+      if (!checked) setLegalActionNote("");
+      toast({ title: "עודכן", description: checked ? "סומן כטיפול משפטי" : "הוסר סימון משפטי" });
+      onBillingChange?.();
+    }
+  };
+
+  const handleSaveLegalNote = async () => {
+    const { error } = await supabase
+      .from("customers")
+      .update({ legal_action_note: legalActionNote.trim() || null } as any)
+      .eq("id", customerId);
+
+    if (error) {
+      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "נשמר", description: "הערת טיפול משפטי עודכנה" });
+      onBillingChange?.();
+    }
+  };
+
   if (loading) {
     return (
       <p className="text-center py-8 text-muted-foreground">טוען...</p>
@@ -204,8 +272,7 @@ export function BillingTab({ customerId }: BillingTabProps) {
 
   return (
     <div className="space-y-4">
-      {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <div
@@ -250,9 +317,7 @@ export function BillingTab({ customerId }: BillingTabProps) {
               <p className="text-xs text-muted-foreground">תשלום אחרון</p>
               <p className="text-sm font-medium">
                 {lastPayment
-                  ? new Date(lastPayment.entry_date).toLocaleDateString(
-                      "he-IL"
-                    )
+                  ? new Date(lastPayment.entry_date).toLocaleDateString("he-IL")
                   : "—"}
               </p>
             </div>
@@ -273,16 +338,71 @@ export function BillingTab({ customerId }: BillingTabProps) {
               )}
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">פיגור מתאריך</p>
+              <p className="text-xs text-muted-foreground">פיגור</p>
               <p className="text-sm font-medium">
                 {overdueSince
                   ? new Date(overdueSince).toLocaleDateString("he-IL")
                   : "—"}
               </p>
+              {overdueDurationText && (
+                <p className="text-xs text-warning flex items-center gap-1 mt-0.5">
+                  <Clock className="w-3 h-3" />
+                  {overdueDurationText}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={hasLegalAction ? "border-destructive/50 bg-destructive/5" : ""}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div
+              className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                hasLegalAction ? "bg-destructive/15" : "bg-muted"
+              }`}
+            >
+              <Scale className={`w-5 h-5 ${hasLegalAction ? "text-destructive" : "text-muted-foreground"}`} />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">טיפול משפטי</p>
+              <p className={`text-sm font-bold ${hasLegalAction ? "text-destructive" : ""}`}>
+                {hasLegalAction ? "פעיל" : "לא"}
+              </p>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Legal Action Section (Admin only) */}
+      {isAdmin && (
+        <Card className={hasLegalAction ? "border-destructive/30" : ""}>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Scale className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">טיפול משפטי</Label>
+              </div>
+              <Switch
+                checked={hasLegalAction}
+                onCheckedChange={handleToggleLegalAction}
+              />
+            </div>
+            {hasLegalAction && (
+              <div className="space-y-2">
+                <Textarea
+                  value={legalActionNote}
+                  onChange={(e) => setLegalActionNote(e.target.value)}
+                  placeholder="פרטי הטיפול המשפטי, עורך דין, תאריכי דיון..."
+                  rows={2}
+                />
+                <Button size="sm" variant="outline" onClick={handleSaveLegalNote}>
+                  שמור הערה
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add Entry Button */}
       {canAdd && (

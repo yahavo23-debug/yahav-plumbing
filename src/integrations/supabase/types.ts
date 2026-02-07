@@ -200,7 +200,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           email: string | null
+          has_legal_action: boolean
           id: string
+          legal_action_note: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -212,7 +214,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          has_legal_action?: boolean
           id?: string
+          legal_action_note?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -224,7 +228,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          has_legal_action?: boolean
           id?: string
+          legal_action_note?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
