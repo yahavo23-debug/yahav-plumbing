@@ -11,11 +11,15 @@ import { useAuditLog } from "@/hooks/useAuditLog";
 import { toast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
 import {
-  ArrowRight, Edit, Phone, Mail, MapPin, Plus, Calendar,
+  ArrowRight, Edit, Phone, Mail, MapPin, Plus, Calendar, Trash2,
 } from "lucide-react";
 import { BillingTab } from "@/components/billing/BillingTab";
 import { CustomerBillingBadge } from "@/components/billing/CustomerBillingBadge";
 import { useCustomerBilling } from "@/hooks/useCustomerBilling";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Customer = Tables<"customers">;
 
@@ -58,6 +62,8 @@ const CustomerDetail = () => {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [calls, setCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const billing = useCustomerBilling(id);
 
   useEffect(() => {
@@ -105,7 +111,21 @@ const CustomerDetail = () => {
           </Button>
           <CustomerBillingBadge summary={billing} size="md" />
         </div>
-        {canEdit && (
+        {isAdmin && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate(`/customers/${id}/edit`)} className="gap-2">
+              <Edit className="w-4 h-4" /> עריכה
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="w-4 h-4" /> מחיקה
+            </Button>
+          </div>
+        )}
+        {!isAdmin && canEdit && (
           <Button variant="outline" onClick={() => navigate(`/customers/${id}/edit`)} className="gap-2">
             <Edit className="w-4 h-4" /> עריכה
           </Button>
@@ -243,6 +263,38 @@ const CustomerDetail = () => {
           />
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>מחיקת לקוח</AlertDialogTitle>
+            <AlertDialogDescription>
+              האם אתה בטוח שברצונך למחוק את הלקוח "{customer.name}"?
+              פעולה זו לא ניתנת לביטול.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel disabled={deleting}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                setDeleting(true);
+                const { error } = await supabase.from("customers").delete().eq("id", id!);
+                if (error) {
+                  toast({ title: "שגיאה", description: "לא ניתן למחוק את הלקוח. ייתכן שיש קריאות שירות משויכות.", variant: "destructive" });
+                  setDeleting(false);
+                } else {
+                  toast({ title: "נמחק", description: `הלקוח "${customer.name}" נמחק בהצלחה` });
+                  navigate("/customers");
+                }
+              }}
+            >
+              {deleting ? "מוחק..." : "מחק לקוח"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
