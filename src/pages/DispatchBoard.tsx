@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -19,14 +19,25 @@ import { DispatchDayView } from "@/components/dispatch/DispatchDayView";
 import { UnscheduledSidebar } from "@/components/dispatch/UnscheduledSidebar";
 import { DispatchCard } from "@/components/dispatch/DispatchCard";
 import { useDispatchCalls, type DispatchCall } from "@/hooks/useDispatchCalls";
+import { useTechnicians } from "@/hooks/useTechnicians";
 import { cn } from "@/lib/utils";
 
 export default function DispatchBoard() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeCall, setActiveCall] = useState<DispatchCall | null>(null);
 
-  const { calls, unscheduledCalls, loading, scheduleCall, unscheduleCall, reload } =
+  const { calls, unscheduledCalls, loading, scheduleCall, unscheduleCall, assignTechnician, reload } =
     useDispatchCalls(selectedDate);
+
+  const { technicians } = useTechnicians();
+
+  // Stable color mapping: sorted by user_id → index
+  const techColorMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const sorted = [...technicians].sort((a, b) => a.user_id.localeCompare(b.user_id));
+    sorted.forEach((t, i) => map.set(t.user_id, i));
+    return map;
+  }, [technicians]);
 
   // DnD sensors — optimised for tablet touch
   const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 8 } });
@@ -70,6 +81,13 @@ export default function DispatchBoard() {
       }
     },
     [scheduleCall, unscheduleCall]
+  );
+
+  const handleAssignTechnician = useCallback(
+    async (callId: string, techId: string | null) => {
+      await assignTechnician(callId, techId);
+    },
+    [assignTechnician]
   );
 
   const todayLabel = isToday(selectedDate);
@@ -139,7 +157,12 @@ export default function DispatchBoard() {
           <div className="flex flex-1 overflow-hidden">
             {/* Unscheduled sidebar */}
             <div className="w-72 shrink-0">
-              <UnscheduledSidebar calls={unscheduledCalls} />
+              <UnscheduledSidebar
+                calls={unscheduledCalls}
+                technicians={technicians}
+                techColorMap={techColorMap}
+                onAssignTechnician={handleAssignTechnician}
+              />
             </div>
 
             {/* Day timeline */}
@@ -149,14 +172,26 @@ export default function DispatchBoard() {
                   <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <DispatchDayView calls={calls} />
+                <DispatchDayView
+                  calls={calls}
+                  technicians={technicians}
+                  techColorMap={techColorMap}
+                  onAssignTechnician={handleAssignTechnician}
+                />
               )}
             </div>
           </div>
 
           {/* Drag overlay */}
           <DragOverlay dropAnimation={null}>
-            {activeCall && <DispatchCard call={activeCall} isOverlay />}
+            {activeCall && (
+              <DispatchCard
+                call={activeCall}
+                isOverlay
+                technicians={technicians}
+                techColorMap={techColorMap}
+              />
+            )}
           </DragOverlay>
         </DndContext>
       </div>

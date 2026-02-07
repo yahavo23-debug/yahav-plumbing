@@ -117,5 +117,23 @@ export function useDispatchCalls(selectedDate: Date) {
     [loadCalls]
   );
 
-  return { calls, unscheduledCalls, loading, scheduleCall, unscheduleCall, reload: loadCalls };
+  const assignTechnician = useCallback(
+    async (callId: string, techId: string | null) => {
+      const { error } = await supabase
+        .from("service_calls")
+        .update({ assigned_to: techId } as any)
+        .eq("id", callId);
+
+      if (error) {
+        toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+        return false;
+      }
+
+      await loadCalls();
+      return true;
+    },
+    [loadCalls]
+  );
+
+  return { calls, unscheduledCalls, loading, scheduleCall, unscheduleCall, assignTechnician, reload: loadCalls };
 }

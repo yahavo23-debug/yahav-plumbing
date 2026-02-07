@@ -54,3 +54,20 @@ export const DISPATCH_HOURS = Array.from({ length: 17 }, (_, i) => i + 6);
 
 /** Default slot duration in minutes */
 export const DEFAULT_SLOT_DURATION = 60;
+
+/** Technician color palette — each technician gets a unique color by index */
+export const TECHNICIAN_COLORS = [
+  { bg: "bg-blue-100 dark:bg-blue-900/30", border: "border-blue-400 dark:border-blue-600", text: "text-blue-700 dark:text-blue-300", dot: "bg-blue-500" },
+  { bg: "bg-emerald-100 dark:bg-emerald-900/30", border: "border-emerald-400 dark:border-emerald-600", text: "text-emerald-700 dark:text-emerald-300", dot: "bg-emerald-500" },
+  { bg: "bg-amber-100 dark:bg-amber-900/30", border: "border-amber-400 dark:border-amber-600", text: "text-amber-700 dark:text-amber-300", dot: "bg-amber-500" },
+  { bg: "bg-rose-100 dark:bg-rose-900/30", border: "border-rose-400 dark:border-rose-600", text: "text-rose-700 dark:text-rose-300", dot: "bg-rose-500" },
+  { bg: "bg-violet-100 dark:bg-violet-900/30", border: "border-violet-400 dark:border-violet-600", text: "text-violet-700 dark:text-violet-300", dot: "bg-violet-500" },
+  { bg: "bg-cyan-100 dark:bg-cyan-900/30", border: "border-cyan-400 dark:border-cyan-600", text: "text-cyan-700 dark:text-cyan-300", dot: "bg-cyan-500" },
+  { bg: "bg-orange-100 dark:bg-orange-900/30", border: "border-orange-400 dark:border-orange-600", text: "text-orange-700 dark:text-orange-300", dot: "bg-orange-500" },
+  { bg: "bg-teal-100 dark:bg-teal-900/30", border: "border-teal-400 dark:border-teal-600", text: "text-teal-700 dark:text-teal-300", dot: "bg-teal-500" },
+];
+
+/** Get color for a technician by index */
+export function getTechnicianColor(index: number) {
+  return TECHNICIAN_COLORS[index % TECHNICIAN_COLORS.length];
+}
