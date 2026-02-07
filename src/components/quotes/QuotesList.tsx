@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { QuoteEditor } from "./QuoteEditor";
 import { Plus, Edit, Trash2, FileText } from "lucide-react";
+import { QuotePdfExport } from "./QuotePdfExport";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -242,6 +243,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                           </Button>
                         </>
                       )}
+                      <QuotePdfExport quoteId={quote.id} serviceCallId={serviceCallId} />
                       <Button
                         variant="ghost"
                         size="icon"
