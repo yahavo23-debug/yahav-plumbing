@@ -54,7 +54,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="font-bold text-base text-sidebar-primary-foreground truncate">מערכת CRM</h1>
+            <h1 className="font-bold text-base text-sidebar-primary-foreground truncate">Yahav CRM</h1>
             <p className="text-xs text-sidebar-foreground/60 truncate">ניהול שירות</p>
           </div>
         )}

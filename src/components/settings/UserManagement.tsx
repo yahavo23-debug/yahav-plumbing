@@ -142,7 +142,7 @@ export function UserManagement() {
   };
 
   const handleWhatsAppInvite = () => {
-    const text = encodeURIComponent(`הוזמנת להצטרף למערכת CRM. הירשם כאן: ${signupUrl}`);
+    const text = encodeURIComponent(`הוזמנת להצטרף ל-Yahav CRM. הירשם כאן: ${signupUrl}`);
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
