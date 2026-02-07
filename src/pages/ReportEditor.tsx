@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { PhotoGrid } from "@/components/media/PhotoGrid";
+import { DownloadAllPhotos } from "@/components/media/DownloadAllPhotos";
 import { VideoList } from "@/components/media/VideoList";
 import {
   ArrowRight, Share2, ExternalLink, Copy, Ban, FileText,
@@ -242,7 +243,12 @@ const ReportEditor = () => {
         </TabsContent>
 
         <TabsContent value="photos">
-          <PhotoGrid photos={photos} />
+          <div className="space-y-4">
+            <div className="flex justify-end">
+              <DownloadAllPhotos photos={photos} />
+            </div>
+            <PhotoGrid photos={photos} />
+          </div>
         </TabsContent>
 
         <TabsContent value="videos">
