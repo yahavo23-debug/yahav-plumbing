@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Users, Wrench, FileText, AlertCircle, Plus, CheckCircle2, Clock } from "lucide-react";
+import { getJobTypeLabel } from "@/lib/constants";
 
 interface DashboardStats {
   totalCustomers: number;
@@ -126,7 +127,7 @@ const Dashboard = () => {
                 >
                   <div>
                     <p className="font-medium">{(call.customers as any)?.name}</p>
-                    <p className="text-sm text-muted-foreground">{call.job_type} • {call.description?.slice(0, 50)}</p>
+                    <p className="text-sm text-muted-foreground">{getJobTypeLabel(call.job_type)} • {call.description?.slice(0, 50)}</p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[call.status]}`}>
                     {statusLabels[call.status]}

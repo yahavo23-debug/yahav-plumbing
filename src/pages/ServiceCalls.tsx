@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Search, Calendar, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { getJobTypeLabel } from "@/lib/constants";
 
 const statusLabels: Record<string, string> = {
   open: "פתוח", in_progress: "בטיפול", completed: "הושלם", cancelled: "בוטל",
@@ -108,7 +109,7 @@ const ServiceCalls = () => {
                       {statusLabels[call.status]}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">{call.job_type}</p>
+                  <p className="text-sm text-muted-foreground">{getJobTypeLabel(call.job_type)}</p>
                   {call.scheduled_date && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="w-3 h-3" /> {new Date(call.scheduled_date).toLocaleDateString("he-IL")}

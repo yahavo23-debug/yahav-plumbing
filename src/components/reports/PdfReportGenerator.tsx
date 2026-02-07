@@ -26,12 +26,7 @@ interface PdfReportGeneratorProps {
   photos: any[];
 }
 
-const serviceTypeLabels: Record<string, string> = {
-  leak_detection: "איתור נזילה",
-  sewer_camera: "צילום קו ביוב",
-  pressure_test: "בדיקת לחץ",
-  other: "אחר",
-};
+import { getJobTypeLabel } from "@/lib/constants";
 
 const statusLabels: Record<string, string> = {
   open: "פתוח",
@@ -335,7 +330,7 @@ function buildReportHtml(data: {
     </div>
 
     ${sectionTitle("פרטי שירות")}
-    ${field("סוג", serviceTypeLabels[sc.job_type] || sc.job_type)}
+    ${field("סוג", getJobTypeLabel(sc.job_type))}
     ${field("סטטוס", statusLabels[sc.status] || sc.status)}
     ${field("תיאור", sc.description)}
     ${field("הערות", sc.notes)}
