@@ -244,25 +244,31 @@ const ServiceCallDetail = () => {
             <CardContent className="p-6 space-y-4">
               <div>
                 <Label className="text-muted-foreground text-xs">תיאור התלונה</Label>
-                <Textarea
-                  value={call.description || ""}
-                  onChange={(e) => !isContractor && setCall({ ...call, description: e.target.value })}
-                  placeholder="תאר את התלונה..."
-                  rows={4}
-                  className="mt-1"
-                  readOnly={isContractor}
-                />
+                {isContractor ? (
+                  <p className="mt-1 text-sm whitespace-pre-wrap min-h-[2rem]">{call.description || "—"}</p>
+                ) : (
+                  <Textarea
+                    value={call.description || ""}
+                    onChange={(e) => setCall({ ...call, description: e.target.value })}
+                    placeholder="תאר את התלונה..."
+                    rows={4}
+                    className="mt-1"
+                  />
+                )}
               </div>
               <div>
                 <Label className="text-muted-foreground text-xs">הערות</Label>
-                <Textarea
-                  value={(call as any).notes || ""}
-                  onChange={(e) => !isContractor && setCall({ ...call, notes: e.target.value })}
-                  placeholder="הערות נוספות..."
-                  rows={3}
-                  className="mt-1"
-                  readOnly={isContractor}
-                />
+                {isContractor ? (
+                  <p className="mt-1 text-sm whitespace-pre-wrap min-h-[2rem]">{(call as any).notes || "—"}</p>
+                ) : (
+                  <Textarea
+                    value={(call as any).notes || ""}
+                    onChange={(e) => setCall({ ...call, notes: e.target.value })}
+                    placeholder="הערות נוספות..."
+                    rows={3}
+                    className="mt-1"
+                  />
+                )}
               </div>
               {canEdit && (
                 <Button
