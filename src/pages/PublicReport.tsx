@@ -92,15 +92,7 @@ const PublicReport = () => {
     }
   };
 
-  const getPhotoUrl = (storagePath: string) => {
-    const { data } = supabase.storage.from("photos").getPublicUrl(storagePath);
-    return data.publicUrl;
-  };
-
-  const getVideoUrl = (storagePath: string) => {
-    const { data } = supabase.storage.from("videos").getPublicUrl(storagePath);
-    return data.publicUrl;
-  };
+  // All media URLs come as signed URLs from the edge function - no public URL fallbacks needed
 
   if (loading) {
     return (
@@ -126,7 +118,7 @@ const PublicReport = () => {
 
   const lightboxPhotos = photos.map((p: any) => ({
     id: p.id,
-    url: p.url || getPhotoUrl(p.storage_path),
+    url: p.url,
     caption: p.caption,
     tag: p.tag,
   }));
@@ -210,7 +202,7 @@ const PublicReport = () => {
                     onClick={() => setLightboxIndex(i)}
                   >
                     <img
-                      src={photo.url || getPhotoUrl(photo.storage_path)}
+                      src={photo.url}
                       alt={photo.caption || ""}
                       className="w-full h-full object-cover transition-transform group-hover:scale-105"
                       loading="lazy"
@@ -256,12 +248,12 @@ const PublicReport = () => {
         )}
 
         {/* Signature */}
-        {report?.signature_path && (
+        {report?.signature_url && (
           <Card>
             <CardHeader><CardTitle className="text-base">חתימה</CardTitle></CardHeader>
             <CardContent>
               <img
-                src={supabase.storage.from("signatures").getPublicUrl(report.signature_path).data.publicUrl}
+                src={report.signature_url}
                 alt="חתימת לקוח"
                 className="max-w-xs border rounded-lg"
               />
@@ -303,7 +295,7 @@ const PublicReport = () => {
       {/* Video player */}
       {playingVideo && (
         <VideoPlayer
-          url={playingVideo.url || getVideoUrl(playingVideo.storage_path)}
+          url={playingVideo.url}
           title={playingVideo.title || "סרטון"}
           open={!!playingVideo}
           onClose={() => setPlayingVideo(null)}
