@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SignaturePad } from "./SignaturePad";
@@ -46,6 +47,11 @@ const URGENCY_OPTIONS = [
   { value: "soon", label: "מומלץ בקרוב", icon: Shield, color: "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700" },
   { value: "monitor", label: "ניטור", icon: Eye, color: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700" },
 ];
+
+/** Plain-text display component for read-only (contractor) mode */
+const ReadOnlyText = ({ value, fallback = "—" }: { value: string; fallback?: string }) => (
+  <p className="text-sm whitespace-pre-wrap min-h-[1.5rem]">{value || fallback}</p>
+);
 
 export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly = false }: DiagnosisTabProps) => {
   // Existing fields
@@ -150,6 +156,116 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
     );
   };
 
+  // Helper to get labels for visible damage display
+  const getVisibleDamageLabels = () => {
+    return visibleDamage.map((v) => {
+      if (v.startsWith("other:")) return v.replace("other:", "אחר: ");
+      const opt = VISIBLE_DAMAGE_OPTIONS.find((o) => o.value === v);
+      return opt?.label || v;
+    });
+  };
+
+  // ==================== READ-ONLY (Contractor) VIEW ====================
+  if (readOnly) {
+    const confidenceOpt = CONFIDENCE_OPTIONS.find((c) => c.value === diagnosisConfidence);
+    const urgencyOpt = URGENCY_OPTIONS.find((u) => u.value === urgencyLevel);
+
+    return (
+      <div className="space-y-6">
+        {/* 1. Inspection Conditions */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">תנאי בדיקה</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <Label className="text-muted-foreground text-xs">מצב לחץ מים</Label>
+              <ReadOnlyText value={waterPressureStatus} />
+            </div>
+            <div className="flex flex-wrap gap-6 text-sm">
+              <span>נכס מאוכלס: <strong>{propertyOccupied === true ? "כן" : propertyOccupied === false ? "לא" : "—"}</strong></span>
+              <span>ברז ראשי סגור: <strong>{mainValveClosed === true ? "כן" : mainValveClosed === false ? "לא" : "—"}</strong></span>
+            </div>
+            <div>
+              <Label className="text-muted-foreground text-xs">מגבלות בדיקה</Label>
+              <ReadOnlyText value={testLimitations} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 2. Detection Methods */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">שיטת איתור</CardTitle></CardHeader>
+          <CardContent>
+            {selectedMethods.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {selectedMethods.map((m) => (
+                  <Badge key={m} variant="secondary" className="text-sm px-3 py-1">{m}</Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">—</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 3. Findings */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">ממצאים</CardTitle></CardHeader>
+          <CardContent><ReadOnlyText value={findings} /></CardContent>
+        </Card>
+
+        {/* 6. Cause Assessment */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">הערכת סיבה</CardTitle></CardHeader>
+          <CardContent><ReadOnlyText value={causeAssessment} /></CardContent>
+        </Card>
+
+        {/* 7. Visible Damage */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">נזקים נראים לעין</CardTitle></CardHeader>
+          <CardContent>
+            {visibleDamage.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {getVisibleDamageLabels().map((label, i) => (
+                  <Badge key={i} variant="secondary" className="text-sm px-3 py-1">{label}</Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">—</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 8. Urgency Level */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">רמת דחיפות</CardTitle></CardHeader>
+          <CardContent>
+            {urgencyOpt ? (
+              <Badge className={`${urgencyOpt.color} text-sm px-4 py-1.5 gap-2`}>
+                <urgencyOpt.icon className="w-4 h-4" />
+                {urgencyOpt.label}
+              </Badge>
+            ) : (
+              <p className="text-sm text-muted-foreground">—</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 9. Recommendations */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">המלצה</CardTitle></CardHeader>
+          <CardContent><ReadOnlyText value={recommendations} /></CardContent>
+        </Card>
+
+        {/* 10. Areas Not Inspected */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">אזורים שלא נבדקו</CardTitle></CardHeader>
+          <CardContent><ReadOnlyText value={areasNotInspected} /></CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ==================== EDITABLE VIEW (Admin/Technician) ====================
   return (
     <div className="space-y-6">
       {/* 1. Inspection Conditions */}
@@ -165,23 +281,20 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
               onChange={(e) => setWaterPressureStatus(e.target.value)}
               placeholder="לדוגמה: לחץ תקין 3.5 בר"
               className="mt-1"
-              readOnly={readOnly}
             />
           </div>
           <div className="flex flex-wrap gap-6">
             <div className="flex items-center gap-3">
               <Switch
                 checked={propertyOccupied === true}
-                onCheckedChange={(checked) => !readOnly && setPropertyOccupied(checked)}
-                disabled={readOnly}
+                onCheckedChange={(checked) => setPropertyOccupied(checked)}
               />
               <Label className="text-sm">נכס מאוכלס</Label>
             </div>
             <div className="flex items-center gap-3">
               <Switch
                 checked={mainValveClosed === true}
-                onCheckedChange={(checked) => !readOnly && setMainValveClosed(checked)}
-                disabled={readOnly}
+                onCheckedChange={(checked) => setMainValveClosed(checked)}
               />
               <Label className="text-sm">ברז ראשי סגור</Label>
             </div>
@@ -194,7 +307,6 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
               placeholder="לדוגמה: אין גישה לקומה 2, ריהוט כבד חוסם קיר מערבי"
               rows={2}
               className="mt-1"
-              readOnly={readOnly}
             />
           </div>
         </CardContent>
@@ -216,9 +328,8 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
                   variant={isSelected ? "default" : "outline"}
                   size="sm"
                   className="h-9 px-4"
-                  disabled={readOnly}
                   onClick={() =>
-                    !readOnly && setSelectedMethods((prev) =>
+                    setSelectedMethods((prev) =>
                       isSelected ? prev.filter((m) => m !== method) : [...prev, method]
                     )
                   }
@@ -243,12 +354,9 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
             placeholder="תאר את הממצאים שנמצאו"
             rows={4}
             maxLength={2000}
-            readOnly={readOnly}
           />
         </CardContent>
       </Card>
-
-
 
       {/* 6. Cause Assessment */}
       <Card>
@@ -262,7 +370,6 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
             placeholder="מה לדעתך גרם לבעייה?"
             rows={3}
             maxLength={2000}
-            readOnly={readOnly}
           />
         </CardContent>
       </Card>
@@ -283,8 +390,7 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
                   variant={isSelected ? "default" : "outline"}
                   size="sm"
                   className="h-9 px-4"
-                  disabled={readOnly}
-                  onClick={() => !readOnly && toggleDamage(opt.value)}
+                  onClick={() => toggleDamage(opt.value)}
                 >
                   {opt.label}
                 </Button>
@@ -298,7 +404,6 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
                 onChange={(e) => setVisibleDamageOther(e.target.value)}
                 placeholder="פרט נזק אחר..."
                 rows={3}
-                readOnly={readOnly}
               />
             </div>
           )}
@@ -325,8 +430,7 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
                       ? opt.color + " font-semibold"
                       : ""
                   }`}
-                  disabled={readOnly}
-                  onClick={() => !readOnly && setUrgencyLevel(opt.value)}
+                  onClick={() => setUrgencyLevel(opt.value)}
                 >
                   <Icon className="w-4 h-4" />
                   {opt.label}
@@ -349,7 +453,6 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
             placeholder="מה ההמלצה לתיקון"
             rows={4}
             maxLength={2000}
-            readOnly={readOnly}
           />
         </CardContent>
       </Card>
@@ -366,30 +469,25 @@ export const DiagnosisTab = ({ serviceCallId, callData, onDataUpdate, readOnly =
             placeholder="פרט אזורים שלא נבדקו ומדוע (להגנה משפטית)"
             rows={2}
             maxLength={1000}
-            readOnly={readOnly}
           />
         </CardContent>
       </Card>
 
       {/* Save Button */}
-      {!readOnly && (
-        <Button onClick={saveDiagnosis} disabled={saving} className="h-12 w-full sm:w-auto">
-          {saving ? "שומר..." : "שמור אבחון מקצועי"}
-        </Button>
-      )}
+      <Button onClick={saveDiagnosis} disabled={saving} className="h-12 w-full sm:w-auto">
+        {saving ? "שומר..." : "שמור אבחון מקצועי"}
+      </Button>
 
       {/* 11. Customer Signature */}
-      {!readOnly && (
-        <SignaturePad
-          serviceCallId={serviceCallId}
-          existingSignaturePath={signaturePath}
-          existingSignatureDate={signatureDate}
-          onSigned={(path, date) => {
-            setSignaturePath(path);
-            setSignatureDate(date);
-          }}
-        />
-      )}
+      <SignaturePad
+        serviceCallId={serviceCallId}
+        existingSignaturePath={signaturePath}
+        existingSignatureDate={signatureDate}
+        onSigned={(path, date) => {
+          setSignaturePath(path);
+          setSignatureDate(date);
+        }}
+      />
     </div>
   );
 };
