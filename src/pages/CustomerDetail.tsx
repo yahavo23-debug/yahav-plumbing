@@ -233,7 +233,14 @@ const CustomerDetail = () => {
 
         {/* Billing Tab */}
         <TabsContent value="billing">
-          <BillingTab customerId={id!} onBillingChange={billing.refresh} />
+          <BillingTab
+            customerId={id!}
+            customerName={customer.name}
+            customerPhone={customer.phone}
+            customerCity={customer.city}
+            customerAddress={customer.address}
+            onBillingChange={billing.refresh}
+          />
         </TabsContent>
       </Tabs>
     </AppLayout>
