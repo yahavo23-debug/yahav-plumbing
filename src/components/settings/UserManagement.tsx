@@ -12,14 +12,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Copy, Check, UserPlus, Shield, Wrench, ClipboardList, UserX, HardHat, Settings2 } from "lucide-react";
+import {
+  Users, Copy, Check, UserPlus, Shield, Wrench, ClipboardList,
+  UserX, HardHat, Settings2, Ban, Trash2, ShieldOff, Mail,
+} from "lucide-react";
 import { ContractorAccessDialog } from "./ContractorAccessDialog";
+import { BanUserDialog } from "./BanUserDialog";
+import { DeleteUserDialog } from "./DeleteUserDialog";
+import { format } from "date-fns";
+import { he } from "date-fns/locale";
 
 interface UserProfile {
   user_id: string;
   full_name: string | null;
   phone: string | null;
+  email: string | null;
   role: "admin" | "technician" | "secretary" | "contractor" | null;
+  banned_until: string | null;
+  ban_reason: string | null;
 }
 
 const getPublicBaseUrl = (): string => {
@@ -45,6 +55,16 @@ export function UserManagement() {
     userId: string;
     name: string;
   }>({ open: false, userId: "", name: "" });
+  const [banDialog, setBanDialog] = useState<{
+    open: boolean;
+    userId: string;
+    name: string;
+  }>({ open: false, userId: "", name: "" });
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    userId: string;
+    name: string;
+  }>({ open: false, userId: "", name: "" });
 
   const signupUrl = `${getPublicBaseUrl()}/auth`;
 
@@ -53,9 +73,10 @@ export function UserManagement() {
   }, []);
 
   const loadUsers = async () => {
+    // Fetch profiles with ban info
     const { data: profiles, error: pErr } = await supabase
       .from("profiles")
-      .select("user_id, full_name, phone")
+      .select("user_id, full_name, phone, banned_until, ban_reason")
       .order("created_at", { ascending: true });
 
     if (pErr) {
@@ -64,6 +85,7 @@ export function UserManagement() {
       return;
     }
 
+    // Fetch roles
     const { data: roles } = await supabase
       .from("user_roles")
       .select("user_id, role");
@@ -71,11 +93,45 @@ export function UserManagement() {
     const roleMap = new Map<string, "admin" | "technician" | "secretary" | "contractor">();
     roles?.forEach((r) => roleMap.set(r.user_id, r.role as any));
 
+    // Fetch emails from edge function
+    let emailMap = new Map<string, string>();
+    try {
+      const { data: emailData, error: emailError } = await supabase.functions.invoke("admin-users", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        body: undefined,
+      });
+
+      // The invoke with GET doesn't support query params well, let's use fetch
+      const session = (await supabase.auth.getSession()).data.session;
+      if (session) {
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-users?action=list`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+          }
+        );
+        if (res.ok) {
+          const result = await res.json();
+          result.users?.forEach((u: any) => emailMap.set(u.id, u.email));
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching emails:", err);
+    }
+
     const merged: UserProfile[] = (profiles || []).map((p) => ({
       user_id: p.user_id,
       full_name: p.full_name,
       phone: p.phone,
+      email: emailMap.get(p.user_id) || null,
       role: roleMap.get(p.user_id) || null,
+      banned_until: p.banned_until,
+      ban_reason: p.ban_reason,
     }));
 
     setUsers(merged);
@@ -134,6 +190,104 @@ export function UserManagement() {
     }
   };
 
+  const handleBanUser = async (bannedUntil: string, reason: string) => {
+    setUpdating(banDialog.userId);
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-users?action=ban`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session!.access_token}`,
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ userId: banDialog.userId, bannedUntil, reason }),
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error);
+      }
+
+      toast({ title: "נחסם", description: `${banDialog.name} נחסם מהמערכת` });
+      setBanDialog({ open: false, userId: "", name: "" });
+      await loadUsers();
+    } catch (err: any) {
+      console.error("Ban error:", err);
+      toast({ title: "שגיאה", description: err.message || "לא ניתן לחסום", variant: "destructive" });
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleUnbanUser = async (userId: string) => {
+    setUpdating(userId);
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-users?action=unban`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session!.access_token}`,
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ userId }),
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error);
+      }
+
+      toast({ title: "בוטל", description: "החסימה בוטלה בהצלחה" });
+      await loadUsers();
+    } catch (err: any) {
+      console.error("Unban error:", err);
+      toast({ title: "שגיאה", description: err.message || "לא ניתן לבטל חסימה", variant: "destructive" });
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    setUpdating(deleteDialog.userId);
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-users?action=delete`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session!.access_token}`,
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ userId: deleteDialog.userId }),
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error);
+      }
+
+      toast({ title: "נמחק", description: `${deleteDialog.name} נמחק מהמערכת` });
+      setDeleteDialog({ open: false, userId: "", name: "" });
+      await loadUsers();
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      toast({ title: "שגיאה", description: err.message || "לא ניתן למחוק", variant: "destructive" });
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const handleCopySignupUrl = async () => {
     await navigator.clipboard.writeText(signupUrl);
     setCopied(true);
@@ -144,6 +298,10 @@ export function UserManagement() {
   const handleWhatsAppInvite = () => {
     const text = encodeURIComponent(`הוזמנת להצטרף ל-Yahav CRM. הירשם כאן: ${signupUrl}`);
     window.open(`https://wa.me/?text=${text}`, "_blank");
+  };
+
+  const isUserBanned = (u: UserProfile) => {
+    return u.banned_until && new Date(u.banned_until) > new Date();
   };
 
   if (loading) {
@@ -237,35 +395,55 @@ export function UserManagement() {
             {users.map((u) => {
               const isCurrentUser = u.user_id === user?.id;
               const isTargetAdmin = u.role === "admin" && !isCurrentUser;
+              const banned = isUserBanned(u);
               return (
-                <div key={u.user_id} className="flex items-center justify-between py-3 gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm truncate">
-                        {u.full_name || "ללא שם"}
-                      </span>
-                      {isCurrentUser && (
-                        <Badge variant="secondary" className="text-xs shrink-0">אתה</Badge>
+                <div key={u.user_id} className={`py-3 space-y-2 ${banned ? "opacity-60" : ""}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm truncate">
+                          {u.full_name || "ללא שם"}
+                        </span>
+                        {isCurrentUser && (
+                          <Badge variant="secondary" className="text-xs shrink-0">אתה</Badge>
+                        )}
+                        {!u.role && !isCurrentUser && (
+                          <Badge variant="outline" className="text-xs shrink-0 text-orange-600 border-orange-300">ממתין</Badge>
+                        )}
+                        {banned && (
+                          <Badge variant="destructive" className="text-xs shrink-0 gap-1">
+                            <Ban className="w-3 h-3" /> חסום
+                          </Badge>
+                        )}
+                      </div>
+                      {u.email && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Mail className="w-3 h-3 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground" dir="ltr">{u.email}</p>
+                        </div>
                       )}
-                      {!u.role && !isCurrentUser && (
-                        <Badge variant="outline" className="text-xs shrink-0 text-orange-600 border-orange-300">ממתין</Badge>
+                      {u.phone && (
+                        <p className="text-xs text-muted-foreground mt-0.5" dir="ltr">{u.phone}</p>
+                      )}
+                      {banned && u.banned_until && (
+                        <p className="text-xs text-destructive mt-0.5">
+                          חסום עד: {new Date(u.banned_until).getFullYear() >= 2099
+                            ? "לצמיתות"
+                            : format(new Date(u.banned_until), "dd/MM/yyyy HH:mm", { locale: he })}
+                          {u.ban_reason && ` • סיבה: ${u.ban_reason}`}
+                        </p>
                       )}
                     </div>
-                    {u.phone && (
-                      <p className="text-xs text-muted-foreground mt-0.5" dir="ltr">{u.phone}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {isCurrentUser ? (
-                      <Badge className="gap-1">
-                        <Shield className="w-3 h-3" /> מנהל
-                      </Badge>
-                    ) : isTargetAdmin ? (
-                      <Badge className="gap-1">
-                        <Shield className="w-3 h-3" /> מנהל
-                      </Badge>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isCurrentUser ? (
+                        <Badge className="gap-1">
+                          <Shield className="w-3 h-3" /> מנהל
+                        </Badge>
+                      ) : isTargetAdmin ? (
+                        <Badge className="gap-1">
+                          <Shield className="w-3 h-3" /> מנהל
+                        </Badge>
+                      ) : (
                         <Select
                           value={u.role || "none"}
                           onValueChange={(val) => handleRoleChange(u.user_id, val)}
@@ -302,26 +480,72 @@ export function UserManagement() {
                             </SelectItem>
                           </SelectContent>
                         </Select>
-                        {u.role === "contractor" && (
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            title="ניהול גישת לקוחות"
-                            onClick={() =>
-                              setContractorDialog({
-                                open: true,
-                                userId: u.user_id,
-                                name: u.full_name || "קבלן",
-                              })
-                            }
-                          >
-                            <Settings2 className="w-3.5 h-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
+                  {/* Action buttons for non-current, non-admin users */}
+                  {!isCurrentUser && !isTargetAdmin && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {u.role === "contractor" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          onClick={() =>
+                            setContractorDialog({
+                              open: true,
+                              userId: u.user_id,
+                              name: u.full_name || "קבלן",
+                            })
+                          }
+                        >
+                          <Settings2 className="w-3 h-3" /> גישת לקוחות
+                        </Button>
+                      )}
+                      {banned ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          onClick={() => handleUnbanUser(u.user_id)}
+                          disabled={updating === u.user_id}
+                        >
+                          <ShieldOff className="w-3 h-3" /> בטל חסימה
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1 text-orange-600 border-orange-300 hover:bg-orange-50"
+                          onClick={() =>
+                            setBanDialog({
+                              open: true,
+                              userId: u.user_id,
+                              name: u.full_name || "משתמש",
+                            })
+                          }
+                          disabled={updating === u.user_id}
+                        >
+                          <Ban className="w-3 h-3" /> חסום
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                        onClick={() =>
+                          setDeleteDialog({
+                            open: true,
+                            userId: u.user_id,
+                            name: u.full_name || "משתמש",
+                          })
+                        }
+                        disabled={updating === u.user_id}
+                      >
+                        <Trash2 className="w-3 h-3" /> מחק
+                      </Button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -332,14 +556,24 @@ export function UserManagement() {
         </CardContent>
       </Card>
 
-      {/* Contractor access dialog */}
+      {/* Dialogs */}
       <ContractorAccessDialog
         open={contractorDialog.open}
-        onOpenChange={(open) =>
-          setContractorDialog((prev) => ({ ...prev, open }))
-        }
+        onOpenChange={(open) => setContractorDialog((prev) => ({ ...prev, open }))}
         contractorUserId={contractorDialog.userId}
         contractorName={contractorDialog.name}
+      />
+      <BanUserDialog
+        open={banDialog.open}
+        onOpenChange={(open) => setBanDialog((prev) => ({ ...prev, open }))}
+        userName={banDialog.name}
+        onConfirm={handleBanUser}
+      />
+      <DeleteUserDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
+        userName={deleteDialog.name}
+        onConfirm={handleDeleteUser}
       />
     </div>
   );
