@@ -71,7 +71,7 @@ const entryTypeConfig: Record<
 export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
   const { user, role, isAdmin } = useAuth();
   const isContractor = role === "contractor";
-  const canAdd = (isAdmin || role === "secretary" || role === "technician") && !isContractor;
+  const canAdd = isAdmin;
   const canLock = isAdmin;
 
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
