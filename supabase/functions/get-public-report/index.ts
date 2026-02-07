@@ -63,10 +63,20 @@ Deno.serve(async (req) => {
       return { ...v, url: data?.signedUrl };
     }));
 
+    // Generate signed URL for report signature if exists
+    let signatureUrl = null;
+    if (report.signature_path) {
+      const { data: sigData } = await supabase.storage
+        .from("signatures")
+        .createSignedUrl(report.signature_path, 3600);
+      signatureUrl = sigData?.signedUrl;
+    }
+
     console.log(`Public report accessed: ${share.report_id} via token: ${share_token.substring(0, 8)}...`);
 
     return new Response(JSON.stringify({
-      report, service_call, customer,
+      report: { ...report, signature_url: signatureUrl },
+      service_call, customer,
       photos: photosWithUrls, videos: videosWithUrls,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
