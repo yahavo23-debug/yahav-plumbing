@@ -173,7 +173,13 @@ export function PdfReportGenerator({
         heightLeft -= pageHeight;
       }
 
-      // Upload
+      // Download directly to device
+      const now2 = new Date();
+      const dateLabel = now2.toLocaleDateString("he-IL").replace(/\//g, "-");
+      const fileName = `דוח_עבודה_${customer?.name || "לקוח"}_${dateLabel}.pdf`;
+      pdf.save(fileName);
+
+      // Also upload to storage for sharing
       const pdfBlob = pdf.output("blob");
       const path = `${serviceCall.id}/${report.id}.pdf`;
 
@@ -194,7 +200,7 @@ export function PdfReportGenerator({
       if (pdfSigned) setPdfUrl(pdfSigned.signedUrl);
 
       document.body.removeChild(container);
-      toast({ title: "PDF נוצר", description: "הדוח נשמר בהצלחה" });
+      toast({ title: "PDF הורד", description: "הדוח הורד ונשמר בהצלחה" });
     } catch (err: any) {
       console.error("PDF generation error:", err);
       toast({
