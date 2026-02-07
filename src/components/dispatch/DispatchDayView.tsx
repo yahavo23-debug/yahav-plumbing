@@ -3,12 +3,21 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { DispatchTimeSlot } from "./DispatchTimeSlot";
 import { DISPATCH_HOURS } from "@/lib/dispatch-constants";
 import type { DispatchCall } from "@/hooks/useDispatchCalls";
+import type { Technician } from "@/hooks/useTechnicians";
 
 interface DispatchDayViewProps {
   calls: DispatchCall[];
+  technicians: Technician[];
+  techColorMap: Map<string, number>;
+  onAssignTechnician: (callId: string, techId: string | null) => void;
 }
 
-export function DispatchDayView({ calls }: DispatchDayViewProps) {
+export function DispatchDayView({
+  calls,
+  technicians,
+  techColorMap,
+  onAssignTechnician,
+}: DispatchDayViewProps) {
   const currentHour = new Date().getHours();
 
   const callsByHour = useMemo(() => {
@@ -21,7 +30,6 @@ export function DispatchDayView({ calls }: DispatchDayViewProps) {
       if (map[hour]) {
         map[hour].push(call);
       } else {
-        // If the hour is outside our range, put it in the closest slot
         const closest = DISPATCH_HOURS.reduce((prev, curr) =>
           Math.abs(curr - hour) < Math.abs(prev - hour) ? curr : prev
         );
@@ -41,6 +49,9 @@ export function DispatchDayView({ calls }: DispatchDayViewProps) {
             hour={hour}
             calls={callsByHour[hour] || []}
             isCurrentHour={hour === currentHour}
+            technicians={technicians}
+            techColorMap={techColorMap}
+            onAssignTechnician={onAssignTechnician}
           />
         ))}
       </div>

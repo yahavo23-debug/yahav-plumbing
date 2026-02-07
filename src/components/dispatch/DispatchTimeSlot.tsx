@@ -2,15 +2,26 @@ import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { DispatchCard } from "./DispatchCard";
 import type { DispatchCall } from "@/hooks/useDispatchCalls";
+import type { Technician } from "@/hooks/useTechnicians";
 import { cn } from "@/lib/utils";
 
 interface DispatchTimeSlotProps {
   hour: number;
   calls: DispatchCall[];
   isCurrentHour: boolean;
+  technicians: Technician[];
+  techColorMap: Map<string, number>;
+  onAssignTechnician: (callId: string, techId: string | null) => void;
 }
 
-export function DispatchTimeSlot({ hour, calls, isCurrentHour }: DispatchTimeSlotProps) {
+export function DispatchTimeSlot({
+  hour,
+  calls,
+  isCurrentHour,
+  technicians,
+  techColorMap,
+  onAssignTechnician,
+}: DispatchTimeSlotProps) {
   const droppableId = `hour-${hour}`;
   const { setNodeRef, isOver } = useDroppable({
     id: droppableId,
@@ -50,7 +61,13 @@ export function DispatchTimeSlot({ hour, calls, isCurrentHour }: DispatchTimeSlo
       >
         <SortableContext items={calls.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {calls.map((call) => (
-            <DispatchCard key={call.id} call={call} />
+            <DispatchCard
+              key={call.id}
+              call={call}
+              technicians={technicians}
+              techColorMap={techColorMap}
+              onAssignTechnician={onAssignTechnician}
+            />
           ))}
         </SortableContext>
 

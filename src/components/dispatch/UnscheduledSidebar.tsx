@@ -4,13 +4,22 @@ import { DispatchCard } from "./DispatchCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Inbox } from "lucide-react";
 import type { DispatchCall } from "@/hooks/useDispatchCalls";
+import type { Technician } from "@/hooks/useTechnicians";
 import { cn } from "@/lib/utils";
 
 interface UnscheduledSidebarProps {
   calls: DispatchCall[];
+  technicians: Technician[];
+  techColorMap: Map<string, number>;
+  onAssignTechnician: (callId: string, techId: string | null) => void;
 }
 
-export function UnscheduledSidebar({ calls }: UnscheduledSidebarProps) {
+export function UnscheduledSidebar({
+  calls,
+  technicians,
+  techColorMap,
+  onAssignTechnician,
+}: UnscheduledSidebarProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: "unscheduled",
     data: { hour: null },
@@ -38,7 +47,13 @@ export function UnscheduledSidebar({ calls }: UnscheduledSidebarProps) {
         >
           <SortableContext items={calls.map((c) => c.id)} strategy={verticalListSortingStrategy}>
             {calls.map((call) => (
-              <DispatchCard key={call.id} call={call} />
+              <DispatchCard
+                key={call.id}
+                call={call}
+                technicians={technicians}
+                techColorMap={techColorMap}
+                onAssignTechnician={onAssignTechnician}
+              />
             ))}
           </SortableContext>
 
