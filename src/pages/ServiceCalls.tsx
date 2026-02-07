@@ -27,6 +27,7 @@ const ServiceCalls = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user, isAdmin, role } = useAuth();
+  const isContractor = role === "contractor";
   const canCreate = isAdmin || role === "technician";
 
   useEffect(() => {
@@ -58,10 +59,12 @@ const ServiceCalls = () => {
   return (
     <AppLayout title="קריאות שירות">
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="חיפוש..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" />
-        </div>
+        {!isContractor && (
+          <div className="relative flex-1">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="חיפוש..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" />
+          </div>
+        )}
         {canCreate && (
           <Button onClick={() => navigate("/service-calls/new")} className="h-10 gap-2">
             <Plus className="w-4 h-4" /> קריאה חדשה
@@ -69,19 +72,21 @@ const ServiceCalls = () => {
         )}
       </div>
 
-      {/* Status filters */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {[{ value: "all", label: "הכל" }, ...Object.entries(statusLabels).map(([k, v]) => ({ value: k, label: v }))].map((f) => (
-          <Button
-            key={f.value}
-            variant={filter === f.value ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter(f.value)}
-          >
-            {f.label}
-          </Button>
-        ))}
-      </div>
+      {/* Status filters - not shown for contractors */}
+      {!isContractor && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {[{ value: "all", label: "הכל" }, ...Object.entries(statusLabels).map(([k, v]) => ({ value: k, label: v }))].map((f) => (
+            <Button
+              key={f.value}
+              variant={filter === f.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilter(f.value)}
+            >
+              {f.label}
+            </Button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <p className="text-center text-muted-foreground py-8">טוען...</p>
