@@ -10,6 +10,7 @@ import { useAuditLog } from "@/hooks/useAuditLog";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Search, Phone, MapPin, Mail } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
+import { CustomerBillingBadgeInline } from "@/components/billing/CustomerBillingBadgeInline";
 
 type Customer = Tables<"customers">;
 
@@ -93,7 +94,10 @@ const Customers = () => {
               onClick={() => navigate(`/customers/${customer.id}`)}
             >
               <CardContent className="p-4">
-                <h3 className="font-semibold text-lg mb-2">{customer.name}</h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-lg">{customer.name}</h3>
+                  {!isContractor && <CustomerBillingBadgeInline customerId={customer.id} />}
+                </div>
                 {!isContractor && (
                   <div className="space-y-1 text-sm text-muted-foreground">
                     {customer.phone && (

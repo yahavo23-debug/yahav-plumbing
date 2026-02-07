@@ -14,6 +14,8 @@ import {
   ArrowRight, Edit, Phone, Mail, MapPin, Plus, Calendar,
 } from "lucide-react";
 import { BillingTab } from "@/components/billing/BillingTab";
+import { CustomerBillingBadge } from "@/components/billing/CustomerBillingBadge";
+import { useCustomerBilling } from "@/hooks/useCustomerBilling";
 
 type Customer = Tables<"customers">;
 
@@ -56,6 +58,7 @@ const CustomerDetail = () => {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [calls, setCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const billing = useCustomerBilling(id);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -96,9 +99,12 @@ const CustomerDetail = () => {
   return (
     <AppLayout title={customer.name}>
       <div className="flex items-center justify-between mb-6">
-        <Button variant="ghost" onClick={() => navigate("/customers")} className="gap-2">
-          <ArrowRight className="w-4 h-4" /> חזרה ללקוחות
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" onClick={() => navigate("/customers")} className="gap-2">
+            <ArrowRight className="w-4 h-4" /> חזרה ללקוחות
+          </Button>
+          <CustomerBillingBadge summary={billing} size="md" />
+        </div>
         {canEdit && (
           <Button variant="outline" onClick={() => navigate(`/customers/${id}/edit`)} className="gap-2">
             <Edit className="w-4 h-4" /> עריכה
@@ -227,7 +233,7 @@ const CustomerDetail = () => {
 
         {/* Billing Tab */}
         <TabsContent value="billing">
-          <BillingTab customerId={id!} />
+          <BillingTab customerId={id!} onBillingChange={billing.refresh} />
         </TabsContent>
       </Tabs>
     </AppLayout>
