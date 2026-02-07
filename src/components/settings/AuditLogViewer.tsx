@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Eye, ScrollText } from "lucide-react";
+import { Loader2, Eye, ScrollText, LogIn, LogOut } from "lucide-react";
 
 interface AuditEntry {
   id: string;
@@ -20,12 +20,20 @@ const ACTION_LABELS: Record<string, string> = {
   view_customer: "צפייה בלקוח",
   view_customer_list: "צפייה ברשימת לקוחות",
   view_service_call: "צפייה בקריאת שירות",
+  login: "כניסה למערכת",
+  logout: "יציאה מהמערכת",
 };
 
 const RESOURCE_LABELS: Record<string, string> = {
   customer: "לקוח",
   customer_list: "רשימת לקוחות",
   service_call: "קריאת שירות",
+  session: "סשן",
+};
+
+const ACTION_ICONS: Record<string, React.ReactNode> = {
+  login: <LogIn className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />,
+  logout: <LogOut className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />,
 };
 
 export function AuditLogViewer() {
@@ -80,7 +88,7 @@ export function AuditLogViewer() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <ScrollText className="w-4 h-4" /> לוג פעילות קבלנים
+          <ScrollText className="w-4 h-4" /> לוג פעילות קבלנים ומזכירות
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -100,7 +108,7 @@ export function AuditLogViewer() {
                   key={log.id}
                   className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border/50"
                 >
-                  <Eye className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                  {ACTION_ICONS[log.action] || <Eye className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium">

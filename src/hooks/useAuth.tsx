@@ -102,12 +102,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const reason = profile.ban_reason ? ` • סיבה: ${profile.ban_reason}` : "";
         return { error: new Error(`${banMsg}${reason}`) };
       }
+
+      // Log login event for contractors and secretaries
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      if (roleData?.role === "contractor" || roleData?.role === "secretary") {
+        await supabase.from("audit_logs").insert({
+          user_id: data.user.id,
+          action: "login",
+          resource_type: "session",
+          resource_label: roleData.role === "contractor" ? "קבלן" : "מזכירה",
+        });
+      }
     }
 
     return { error: null };
   };
 
   const signOut = async () => {
+    // Log logout event for contractors and secretaries
+    if (user && (role === "contractor" || role === "secretary")) {
+      try {
+        await supabase.from("audit_logs").insert({
+          user_id: user.id,
+          action: "logout",
+          resource_type: "session",
+          resource_label: role === "contractor" ? "קבלן" : "מזכירה",
+        });
+      } catch (err) {
+        console.error("Audit log logout error:", err);
+      }
+    }
     await supabase.auth.signOut();
   };
 
