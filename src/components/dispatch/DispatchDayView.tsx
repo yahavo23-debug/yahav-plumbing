@@ -10,6 +10,7 @@ interface DispatchDayViewProps {
   technicians: Technician[];
   techColorMap: Map<string, number>;
   onAssignTechnician: (callId: string, techId: string | null) => void;
+  onUnscheduleCall: (callId: string) => void;
 }
 
 export function DispatchDayView({
@@ -17,6 +18,7 @@ export function DispatchDayView({
   technicians,
   techColorMap,
   onAssignTechnician,
+  onUnscheduleCall,
 }: DispatchDayViewProps) {
   const currentHour = new Date().getHours();
 
@@ -52,6 +54,7 @@ export function DispatchDayView({
             technicians={technicians}
             techColorMap={techColorMap}
             onAssignTechnician={onAssignTechnician}
+            onUnscheduleCall={onUnscheduleCall}
           />
         ))}
       </div>

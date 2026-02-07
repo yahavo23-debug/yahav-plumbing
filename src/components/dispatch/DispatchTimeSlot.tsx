@@ -12,6 +12,7 @@ interface DispatchTimeSlotProps {
   technicians: Technician[];
   techColorMap: Map<string, number>;
   onAssignTechnician: (callId: string, techId: string | null) => void;
+  onUnscheduleCall: (callId: string) => void;
 }
 
 export function DispatchTimeSlot({
@@ -21,6 +22,7 @@ export function DispatchTimeSlot({
   technicians,
   techColorMap,
   onAssignTechnician,
+  onUnscheduleCall,
 }: DispatchTimeSlotProps) {
   const droppableId = `hour-${hour}`;
   const { setNodeRef, isOver } = useDroppable({
@@ -67,6 +69,7 @@ export function DispatchTimeSlot({
               technicians={technicians}
               techColorMap={techColorMap}
               onAssignTechnician={onAssignTechnician}
+              onUnscheduleCall={onUnscheduleCall}
             />
           ))}
         </SortableContext>
