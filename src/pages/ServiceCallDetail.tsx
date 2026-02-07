@@ -190,12 +190,12 @@ const ServiceCallDetail = () => {
                   {customer?.name}
                 </span>
               </div>
-                {customer?.phone && !isContractor && (
+              {customer?.phone && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Phone className="w-3.5 h-3.5" /> {customer.phone}
                 </div>
               )}
-              {customer?.address && !isContractor && (
+              {customer?.address && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="w-3.5 h-3.5" /> {customer.city} {customer.address}
                 </div>
