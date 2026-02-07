@@ -28,16 +28,16 @@ export function useDispatchCalls(selectedDate: Date) {
   const loadCalls = useCallback(async () => {
     setLoading(true);
 
-    // Load scheduled calls for the selected date
-    const startOfDay = `${dateStr}T00:00:00`;
-    const endOfDay = `${dateStr}T23:59:59`;
+    // Create boundaries in LOCAL timezone, then convert to ISO (UTC) for proper DB queries
+    const dayStart = new Date(`${dateStr}T00:00:00`);
+    const dayEnd = new Date(`${dateStr}T23:59:59.999`);
 
     const [scheduledRes, unscheduledRes] = await Promise.all([
       supabase
         .from("service_calls")
         .select("id, customer_id, description, status, priority, job_type, scheduled_at, duration_minutes, assigned_to, call_number, notes, customers(name)")
-        .gte("scheduled_at", startOfDay)
-        .lte("scheduled_at", endOfDay)
+        .gte("scheduled_at", dayStart.toISOString())
+        .lte("scheduled_at", dayEnd.toISOString())
         .not("status", "eq", "cancelled")
         .order("scheduled_at", { ascending: true }),
       supabase
@@ -81,7 +81,9 @@ export function useDispatchCalls(selectedDate: Date) {
 
   const scheduleCall = useCallback(
     async (callId: string, hour: number) => {
-      const scheduledAt = `${dateStr}T${String(hour).padStart(2, "0")}:00:00`;
+      // Create date in LOCAL timezone, then convert to ISO (UTC) for DB storage
+      const date = new Date(`${dateStr}T${String(hour).padStart(2, "0")}:00:00`);
+      const scheduledAt = date.toISOString();
 
       const { error } = await supabase
         .from("service_calls")

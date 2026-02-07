@@ -18,6 +18,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { DispatchDayView } from "@/components/dispatch/DispatchDayView";
 import { UnscheduledSidebar } from "@/components/dispatch/UnscheduledSidebar";
 import { DispatchCard } from "@/components/dispatch/DispatchCard";
+import { TechnicianStatsPanel } from "@/components/dispatch/TechnicianStatsPanel";
 import { useDispatchCalls, type DispatchCall } from "@/hooks/useDispatchCalls";
 import { useTechnicians } from "@/hooks/useTechnicians";
 import { cn } from "@/lib/utils";
@@ -90,6 +91,13 @@ export default function DispatchBoard() {
     [assignTechnician]
   );
 
+  const handleUnscheduleCall = useCallback(
+    async (callId: string) => {
+      await unscheduleCall(callId);
+    },
+    [unscheduleCall]
+  );
+
   const todayLabel = isToday(selectedDate);
   const dateDisplay = format(selectedDate, "EEEE, d בMMMM yyyy", { locale: he });
 
@@ -142,8 +150,11 @@ export default function DispatchBoard() {
             </Button>
           </div>
 
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{calls.length}</span> קריאות משובצות
+          <div className="flex items-center gap-3">
+            <TechnicianStatsPanel technicians={technicians} techColorMap={techColorMap} />
+            <div className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{calls.length}</span> קריאות משובצות
+            </div>
           </div>
         </header>
 
@@ -177,6 +188,7 @@ export default function DispatchBoard() {
                   technicians={technicians}
                   techColorMap={techColorMap}
                   onAssignTechnician={handleAssignTechnician}
+                  onUnscheduleCall={handleUnscheduleCall}
                 />
               )}
             </div>

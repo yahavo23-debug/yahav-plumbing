@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useNavigate } from "react-router-dom";
-import { Clock, GripVertical, Phone } from "lucide-react";
+import { Clock, GripVertical, Phone, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getDispatchStatus, getTechnicianColor } from "@/lib/dispatch-constants";
 import { getJobTypeLabel } from "@/lib/constants";
@@ -16,6 +16,7 @@ interface DispatchCardProps {
   technicians?: Technician[];
   techColorMap?: Map<string, number>;
   onAssignTechnician?: (callId: string, techId: string | null) => void;
+  onUnscheduleCall?: (callId: string) => void;
 }
 
 function getInitials(name: string): string {
@@ -32,6 +33,7 @@ export function DispatchCard({
   technicians = [],
   techColorMap = new Map(),
   onAssignTechnician,
+  onUnscheduleCall,
 }: DispatchCardProps) {
   const navigate = useNavigate();
   const statusConfig = getDispatchStatus(call.status);
@@ -67,7 +69,7 @@ export function DispatchCard({
         isOverlay && "shadow-xl rotate-2 scale-105"
       )}
     >
-      {/* Technician color strip on right edge (RTL start) */}
+      {/* Technician color strip on right edge */}
       {techColor && (
         <div className={cn("absolute top-0 bottom-0 right-0 w-1.5 rounded-r-lg", techColor.dot)} />
       )}
@@ -97,6 +99,21 @@ export function DispatchCard({
                 <Badge className="bg-destructive text-destructive-foreground text-xs animate-pulse">
                   דחוף
                 </Badge>
+              )}
+
+              {/* Unschedule button — only for scheduled calls */}
+              {call.scheduled_at && onUnscheduleCall && (
+                <button
+                  type="button"
+                  className="mr-auto p-1 rounded hover:bg-muted transition-colors text-muted-foreground/40 hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUnscheduleCall(call.id);
+                  }}
+                  title="החזר לממתינות"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
               )}
             </div>
 
