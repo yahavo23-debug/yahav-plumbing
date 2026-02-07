@@ -15,7 +15,7 @@ export function useAuditLog() {
 
   const logAction = useCallback(
     async (entry: AuditLogEntry) => {
-      if (!user || role !== "contractor") return;
+      if (!user || (role !== "contractor" && role !== "secretary")) return;
 
       // Deduplicate within the same component mount
       const key = `${entry.action}:${entry.resource_type}:${entry.resource_id}`;
