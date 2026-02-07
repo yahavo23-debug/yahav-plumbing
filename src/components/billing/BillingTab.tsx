@@ -13,6 +13,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -28,7 +39,11 @@ import {
   ArrowDownCircle,
   Scale,
   Clock,
+  Trash2,
+  Image as ImageIcon,
 } from "lucide-react";
+import { BillingPdfExport } from "./BillingPdfExport";
+import { ReceiptUpload } from "./ReceiptUpload";
 
 interface LedgerEntry {
   id: string;
@@ -40,10 +55,15 @@ interface LedgerEntry {
   is_locked: boolean;
   created_at: string;
   created_by: string;
+  receipt_path?: string | null;
 }
 
 interface BillingTabProps {
   customerId: string;
+  customerName?: string;
+  customerPhone?: string | null;
+  customerCity?: string | null;
+  customerAddress?: string | null;
   onBillingChange?: () => void;
 }
 
@@ -68,11 +88,19 @@ const entryTypeConfig: Record<
   },
 };
 
-export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
+export function BillingTab({
+  customerId,
+  customerName,
+  customerPhone,
+  customerCity,
+  customerAddress,
+  onBillingChange,
+}: BillingTabProps) {
   const { user, role, isAdmin } = useAuth();
   const isContractor = role === "contractor";
   const canAdd = isAdmin;
   const canLock = isAdmin;
+  const canDelete = isAdmin;
 
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,6 +115,10 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
   const [formType, setFormType] = useState<string>("charge");
   const [formAmount, setFormAmount] = useState("");
   const [formDescription, setFormDescription] = useState("");
+  const [formReceiptPath, setFormReceiptPath] = useState<string | null>(null);
+
+  // Receipt thumbnail URLs cache
+  const [receiptUrls, setReceiptUrls] = useState<Record<string, string>>({});
 
   const loadEntries = useCallback(async () => {
     const [ledgerRes, customerRes] = await Promise.all([
@@ -110,7 +142,23 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
         variant: "destructive",
       });
     } else {
-      setEntries((ledgerRes.data as LedgerEntry[]) || []);
+      const loadedEntries = (ledgerRes.data as LedgerEntry[]) || [];
+      setEntries(loadedEntries);
+
+      // Load receipt thumbnails
+      const receiptsToLoad = loadedEntries.filter((e) => e.receipt_path);
+      if (receiptsToLoad.length > 0) {
+        const urls: Record<string, string> = {};
+        await Promise.all(
+          receiptsToLoad.map(async (e) => {
+            const { data } = await supabase.storage
+              .from("receipts")
+              .createSignedUrl(e.receipt_path!, 3600);
+            if (data) urls[e.id] = data.signedUrl;
+          })
+        );
+        setReceiptUrls(urls);
+      }
     }
 
     if (customerRes.data) {
@@ -156,7 +204,6 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
           )[0]?.entry_date
       : null;
 
-  // Calculate overdue duration
   let overdueDays = 0;
   let overdueMonths = 0;
   if (overdueSince) {
@@ -184,6 +231,7 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
           entry_type: formType,
           amount: parseFloat(formAmount),
           description: formDescription.trim() || null,
+          receipt_path: formReceiptPath,
           created_by: user.id,
         });
 
@@ -203,6 +251,33 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (entry: LedgerEntry) => {
+    try {
+      // Delete receipt from storage if exists
+      if (entry.receipt_path) {
+        await supabase.storage.from("receipts").remove([entry.receipt_path]);
+      }
+
+      const { error } = await (supabase as any)
+        .from("customer_ledger")
+        .delete()
+        .eq("id", entry.id);
+
+      if (error) throw error;
+
+      toast({ title: "נמחק", description: "הרשומה נמחקה בהצלחה" });
+      loadEntries();
+      onBillingChange?.();
+    } catch (err: any) {
+      console.error("Delete ledger entry error:", err);
+      toast({
+        title: "שגיאה",
+        description: err.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -229,6 +304,7 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
     setFormType("charge");
     setFormAmount("");
     setFormDescription("");
+    setFormReceiptPath(null);
   };
 
   const handleToggleLegalAction = async (checked: boolean) => {
@@ -272,6 +348,7 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
 
   return (
     <div className="space-y-4">
+      {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
@@ -404,9 +481,24 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
         </Card>
       )}
 
-      {/* Add Entry Button */}
-      {canAdd && (
-        <div className="flex justify-end">
+      {/* Action Buttons */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <BillingPdfExport
+          customerName={customerName || "לקוח"}
+          customerPhone={customerPhone}
+          customerCity={customerCity}
+          customerAddress={customerAddress}
+          entries={entries}
+          balance={balance}
+          totalCharges={totalCharges}
+          totalPayments={totalPayments}
+          totalCredits={totalCredits}
+          overdueSince={overdueSince || null}
+          overdueDays={overdueDays}
+          hasLegalAction={hasLegalAction}
+          legalActionNote={legalActionNote}
+        />
+        {canAdd && (
           <Button
             onClick={() => setShowForm(!showForm)}
             variant={showForm ? "secondary" : "default"}
@@ -416,8 +508,8 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
             <Plus className="w-4 h-4" />{" "}
             {showForm ? "ביטול" : "הוסף רשומה"}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Add Entry Form */}
       {showForm && canAdd && (
@@ -467,13 +559,20 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
                 placeholder="תיאור הפעולה..."
               />
             </div>
-            <Button
-              onClick={handleSubmit}
-              disabled={saving || !formAmount}
-              className="h-10"
-            >
-              {saving ? "שומר..." : "שמור"}
-            </Button>
+            <div className="flex items-center justify-between">
+              <ReceiptUpload
+                customerId={customerId}
+                onUploaded={(path) => setFormReceiptPath(path)}
+                onRemoved={() => setFormReceiptPath(null)}
+              />
+              <Button
+                onClick={handleSubmit}
+                disabled={saving || !formAmount}
+                className="h-10"
+              >
+                {saving ? "שומר..." : "שמור"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -489,6 +588,7 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
             const config =
               entryTypeConfig[entry.entry_type] || entryTypeConfig.charge;
             const Icon = config.icon;
+            const hasReceipt = !!receiptUrls[entry.id];
             return (
               <Card key={entry.id}>
                 <CardContent className="p-3 flex items-center justify-between">
@@ -512,6 +612,16 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
                         {entry.is_locked && (
                           <Lock className="w-3 h-3 text-muted-foreground" />
                         )}
+                        {hasReceipt && (
+                          <a
+                            href={receiptUrls[entry.id]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="צפה בקבלה"
+                          >
+                            <ImageIcon className="w-3.5 h-3.5 text-primary cursor-pointer" />
+                          </a>
+                        )}
                       </div>
                       {!isContractor && entry.description && (
                         <p className="text-xs text-muted-foreground mt-0.5">
@@ -534,6 +644,37 @@ export function BillingTab({ customerId, onBillingChange }: BillingTabProps) {
                       >
                         <Lock className="w-3.5 h-3.5" />
                       </Button>
+                    )}
+                    {canDelete && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            title="מחק רשומה"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>מחיקת רשומה</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              האם למחוק את הרשומה? פעולה זו לא ניתנת לביטול.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>ביטול</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(entry)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              מחק
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </div>
                 </CardContent>

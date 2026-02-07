@@ -150,6 +150,7 @@ export type Database = {
           entry_type: string
           id: string
           is_locked: boolean | null
+          receipt_path: string | null
           service_call_id: string | null
         }
         Insert: {
@@ -162,6 +163,7 @@ export type Database = {
           entry_type: string
           id?: string
           is_locked?: boolean | null
+          receipt_path?: string | null
           service_call_id?: string | null
         }
         Update: {
@@ -174,6 +176,7 @@ export type Database = {
           entry_type?: string
           id?: string
           is_locked?: boolean | null
+          receipt_path?: string | null
           service_call_id?: string | null
         }
         Relationships: [
