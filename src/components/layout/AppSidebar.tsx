@@ -10,6 +10,7 @@ import {
   LogOut,
   Settings,
   ChevronRight,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +23,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: LayoutDashboard, label: "לוח בקרה", path: "/", roles: "all" },
+  { icon: CalendarDays, label: "לוח שיבוץ", path: "/dispatch", roles: ["admin", "technician", "secretary"] },
   { icon: Users, label: "לקוחות", path: "/customers", roles: "all" },
   { icon: Wrench, label: "קריאות שירות", path: "/service-calls", roles: ["admin", "technician", "secretary", "contractor"] },
   { icon: FileText, label: "דוחות", path: "/reports", roles: ["admin", "technician", "secretary"] },
