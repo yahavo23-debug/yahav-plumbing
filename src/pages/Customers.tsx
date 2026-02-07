@@ -8,9 +8,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Search, Phone, MapPin, Mail } from "lucide-react";
+import { Plus, Search, Phone, MapPin, Mail, MoreVertical, Edit, Trash2 } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { CustomerBillingBadgeInline } from "@/components/billing/CustomerBillingBadgeInline";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Customer = Tables<"customers">;
 
@@ -50,6 +57,23 @@ const Customers = () => {
       });
     }
     setLoading(false);
+  };
+
+  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase.from("customers").delete().eq("id", deleteTarget.id);
+    if (error) {
+      toast({ title: "שגיאה", description: "לא ניתן למחוק את הלקוח. ייתכן שיש קריאות שירות משויכות.", variant: "destructive" });
+    } else {
+      toast({ title: "נמחק", description: `הלקוח "${deleteTarget.name}" נמחק בהצלחה` });
+      setCustomers((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+    }
+    setDeleting(false);
+    setDeleteTarget(null);
   };
 
   const filtered = customers.filter(
@@ -96,7 +120,34 @@ const Customers = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-lg">{customer.name}</h3>
-                  {!isContractor && <CustomerBillingBadgeInline customerId={customer.id} />}
+                  <div className="flex items-center gap-1">
+                    {!isContractor && <CustomerBillingBadgeInline customerId={customer.id} />}
+                    {isAdmin && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onClick={() => navigate(`/customers/${customer.id}/edit`)}>
+                            <Edit className="w-4 h-4 ml-2" /> עריכה
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setDeleteTarget(customer)}
+                          >
+                            <Trash2 className="w-4 h-4 ml-2" /> מחיקה
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                 </div>
                 {!isContractor && (
                   <div className="space-y-1 text-sm text-muted-foreground">
@@ -125,6 +176,28 @@ const Customers = () => {
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>מחיקת לקוח</AlertDialogTitle>
+            <AlertDialogDescription>
+              האם אתה בטוח שברצונך למחוק את הלקוח "{deleteTarget?.name}"?
+              פעולה זו לא ניתנת לביטול.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel disabled={deleting}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "מוחק..." : "מחק לקוח"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
