@@ -21,6 +21,7 @@ import ReportEditor from "./pages/ReportEditor";
 import PublicReport from "./pages/PublicReport";
 import PublicShare from "./pages/PublicShare";
 import Settings from "./pages/Settings";
+import DispatchBoard from "./pages/DispatchBoard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +75,7 @@ function AppRoutes() {
       <Route path="/service-calls/:id/edit" element={<ProtectedRoute allowedRoles={["admin", "technician"]}><ServiceCallForm /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><Reports /></ProtectedRoute>} />
       <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ReportEditor /></ProtectedRoute>} />
+      <Route path="/dispatch" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><DispatchBoard /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
       <Route path="*" element={<NotFound />} />
