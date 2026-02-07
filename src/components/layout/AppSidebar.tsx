@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth, AppRole } from "@/hooks/useAuth";
+import { useLogo } from "@/hooks/useLogo";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -35,6 +36,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut, role } = useAuth();
+  const { logoUrl } = useLogo();
 
   const visibleItems = navItems.filter(
     (item) => item.roles === "all" || (role && item.roles.includes(role))
@@ -49,9 +51,13 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
     >
       {/* Header */}
       <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
-        <div className="w-10 h-10 bg-sidebar-primary rounded-xl flex items-center justify-center shrink-0">
-          <Wrench className="w-5 h-5 text-sidebar-primary-foreground" />
-        </div>
+        {logoUrl ? (
+          <img src={logoUrl} alt="Logo" className="w-10 h-10 rounded-xl object-contain shrink-0" />
+        ) : (
+          <div className="w-10 h-10 bg-sidebar-primary rounded-xl flex items-center justify-center shrink-0">
+            <Wrench className="w-5 h-5 text-sidebar-primary-foreground" />
+          </div>
+        )}
         {!collapsed && (
           <div className="overflow-hidden">
             <h1 className="font-bold text-base text-sidebar-primary-foreground truncate">Yahav CRM</h1>

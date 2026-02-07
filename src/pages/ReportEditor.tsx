@@ -17,6 +17,7 @@ import {
   ArrowRight, Share2, ExternalLink, Copy, Ban, FileText,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { PdfReportGenerator } from "@/components/reports/PdfReportGenerator";
 
 const ReportEditor = () => {
   const { id } = useParams();
@@ -161,7 +162,13 @@ const ReportEditor = () => {
         <Button variant="ghost" onClick={() => navigate(`/service-calls/${report.service_call_id}`)} className="gap-2">
           <ArrowRight className="w-4 h-4" /> חזרה לקריאה
         </Button>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <PdfReportGenerator
+            report={report}
+            serviceCall={serviceCall}
+            customer={customer}
+            photos={photos}
+          />
           <Button variant="outline" onClick={handleShare} className="gap-2">
             <Share2 className="w-4 h-4" /> שתף
           </Button>

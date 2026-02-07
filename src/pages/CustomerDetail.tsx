@@ -13,6 +13,7 @@ import { Tables } from "@/integrations/supabase/types";
 import {
   ArrowRight, Edit, Phone, Mail, MapPin, Plus, Calendar,
 } from "lucide-react";
+import { BillingTab } from "@/components/billing/BillingTab";
 
 type Customer = Tables<"customers">;
 
@@ -112,6 +113,9 @@ const CustomerDetail = () => {
           </TabsTrigger>
           <TabsTrigger value="details" className="text-base px-6 h-10">
             פרטים
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="text-base px-6 h-10">
+            חשבון
           </TabsTrigger>
         </TabsList>
 
@@ -219,6 +223,11 @@ const CustomerDetail = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Billing Tab */}
+        <TabsContent value="billing">
+          <BillingTab customerId={id!} />
         </TabsContent>
       </Tabs>
     </AppLayout>
