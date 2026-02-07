@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.get-public-share]
 verify_jwt = false
+
+[functions.admin-users]
+verify_jwt = false
