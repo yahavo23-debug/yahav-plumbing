@@ -594,6 +594,7 @@ export type Database = {
           assigned_to: string | null
           call_number: number
           cause_assessment: string | null
+          completed_at: string | null
           completed_date: string | null
           created_at: string
           created_by: string
@@ -612,6 +613,7 @@ export type Database = {
           priority: string
           property_occupied: boolean | null
           recommendations: string | null
+          resolution_text: string | null
           scheduled_date: string | null
           status: string
           test_limitations: string | null
@@ -625,6 +627,7 @@ export type Database = {
           assigned_to?: string | null
           call_number: number
           cause_assessment?: string | null
+          completed_at?: string | null
           completed_date?: string | null
           created_at?: string
           created_by: string
@@ -643,6 +646,7 @@ export type Database = {
           priority?: string
           property_occupied?: boolean | null
           recommendations?: string | null
+          resolution_text?: string | null
           scheduled_date?: string | null
           status?: string
           test_limitations?: string | null
@@ -656,6 +660,7 @@ export type Database = {
           assigned_to?: string | null
           call_number?: number
           cause_assessment?: string | null
+          completed_at?: string | null
           completed_date?: string | null
           created_at?: string
           created_by?: string
@@ -674,6 +679,7 @@ export type Database = {
           priority?: string
           property_occupied?: boolean | null
           recommendations?: string | null
+          resolution_text?: string | null
           scheduled_date?: string | null
           status?: string
           test_limitations?: string | null
