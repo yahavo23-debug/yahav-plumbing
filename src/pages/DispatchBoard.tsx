@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { format, addDays, subDays, isToday } from "date-fns";
 import { he } from "date-fns/locale";
-import { ChevronRight, ChevronLeft, CalendarDays, RefreshCw } from "lucide-react";
+import { ChevronRight, ChevronLeft, CalendarDays, RefreshCw, Filter, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DispatchDayView } from "@/components/dispatch/DispatchDayView";
@@ -21,11 +21,13 @@ import { DispatchCard } from "@/components/dispatch/DispatchCard";
 import { TechnicianStatsPanel } from "@/components/dispatch/TechnicianStatsPanel";
 import { useDispatchCalls, type DispatchCall } from "@/hooks/useDispatchCalls";
 import { useTechnicians } from "@/hooks/useTechnicians";
+import { getTechnicianColor } from "@/lib/dispatch-constants";
 import { cn } from "@/lib/utils";
 
 export default function DispatchBoard() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeCall, setActiveCall] = useState<DispatchCall | null>(null);
+  const [filterTechId, setFilterTechId] = useState<string | null>(null);
 
   const { calls, unscheduledCalls, loading, scheduleCall, unscheduleCall, assignTechnician, reload } =
     useDispatchCalls(selectedDate);
@@ -98,6 +100,16 @@ export default function DispatchBoard() {
     [unscheduleCall]
   );
 
+  // Filter calls by selected technician
+  const filteredCalls = useMemo(
+    () => (filterTechId ? calls.filter((c) => c.assigned_to === filterTechId) : calls),
+    [calls, filterTechId]
+  );
+  const filteredUnscheduled = useMemo(
+    () => (filterTechId ? unscheduledCalls.filter((c) => c.assigned_to === filterTechId) : unscheduledCalls),
+    [unscheduledCalls, filterTechId]
+  );
+
   const todayLabel = isToday(selectedDate);
   const dateDisplay = format(selectedDate, "EEEE, d בMMMM yyyy", { locale: he });
 
@@ -153,10 +165,44 @@ export default function DispatchBoard() {
           <div className="flex items-center gap-3">
             <TechnicianStatsPanel technicians={technicians} techColorMap={techColorMap} />
             <div className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{calls.length}</span> קריאות משובצות
+              <span className="font-medium text-foreground">{filteredCalls.length}</span> קריאות משובצות
             </div>
           </div>
         </header>
+
+        {/* Technician filter bar */}
+        <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-muted/30 border-b border-border overflow-x-auto">
+          <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+          <Button
+            variant={filterTechId === null ? "default" : "ghost"}
+            size="sm"
+            className="h-7 text-xs shrink-0"
+            onClick={() => setFilterTechId(null)}
+          >
+            הכל
+          </Button>
+          {technicians.map((tech) => {
+            const idx = techColorMap.get(tech.user_id) ?? 0;
+            const color = getTechnicianColor(idx);
+            const isActive = filterTechId === tech.user_id;
+            return (
+              <Button
+                key={tech.user_id}
+                variant={isActive ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "h-7 text-xs shrink-0 gap-1.5",
+                  !isActive && "bg-card"
+                )}
+                onClick={() => setFilterTechId(isActive ? null : tech.user_id)}
+              >
+                <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", color.dot)} />
+                {tech.full_name}
+                {isActive && <X className="w-3 h-3" />}
+              </Button>
+            );
+          })}
+        </div>
 
         {/* Main content with DnD */}
         <DndContext
@@ -169,7 +215,7 @@ export default function DispatchBoard() {
             {/* Unscheduled sidebar */}
             <div className="w-72 shrink-0">
               <UnscheduledSidebar
-                calls={unscheduledCalls}
+                calls={filteredUnscheduled}
                 technicians={technicians}
                 techColorMap={techColorMap}
                 onAssignTechnician={handleAssignTechnician}
@@ -184,7 +230,7 @@ export default function DispatchBoard() {
                 </div>
               ) : (
                 <DispatchDayView
-                  calls={calls}
+                  calls={filteredCalls}
                   technicians={technicians}
                   techColorMap={techColorMap}
                   onAssignTechnician={handleAssignTechnician}
