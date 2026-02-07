@@ -11,35 +11,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { ArrowRight } from "lucide-react";
-
-const serviceTypes = [
-  { value: "leak_detection", label: "איתור נזילה" },
-  { value: "sewer_camera", label: "צילום קו ביוב" },
-  { value: "pressure_test", label: "בדיקת לחץ" },
-  { value: "other", label: "אחר" },
-];
-
-const priorities = [
-  { value: "low", label: "נמוכה" },
-  { value: "medium", label: "בינונית" },
-  { value: "high", label: "גבוהה" },
-  { value: "urgent", label: "דחופה" },
-];
-
-const priorityColors: Record<string, string> = {
-  low: "bg-muted text-muted-foreground",
-  medium: "bg-primary/10 text-primary",
-  high: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  urgent: "bg-destructive/10 text-destructive",
-};
+import { serviceTypes, priorities, priorityColors, knownServiceTypeKeys } from "@/lib/constants";
 
 const ServiceCallForm = () => {
   const { id, customerId } = useParams();
   const isEdit = !!id;
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [customerName, setCustomerName] = useState("");
+  const [customJobType, setCustomJobType] = useState("");
 
   const [form, setForm] = useState({
     customer_id: customerId || "",
@@ -68,18 +49,26 @@ const ServiceCallForm = () => {
       toast({ title: "שגיאה", description: "לא ניתן לטעון את הקריאה", variant: "destructive" });
       navigate("/service-calls");
     } else if (data) {
+      const isKnownType = knownServiceTypeKeys.has(data.job_type);
       setForm({
         customer_id: data.customer_id,
-        job_type: data.job_type,
+        job_type: isKnownType ? data.job_type : "other",
         description: data.description || "",
         scheduled_date: data.scheduled_date || "",
         status: data.status,
         priority: (data as any).priority || "medium",
         notes: (data as any).notes || "",
       });
+      if (!isKnownType) {
+        setCustomJobType(data.job_type);
+      }
       setCustomerName((data as any).customers?.name || "");
     }
   };
+
+  const resolvedJobType = form.job_type === "other" && isAdmin && customJobType.trim()
+    ? customJobType.trim()
+    : form.job_type;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +78,7 @@ const ServiceCallForm = () => {
     try {
       const payload = {
         customer_id: form.customer_id,
-        job_type: form.job_type,
+        job_type: resolvedJobType,
         description: form.description.trim() || null,
         scheduled_date: form.scheduled_date || null,
         status: form.status,
@@ -122,6 +111,8 @@ const ServiceCallForm = () => {
 
   const backPath = isEdit ? `/service-calls/${id}` : "/service-calls/new";
 
+  const isFormValid = form.customer_id && (form.job_type !== "other" || !isAdmin || customJobType.trim()) && form.job_type;
+
   return (
     <AppLayout title={isEdit ? "עריכת קריאה" : "קריאת שירות חדשה"}>
       <Button variant="ghost" onClick={() => navigate(backPath)} className="mb-4 gap-2">
@@ -143,7 +134,10 @@ const ServiceCallForm = () => {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>סוג שירות *</Label>
-                <Select value={form.job_type} onValueChange={(v) => setForm((f) => ({ ...f, job_type: v }))}>
+                <Select value={form.job_type} onValueChange={(v) => {
+                  setForm((f) => ({ ...f, job_type: v }));
+                  if (v !== "other") setCustomJobType("");
+                }}>
                   <SelectTrigger><SelectValue placeholder="בחר סוג שירות" /></SelectTrigger>
                   <SelectContent>
                     {serviceTypes.map((t) => (
@@ -151,6 +145,15 @@ const ServiceCallForm = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {form.job_type === "other" && isAdmin && (
+                  <Input
+                    value={customJobType}
+                    onChange={(e) => setCustomJobType(e.target.value)}
+                    placeholder="הקלד סוג שירות מותאם..."
+                    className="mt-2"
+                    maxLength={100}
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label>עדיפות</Label>
@@ -221,7 +224,7 @@ const ServiceCallForm = () => {
               </div>
             )}
 
-            <Button type="submit" className="w-full h-12" disabled={loading || !form.job_type || !form.customer_id}>
+            <Button type="submit" className="w-full h-12" disabled={loading || !isFormValid}>
               {loading ? "שומר..." : isEdit ? "עדכן" : "צור קריאה"}
             </Button>
           </form>

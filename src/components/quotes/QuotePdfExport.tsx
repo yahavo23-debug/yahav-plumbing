@@ -12,17 +12,13 @@ interface QuotePdfExportProps {
   serviceCallId: string;
 }
 
+import { getJobTypeLabel } from "@/lib/constants";
+
 const serviceTypeLabels: Record<string, string> = {
   leak_detection: "איתור נזילה",
   sewer_camera: "צילום קו ביוב",
   pressure_test: "בדיקת לחץ",
   other: "אחר",
-  "תיקון": "תיקון",
-  "התקנה": "התקנה",
-  "תחזוקה": "תחזוקה",
-  "בדיקה": "בדיקה",
-  "ייעוץ": "ייעוץ",
-  "אחר": "אחר",
 };
 
 const VAT_RATE = 18;
@@ -192,7 +188,7 @@ function buildQuoteHtml(data: {
   } = data;
 
   const address = [customer?.city, customer?.address].filter(Boolean).join(" ");
-  const jobType = serviceTypeLabels[sc.job_type] || sc.job_type || "";
+  const jobType = getJobTypeLabel(sc.job_type);
   const findings = sc.findings || "";
   const description = sc.description || "";
   const leakLocation = sc.leak_location || "";

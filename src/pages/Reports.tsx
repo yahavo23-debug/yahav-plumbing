@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { FileText, Share2 } from "lucide-react";
+import { getJobTypeLabel } from "@/lib/constants";
 
 const Reports = () => {
   const [reports, setReports] = useState<any[]>([]);
@@ -65,7 +66,7 @@ const Reports = () => {
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {customer?.name} • {sc?.job_type}
+                      {customer?.name} • {getJobTypeLabel(sc?.job_type)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(report.created_at).toLocaleDateString("he-IL")}

@@ -41,6 +41,8 @@ const priorityColors: Record<string, string> = {
   high: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   urgent: "bg-destructive/10 text-destructive",
 };
+import { getJobTypeLabel } from "@/lib/constants";
+
 const serviceTypeLabels: Record<string, string> = {
   leak_detection: "איתור נזילה",
   sewer_camera: "צילום קו ביוב",
@@ -176,7 +178,7 @@ const CustomerDetail = () => {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-sm">
-                              {serviceTypeLabels[call.job_type] || call.job_type}
+                              {getJobTypeLabel(call.job_type)}
                             </span>
                             <Badge variant="outline" className={`text-xs ${statusColors[call.status]}`}>
                               {statusLabels[call.status]}

@@ -43,6 +43,9 @@ const priorityColors: Record<string, string> = {
   high: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   urgent: "bg-destructive/10 text-destructive",
 };
+import { getJobTypeLabel } from "@/lib/constants";
+
+// serviceTypeLabels kept for backward compat reference — prefer getJobTypeLabel
 const serviceTypeLabels: Record<string, string> = {
   leak_detection: "איתור נזילה",
   sewer_camera: "צילום קו ביוב",
@@ -210,7 +213,7 @@ const ServiceCallDetail = () => {
                   </span>
                 )}
               </div>
-              <p className="text-sm"><strong>סוג:</strong> {serviceTypeLabels[call.job_type] || call.job_type}</p>
+              <p className="text-sm"><strong>סוג:</strong> {getJobTypeLabel(call.job_type)}</p>
               {call.scheduled_date && (
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Calendar className="w-3.5 h-3.5" /> {new Date(call.scheduled_date).toLocaleDateString("he-IL")}
