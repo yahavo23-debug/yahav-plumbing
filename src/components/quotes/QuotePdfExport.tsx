@@ -216,7 +216,7 @@ function buildQuoteHtml(data: {
 
     <div style="display:flex;justify-content:space-between;font-size:13px;color:#666;margin-bottom:20px;">
       <span>תאריך: ${dateStr}</span>
-      <span>מס׳ הצעה: ${quote.id?.substring(0, 8).toUpperCase() || "—"}</span>
+      <span>מס׳ הצעה: ${quote.quote_number || "—"}</span>
     </div>
   `;
 
