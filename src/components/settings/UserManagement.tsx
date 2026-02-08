@@ -14,11 +14,12 @@ import {
 } from "@/components/ui/select";
 import {
   Users, Copy, Check, UserPlus, Shield, Wrench, ClipboardList,
-  UserX, HardHat, Settings2, Ban, Trash2, ShieldOff, Mail,
+  UserX, HardHat, Settings2, Ban, Trash2, ShieldOff, Mail, Pencil,
 } from "lucide-react";
 import { ContractorAccessDialog } from "./ContractorAccessDialog";
 import { BanUserDialog } from "./BanUserDialog";
 import { DeleteUserDialog } from "./DeleteUserDialog";
+import { EditUserProfileDialog } from "./EditUserProfileDialog";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
@@ -26,6 +27,7 @@ interface UserProfile {
   user_id: string;
   full_name: string | null;
   phone: string | null;
+  id_number: string | null;
   email: string | null;
   role: "admin" | "technician" | "secretary" | "contractor" | null;
   banned_until: string | null;
@@ -65,6 +67,14 @@ export function UserManagement() {
     userId: string;
     name: string;
   }>({ open: false, userId: "", name: "" });
+  const [editDialog, setEditDialog] = useState<{
+    open: boolean;
+    userId: string;
+    name: string;
+    phone: string | null;
+    idNumber: string | null;
+    fullName: string | null;
+  }>({ open: false, userId: "", name: "", phone: null, idNumber: null, fullName: null });
 
   const signupUrl = `${getPublicBaseUrl()}/auth`;
 
@@ -76,7 +86,7 @@ export function UserManagement() {
     // Fetch profiles with ban info
     const { data: profiles, error: pErr } = await supabase
       .from("profiles")
-      .select("user_id, full_name, phone, banned_until, ban_reason")
+      .select("user_id, full_name, phone, banned_until, ban_reason, id_number")
       .order("created_at", { ascending: true });
 
     if (pErr) {
@@ -117,10 +127,11 @@ export function UserManagement() {
       console.error("Error fetching emails:", err);
     }
 
-    const merged: UserProfile[] = (profiles || []).map((p) => ({
+    const merged: UserProfile[] = (profiles || []).map((p: any) => ({
       user_id: p.user_id,
       full_name: p.full_name,
       phone: p.phone,
+      id_number: p.id_number || null,
       email: emailMap.get(p.user_id) || null,
       role: roleMap.get(p.user_id) || null,
       banned_until: p.banned_until,
@@ -418,6 +429,9 @@ export function UserManagement() {
                       {u.phone && (
                         <p className="text-xs text-muted-foreground mt-0.5" dir="ltr">{u.phone}</p>
                       )}
+                      {u.id_number && (
+                        <p className="text-xs text-muted-foreground mt-0.5" dir="ltr">ת.ז: {u.id_number}</p>
+                      )}
                       {banned && u.banned_until && (
                         <p className="text-xs text-destructive mt-0.5">
                           חסום עד: {new Date(u.banned_until).getFullYear() >= 2099
@@ -479,6 +493,23 @@ export function UserManagement() {
                   {/* Action buttons for non-current, non-admin users */}
                   {!isCurrentUser && !isTargetAdmin && (
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        onClick={() =>
+                          setEditDialog({
+                            open: true,
+                            userId: u.user_id,
+                            name: u.full_name || "משתמש",
+                            phone: u.phone,
+                            idNumber: u.id_number,
+                            fullName: u.full_name,
+                          })
+                        }
+                      >
+                        <Pencil className="w-3 h-3" /> ערוך פרטים
+                      </Button>
                       {u.role === "contractor" && (
                         <Button
                           variant="outline"
@@ -567,6 +598,16 @@ export function UserManagement() {
         onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
         userName={deleteDialog.name}
         onConfirm={handleDeleteUser}
+      />
+      <EditUserProfileDialog
+        open={editDialog.open}
+        onOpenChange={(open) => setEditDialog((prev) => ({ ...prev, open }))}
+        userId={editDialog.userId}
+        userName={editDialog.name}
+        currentPhone={editDialog.phone}
+        currentIdNumber={editDialog.idNumber}
+        currentFullName={editDialog.fullName}
+        onSaved={loadUsers}
       />
     </div>
   );
