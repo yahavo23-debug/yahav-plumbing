@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -32,6 +33,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
   const [notes, setNotes] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [includeVat, setIncludeVat] = useState(true);
   const [items, setItems] = useState<QuoteItem[]>([
     { description: "", quantity: 1, unit_price: 0, sort_order: 0 },
   ]);
@@ -54,6 +56,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
       setNotes(q.notes || "");
       setValidUntil(q.valid_until || "");
       setDiscountPercent(Number(q.discount_percent) || 0);
+      setIncludeVat(q.include_vat !== false);
     }
     if (itemsRes.data && itemsRes.data.length > 0) {
       setItems(
@@ -94,7 +97,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
   );
   const discountAmount = subtotal * (discountPercent / 100);
   const afterDiscount = subtotal - discountAmount;
-  const vatAmount = afterDiscount * VAT_RATE;
+  const vatAmount = includeVat ? afterDiscount * VAT_RATE : 0;
   const totalWithVat = afterDiscount + vatAmount;
 
   const handleSave = async () => {
@@ -112,6 +115,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
             notes: notes.trim() || null,
             valid_until: validUntil || null,
             discount_percent: discountPercent,
+            include_vat: includeVat,
           } as any)
           .eq("id", quoteId);
         if (error) throw error;
@@ -124,6 +128,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
             notes: notes.trim() || null,
             valid_until: validUntil || null,
             discount_percent: discountPercent,
+            include_vat: includeVat,
             created_by: user.id,
           } as any)
           .select()
@@ -288,15 +293,26 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
             </div>
           )}
 
-          {/* VAT */}
+          {/* VAT toggle */}
           <div className="flex justify-between items-center px-4 py-2.5">
-            <span className="text-sm text-muted-foreground">מע"מ (18%)</span>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={includeVat}
+                onCheckedChange={setIncludeVat}
+                id="include-vat"
+              />
+              <Label htmlFor="include-vat" className="text-sm text-muted-foreground cursor-pointer">
+                {includeVat ? "מע\"מ (18%)" : "ללא מע\"מ"}
+              </Label>
+            </div>
             <span className="text-sm font-medium">₪{vatAmount.toFixed(2)}</span>
           </div>
 
-          {/* Total with VAT */}
+          {/* Total */}
           <div className="flex justify-between items-center px-4 py-3 bg-muted/40">
-            <span className="font-semibold">סה"כ כולל מע"מ</span>
+            <span className="font-semibold">
+              {includeVat ? "סה\"כ כולל מע\"מ" : "סה\"כ"}
+            </span>
             <span className="text-lg font-bold">₪{totalWithVat.toFixed(2)}</span>
           </div>
         </div>

@@ -32,6 +32,7 @@ interface Quote {
   subtotal: number;
   discount_percent: number;
   total_with_vat: number;
+  include_vat: boolean;
   signature_path: string | null;
   signed_at: string | null;
 }
@@ -98,7 +99,8 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
         const subtotal = itemsByQuote[q.id] || 0;
         const discount = Number(q.discount_percent) || 0;
         const afterDiscount = subtotal * (1 - discount / 100);
-        const totalWithVat = afterDiscount * 1.18;
+        const vatIncluded = q.include_vat !== false;
+        const totalWithVat = vatIncluded ? afterDiscount * 1.18 : afterDiscount;
         return {
           id: q.id,
           quote_number: q.quote_number,
@@ -110,6 +112,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
           subtotal,
           discount_percent: discount,
           total_with_vat: totalWithVat,
+          include_vat: vatIncluded,
           signature_path: q.signature_path || null,
           signed_at: q.signed_at || null,
         };
