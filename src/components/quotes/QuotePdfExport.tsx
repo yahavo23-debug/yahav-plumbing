@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { FileDown, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { buildPdfHeader, buildPdfFooter, BUSINESS_INFO, renderCanvasToPdf } from "@/lib/pdf-utils";
 
 interface QuotePdfExportProps {
   quoteId: string;
@@ -125,24 +126,7 @@ export function QuotePdfExport({ quoteId, serviceCallId }: QuotePdfExportProps) 
 
       // Generate PDF with multi-page support
       const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = -(imgHeight - heightLeft);
-        pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
+      renderCanvasToPdf(canvas, pdf);
 
       // Download
       const fileName = `הצעת_מחיר_${customer?.name || "לקוח"}_${dateStr.replace(/\//g, "-")}.pdf`;
@@ -211,16 +195,13 @@ function buildQuoteHtml(data: {
   const infoRow = (label: string, value: string) =>
     value ? `<tr><td style="padding:4px 8px;font-size:13px;font-weight:600;color:#555;width:120px;vertical-align:top;">${label}</td><td style="padding:4px 8px;font-size:13px;">${value}</td></tr>` : "";
 
-  // Header
-  let html = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1a56db;padding-bottom:16px;margin-bottom:20px;">
-      <div>
-        <h1 style="font-size:22px;font-weight:800;color:#1a56db;margin:0;">הצעת מחיר</h1>
-        <p style="font-size:14px;font-weight:600;color:#333;margin:4px 0 0;">Yahav.OU – איתור נזילות וצילום קווי ביוב</p>
-      </div>
-      ${logoUrl ? `<img src="${logoUrl}" style="max-height:55px;max-width:180px;object-fit:contain;" crossorigin="anonymous" />` : ""}
-    </div>
+  let html = buildPdfHeader({
+    title: "הצעת מחיר",
+    subtitle: `${BUSINESS_INFO.name} – ${BUSINESS_INFO.subtitle}`,
+    logoUrl,
+  });
 
+  html += `
     <div style="display:flex;justify-content:space-between;font-size:13px;color:#666;margin-bottom:20px;">
       <span>תאריך: ${dateStr}</span>
       <span>מס׳ הצעה: ${quote.quote_number || "—"}</span>
@@ -401,13 +382,7 @@ function buildQuoteHtml(data: {
     `;
   }
 
-  // Footer
-  html += `
-    <div style="margin-top:30px;padding-top:12px;border-top:2px solid #e0e0e0;text-align:center;font-size:12px;color:#888;">
-      <p style="margin:0;font-weight:600;">להמשך תיאום ואישור:</p>
-      <p style="margin:4px 0 0;">Yahav.OU – איתור נזילות וצילום קווי ביוב</p>
-    </div>
-  `;
+  html += buildPdfFooter(dateStr, new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }));
 
   return html;
 }

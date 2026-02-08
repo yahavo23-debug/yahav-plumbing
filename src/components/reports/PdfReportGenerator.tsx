@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { buildPdfHeader, buildPdfFooter, renderCanvasToPdf } from "@/lib/pdf-utils";
 
 interface PdfReportGeneratorProps {
   report: any;
@@ -149,24 +150,7 @@ export function PdfReportGenerator({
 
       // Generate PDF
       const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = -(imgHeight - heightLeft);
-        pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
+      renderCanvasToPdf(canvas, pdf);
 
       // Download directly to device
       const now2 = new Date();
@@ -313,15 +297,13 @@ function buildReportHtml(data: {
       ? `<p style="font-size:13px;margin:4px 0;"><strong>${label}:</strong> ${value}</p>`
       : "";
 
-  let html = `
-    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1a56db;padding-bottom:16px;margin-bottom:20px;">
-      <div>
-        <h1 style="font-size:22px;font-weight:800;color:#1a56db;margin:0;">דוח עבודה</h1>
-        <p style="font-size:13px;color:#666;margin:4px 0 0;">קריאה #${sc.call_number} | ${dateStr} ${timeStr}</p>
-      </div>
-      ${logoUrl ? `<img src="${logoUrl}" style="max-height:55px;max-width:180px;object-fit:contain;" crossorigin="anonymous" />` : ""}
-    </div>
+  let html = buildPdfHeader({
+    title: "דוח עבודה",
+    subtitle: `קריאה #${sc.call_number} | ${dateStr} ${timeStr}`,
+    logoUrl,
+  });
 
+  html += `
     <div style="background:#f8f9fa;padding:14px;border-radius:6px;margin-bottom:16px;">
       <h2 style="font-size:14px;font-weight:700;margin:0 0 8px;">פרטי לקוח</h2>
       ${field("שם", customer?.name)}
@@ -435,11 +417,7 @@ function buildReportHtml(data: {
     html += `</div>`;
   }
 
-  html += `
-    <div style="margin-top:30px;padding-top:12px;border-top:2px solid #e0e0e0;font-size:11px;color:#999;text-align:center;">
-      דוח זה הופק אוטומטית | ${dateStr} ${timeStr}
-    </div>
-  `;
+  html += buildPdfFooter(dateStr, timeStr);
 
   return html;
 }

@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { FileDown, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { buildPdfHeader, buildPdfFooter, renderCanvasToPdf } from "@/lib/pdf-utils";
 
 interface LedgerEntry {
   id: string;
@@ -127,24 +128,7 @@ export function BillingPdfExport({
 
       // Generate PDF
       const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = -(imgHeight - heightLeft);
-        pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
+      renderCanvasToPdf(canvas, pdf);
 
       // Download directly to device
       const fileName = `דוח_גבייה_${customerName}_${dateStr.replace(/\//g, "-")}.pdf`;
@@ -225,16 +209,13 @@ function buildBillingHtml(data: {
   const balanceColor = balance > 0 ? "#dc2626" : balance < 0 ? "#16a34a" : "#1a1a1a";
   const balanceText = balance > 0 ? "חוב" : balance < 0 ? "זכות" : "מאוזן";
 
-  let html = `
-    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1a56db;padding-bottom:16px;margin-bottom:20px;">
-      <div>
-        <h1 style="font-size:22px;font-weight:800;color:#1a56db;margin:0;">דוח גבייה</h1>
-        <p style="font-size:13px;color:#666;margin:4px 0 0;">${customerName} | ${dateStr} ${timeStr}</p>
-      </div>
-      ${logoUrl ? `<img src="${logoUrl}" style="max-height:55px;max-width:180px;object-fit:contain;" crossorigin="anonymous" />` : ""}
-    </div>
+  let html = buildPdfHeader({
+    title: "דוח גבייה",
+    subtitle: `${customerName} | ${dateStr} ${timeStr}`,
+    logoUrl,
+  });
 
-    <div style="background:#f8f9fa;padding:14px;border-radius:6px;margin-bottom:16px;">
+  html += `
       <h2 style="font-size:14px;font-weight:700;margin:0 0 8px;">פרטי לקוח</h2>
       <p style="font-size:13px;margin:4px 0;"><strong>שם:</strong> ${customerName}</p>
       ${customerPhone ? `<p style="font-size:13px;margin:4px 0;"><strong>טלפון:</strong> ${customerPhone}</p>` : ""}
@@ -322,11 +303,9 @@ function buildBillingHtml(data: {
   html += `
       </tbody>
     </table>
-
-    <div style="margin-top:30px;padding-top:12px;border-top:2px solid #e0e0e0;font-size:11px;color:#999;text-align:center;">
-      דוח זה הופק אוטומטית | ${dateStr} ${timeStr}
-    </div>
   `;
+
+  html += buildPdfFooter(dateStr, timeStr);
 
   return html;
 }
