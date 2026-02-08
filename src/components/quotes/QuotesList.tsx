@@ -205,7 +205,13 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
       ) : (
         <div className="space-y-3">
           {quotes.map((quote) => (
-            <Card key={quote.id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={quote.id}
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => {
+                if (!readOnly) setEditingId(quote.id);
+              }}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -236,7 +242,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                     </div>
                   </div>
                   {!readOnly && (
-                    <div className="flex items-center gap-1 flex-wrap">
+                    <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
                       {/* Convert to job — for approved or sent quotes */}
                       {(quote.status === "approved" || quote.status === "sent") && (
                         <ConvertQuoteToJob quoteId={quote.id} serviceCallId={serviceCallId} />
