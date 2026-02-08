@@ -14,6 +14,8 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [idNumber, setIdNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -48,7 +50,17 @@ const Auth = () => {
           setLoading(false);
           return;
         }
-        const { error } = await signUp(email, password, fullName);
+        if (!phone.trim() || !/^0\d{8,9}$/.test(phone.trim())) {
+          toast({ title: "שגיאה", description: "יש להזין מספר טלפון ישראלי תקין (למשל 0501234567)", variant: "destructive" });
+          setLoading(false);
+          return;
+        }
+        if (!idNumber.trim() || !/^\d{5,9}$/.test(idNumber.trim())) {
+          toast({ title: "שגיאה", description: "יש להזין מספר תעודת זהות תקין (5-9 ספרות)", variant: "destructive" });
+          setLoading(false);
+          return;
+        }
+        const { error } = await signUp(email, password, fullName, phone.trim(), idNumber.trim());
         if (error) {
           if (error.message.includes("already registered")) {
             toast({ title: "שגיאה", description: "כתובת אימייל זו כבר רשומה במערכת", variant: "destructive" });
@@ -88,17 +100,42 @@ const Auth = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">שם מלא</Label>
-                <Input
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="ישראל ישראלי"
-                  required={!isLogin}
-                  dir="rtl"
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">שם מלא</Label>
+                  <Input
+                    id="fullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="ישראל ישראלי"
+                    required={!isLogin}
+                    dir="rtl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">מספר טלפון</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="0501234567"
+                    required={!isLogin}
+                    dir="ltr"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="idNumber">תעודת זהות</Label>
+                  <Input
+                    id="idNumber"
+                    value={idNumber}
+                    onChange={(e) => setIdNumber(e.target.value)}
+                    placeholder="123456789"
+                    required={!isLogin}
+                    dir="ltr"
+                  />
+                </div>
+              </>
             )}
             <div className="space-y-2">
               <Label htmlFor="email">אימייל</Label>

@@ -25,6 +25,7 @@ const Settings = () => {
   const isContractor = role === "contractor";
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [idNumber, setIdNumber] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -36,13 +37,14 @@ const Settings = () => {
   const loadProfile = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, phone")
+      .select("full_name, phone, id_number")
       .eq("user_id", user!.id)
       .single();
 
     if (data) {
       setFullName(data.full_name || "");
       setPhone(data.phone || "");
+      setIdNumber((data as any).id_number || "");
     }
     setLoading(false);
   };
@@ -56,7 +58,8 @@ const Settings = () => {
       .update({
         full_name: fullName.trim() || null,
         phone: phone.trim() || null,
-      })
+        id_number: idNumber.trim() || null,
+      } as any)
       .eq("user_id", user.id);
 
     if (error) {
@@ -98,6 +101,10 @@ const Settings = () => {
                   <Label className="text-sm">טלפון</Label>
                   <div className="mt-1 text-sm py-2 px-3 bg-muted rounded-md" dir="ltr">{phone || "—"}</div>
                 </div>
+                <div>
+                  <Label className="text-sm">תעודת זהות</Label>
+                  <div className="mt-1 text-sm py-2 px-3 bg-muted rounded-md" dir="ltr">{idNumber || "—"}</div>
+                </div>
               </>
             ) : (
               <>
@@ -116,6 +123,16 @@ const Settings = () => {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="הכנס מספר טלפון"
+                    className="mt-1"
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">תעודת זהות</Label>
+                  <Input
+                    value={idNumber}
+                    onChange={(e) => setIdNumber(e.target.value)}
+                    placeholder="הכנס מספר תעודת זהות"
                     className="mt-1"
                     dir="ltr"
                   />

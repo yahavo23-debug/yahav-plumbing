@@ -10,7 +10,7 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   role: AppRole;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, phone?: string, idNumber?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -68,9 +68,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAdmin(userRole === "admin");
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, fullName: string, phone?: string, idNumber?: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -78,7 +78,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { full_name: fullName },
       },
     });
-    return { error: error as Error | null };
+
+    if (error) return { error: error as Error | null };
+
+    // Update profile with phone and id_number
+    if (data.user && (phone || idNumber)) {
+      await supabase
+        .from("profiles")
+        .update({
+          phone: phone || null,
+          id_number: idNumber || null,
+        })
+        .eq("user_id", data.user.id);
+    }
+
+    return { error: null };
   };
 
   const signIn = async (email: string, password: string) => {
