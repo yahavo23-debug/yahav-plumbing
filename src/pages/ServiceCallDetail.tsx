@@ -16,8 +16,12 @@ import { VideoList } from "@/components/media/VideoList";
 import { MediaUploader } from "@/components/media/MediaUploader";
 import { Tables } from "@/integrations/supabase/types";
 import {
-  ArrowRight, Edit, FileText, Calendar, User, MapPin, Phone,
+  ArrowRight, Edit, FileText, Calendar, User, MapPin, Phone, Trash2,
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { QuotesList } from "@/components/quotes/QuotesList";
 import { DiagnosisTab } from "@/components/diagnosis/DiagnosisTab";
 import { ShareButton } from "@/components/sharing/ShareButton";
@@ -67,7 +71,8 @@ const ServiceCallDetail = () => {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Keep findings/recommendations for report creation
   const [findings, setFindings] = useState("");
@@ -175,6 +180,15 @@ const ServiceCallDetail = () => {
             <Button onClick={handleCreateReport} className="gap-2">
               <FileText className="w-4 h-4" /> דוח עבודה
             </Button>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="w-4 h-4" /> מחיקה
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -370,6 +384,39 @@ const ServiceCallDetail = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>מחיקת קריאת שירות</AlertDialogTitle>
+            <AlertDialogDescription>
+              האם אתה בטוח שברצונך למחוק את קריאה #{call?.call_number} של {customer?.name}?
+              פעולה זו תמחק גם את כל התמונות, הסרטונים, הצעות המחיר והדוחות המשויכים. לא ניתן לבטל פעולה זו.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel disabled={deleting}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                setDeleting(true);
+                const { error } = await supabase.from("service_calls").delete().eq("id", id!);
+                if (error) {
+                  toast({ title: "שגיאה", description: "לא ניתן למחוק את הקריאה", variant: "destructive" });
+                  setDeleting(false);
+                } else {
+                  toast({ title: "נמחק", description: `קריאה #${call?.call_number} נמחקה בהצלחה` });
+                  navigate(`/customers/${call?.customer_id}`);
+                }
+              }}
+            >
+              {deleting ? "מוחק..." : "מחק קריאה"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
