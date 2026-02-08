@@ -1,0 +1,1 @@
+ALTER TABLE public.quotes ADD COLUMN include_vat boolean NOT NULL DEFAULT true;

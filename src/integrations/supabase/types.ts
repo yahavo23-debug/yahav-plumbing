@@ -327,6 +327,7 @@ export type Database = {
           created_by: string
           discount_percent: number
           id: string
+          include_vat: boolean
           notes: string | null
           quote_number: number
           service_call_id: string
@@ -342,6 +343,7 @@ export type Database = {
           created_by: string
           discount_percent?: number
           id?: string
+          include_vat?: boolean
           notes?: string | null
           quote_number?: number
           service_call_id: string
@@ -357,6 +359,7 @@ export type Database = {
           created_by?: string
           discount_percent?: number
           id?: string
+          include_vat?: boolean
           notes?: string | null
           quote_number?: number
           service_call_id?: string
