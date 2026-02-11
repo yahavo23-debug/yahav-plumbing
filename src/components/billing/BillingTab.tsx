@@ -43,6 +43,8 @@ import {
   Trash2,
   Image as ImageIcon,
   CheckCircle,
+  StickyNote,
+  BarChart3,
 } from "lucide-react";
 import { BillingPdfExport } from "./BillingPdfExport";
 import { ReceiptUpload } from "./ReceiptUpload";
@@ -124,6 +126,7 @@ export function BillingTab({
   const [saving, setSaving] = useState(false);
   const [hasLegalAction, setHasLegalAction] = useState(false);
   const [legalActionNote, setLegalActionNote] = useState("");
+  const [billingNotes, setBillingNotes] = useState("");
 
   const [formDate, setFormDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -162,7 +165,7 @@ export function BillingTab({
         .order("entry_date", { ascending: false }),
       supabase
         .from("customers")
-        .select("has_legal_action, legal_action_note")
+        .select("has_legal_action, legal_action_note, billing_notes")
         .eq("id", customerId)
         .single(),
     ]);
@@ -197,6 +200,7 @@ export function BillingTab({
     if (customerRes.data) {
       setHasLegalAction((customerRes.data as any).has_legal_action ?? false);
       setLegalActionNote((customerRes.data as any).legal_action_note ?? "");
+      setBillingNotes((customerRes.data as any).billing_notes ?? "");
     }
 
     setLoading(false);
@@ -250,6 +254,68 @@ export function BillingTab({
       ? `${overdueMonths} חודשים (${overdueDays} ימים)`
       : `${overdueDays} ימים`
     : null;
+
+  // Calculate payment delay stats per charge
+  const chargeEntries = [...entries].filter(e => e.entry_type === "charge").sort((a, b) => new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime());
+  const paymentEntries = [...entries].filter(e => e.entry_type === "payment").sort((a, b) => new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime());
+
+  // Calculate average days to payment
+  const paymentDelays: number[] = [];
+  let runningCharges = 0;
+  let lastChargeDate: string | null = null;
+  for (const charge of chargeEntries) {
+    runningCharges += Number(charge.amount);
+    if (!lastChargeDate) lastChargeDate = charge.entry_date;
+  }
+  // For each payment, calculate delay from oldest unpaid charge
+  const sortedAll = [...entries].sort((a, b) => new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime());
+  let pendingCharges: { date: string; amount: number }[] = [];
+  for (const entry of sortedAll) {
+    if (entry.entry_type === "charge") {
+      pendingCharges.push({ date: entry.entry_date, amount: Number(entry.amount) });
+    } else if (entry.entry_type === "payment" || entry.entry_type === "credit") {
+      let remaining = Number(entry.amount);
+      while (remaining > 0 && pendingCharges.length > 0) {
+        const oldest = pendingCharges[0];
+        const covered = Math.min(remaining, oldest.amount);
+        const delayDays = Math.floor((new Date(entry.entry_date).getTime() - new Date(oldest.date).getTime()) / (1000 * 60 * 60 * 24));
+        if (delayDays >= 0) paymentDelays.push(delayDays);
+        oldest.amount -= covered;
+        remaining -= covered;
+        if (oldest.amount <= 0) pendingCharges.shift();
+      }
+    }
+  }
+  const avgPaymentDelay = paymentDelays.length > 0 ? Math.round(paymentDelays.reduce((a, b) => a + b, 0) / paymentDelays.length) : null;
+  const maxPaymentDelay = paymentDelays.length > 0 ? Math.max(...paymentDelays) : null;
+
+  // Group entries by month for timeline
+  const groupedByMonth: Record<string, LedgerEntry[]> = {};
+  for (const entry of entries) {
+    const date = new Date(entry.entry_date);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    if (!groupedByMonth[key]) groupedByMonth[key] = [];
+    groupedByMonth[key].push(entry);
+  }
+  const sortedMonths = Object.keys(groupedByMonth).sort((a, b) => b.localeCompare(a));
+
+  const formatMonthHeader = (key: string) => {
+    const [year, month] = key.split("-");
+    const monthNames = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  };
+
+  const handleSaveBillingNotes = async () => {
+    const { error } = await supabase
+      .from("customers")
+      .update({ billing_notes: billingNotes.trim() || null } as any)
+      .eq("id", customerId);
+    if (error) {
+      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "נשמר", description: "הערות חיוב עודכנו" });
+    }
+  };
 
   const handleSubmit = async () => {
     if (!user || !formAmount) return;
@@ -550,6 +616,36 @@ export function BillingTab({
         </Card>
       </div>
 
+      {/* Payment Delay Stats */}
+      {paymentDelays.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">סטטיסטיקת תשלומים</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="bg-muted/50 rounded-lg p-3 text-center">
+                <p className="text-xs text-muted-foreground">ממוצע ימי תשלום</p>
+                <p className={`text-lg font-bold ${(avgPaymentDelay ?? 0) > 30 ? "text-destructive" : (avgPaymentDelay ?? 0) > 14 ? "text-warning" : "text-success"}`}>
+                  {avgPaymentDelay} ימים
+                </p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3 text-center">
+                <p className="text-xs text-muted-foreground">מקסימום פיגור</p>
+                <p className={`text-lg font-bold ${(maxPaymentDelay ?? 0) > 60 ? "text-destructive" : (maxPaymentDelay ?? 0) > 30 ? "text-warning" : "text-success"}`}>
+                  {maxPaymentDelay} ימים
+                </p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3 text-center">
+                <p className="text-xs text-muted-foreground">מס׳ תשלומים</p>
+                <p className="text-lg font-bold">{paymentEntries.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Legal Action Section (Admin only) */}
       {isAdmin && (
         <Card className={hasLegalAction ? "border-destructive/30" : ""}>
@@ -577,6 +673,27 @@ export function BillingTab({
                 </Button>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Billing Notes (Admin only) */}
+      {isAdmin && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <StickyNote className="w-4 h-4 text-muted-foreground" />
+              <Label className="text-sm font-medium">הערות חיוב</Label>
+            </div>
+            <Textarea
+              value={billingNotes}
+              onChange={(e) => setBillingNotes(e.target.value)}
+              placeholder="הערות לגבי התנהלות תשלומים, הנחות מיוחדות, הסכמים..."
+              rows={3}
+            />
+            <Button size="sm" variant="outline" onClick={handleSaveBillingNotes}>
+              שמור הערות
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -743,119 +860,112 @@ export function BillingTab({
         </div>
       )}
 
-      {/* Entries List */}
+      {/* Entries List - Grouped by Month */}
       {entries.length === 0 ? (
         <p className="text-center text-muted-foreground py-6">
           אין רשומות חשבון
         </p>
       ) : (
-        <div className="space-y-2">
-          {entries
-            .filter((entry) => {
-              if (filterPaymentMethod === "all") return true;
-              if (filterPaymentMethod === "none") return !entry.payment_method;
-              return entry.payment_method === filterPaymentMethod;
-            })
-            .map((entry) => {
-            const config =
-              entryTypeConfig[entry.entry_type] || entryTypeConfig.charge;
-            const Icon = config.icon;
-            const hasReceipt = !!receiptUrls[entry.id];
+        <div className="space-y-4">
+          {sortedMonths.map((monthKey) => {
+            const monthEntries = groupedByMonth[monthKey]
+              .filter((entry) => {
+                if (filterPaymentMethod === "all") return true;
+                if (filterPaymentMethod === "none") return !entry.payment_method;
+                return entry.payment_method === filterPaymentMethod;
+              })
+              .sort((a, b) => new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime());
+
+            if (monthEntries.length === 0) return null;
+
+            const monthCharges = monthEntries.filter(e => e.entry_type === "charge").reduce((s, e) => s + Number(e.amount), 0);
+            const monthPayments = monthEntries.filter(e => e.entry_type === "payment" || e.entry_type === "credit").reduce((s, e) => s + Number(e.amount), 0);
+
             return (
-              <Card key={entry.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleOpenDetail(entry)}>
-                <CardContent className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${config.color}`}
-                    >
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${config.color}`}
-                        >
-                          {config.label}
-                        </Badge>
-                        <span className="text-sm font-medium">
-                          ₪{Number(entry.amount).toFixed(2)}
-                        </span>
-                        {entry.is_locked && (
-                          <Lock className="w-3 h-3 text-muted-foreground" />
-                        )}
-                        {hasReceipt && (
-                          <a
-                            href={receiptUrls[entry.id]}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="צפה בקבלה"
-                          >
-                            <ImageIcon className="w-3.5 h-3.5 text-primary cursor-pointer" />
-                          </a>
-                        )}
-                      </div>
-                      {entry.payment_method && (
-                        <span className="text-xs text-muted-foreground">
-                          {paymentMethodLabels[entry.payment_method] || entry.payment_method}
-                        </span>
-                      )}
-                      {!isContractor && entry.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {entry.description}
-                        </p>
-                      )}
-                    </div>
+              <div key={monthKey}>
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-sm font-semibold">{formatMonthHeader(monthKey)}</span>
+                    <Badge variant="secondary" className="text-xs">{monthEntries.length} רשומות</Badge>
                   </div>
-                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(entry.entry_date).toLocaleDateString("he-IL")}
-                    </span>
-                    {canLock && !entry.is_locked && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleLock(entry.id)}
-                        title="נעל רשומה"
-                      >
-                        <Lock className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                    {canDelete && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            title="מחק רשומה"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>מחיקת רשומה</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              האם למחוק את הרשומה? פעולה זו לא ניתנת לביטול.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>ביטול</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(entry)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              מחק
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
+                  <div className="flex items-center gap-3 text-xs">
+                    {monthCharges > 0 && <span className="text-destructive">חיובים: ₪{monthCharges.toFixed(0)}</span>}
+                    {monthPayments > 0 && <span className="text-success">תשלומים: ₪{monthPayments.toFixed(0)}</span>}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+                <div className="space-y-1.5 relative">
+                  {/* Timeline line */}
+                  <div className="absolute right-[19px] top-4 bottom-4 w-0.5 bg-border" />
+                  {monthEntries.map((entry) => {
+                    const config = entryTypeConfig[entry.entry_type] || entryTypeConfig.charge;
+                    const Icon = config.icon;
+                    const hasReceipt = !!receiptUrls[entry.id];
+                    return (
+                      <Card key={entry.id} className="cursor-pointer hover:shadow-md transition-shadow relative" onClick={() => handleOpenDetail(entry)}>
+                        <CardContent className="p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 z-10 ${config.color}`}>
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className={`text-xs ${config.color}`}>
+                                  {config.label}
+                                </Badge>
+                                <span className="text-sm font-medium">₪{Number(entry.amount).toFixed(2)}</span>
+                                {entry.is_locked && <Lock className="w-3 h-3 text-muted-foreground" />}
+                                {hasReceipt && (
+                                  <a href={receiptUrls[entry.id]} target="_blank" rel="noopener noreferrer" title="צפה בקבלה" onClick={(e) => e.stopPropagation()}>
+                                    <ImageIcon className="w-3.5 h-3.5 text-primary cursor-pointer" />
+                                  </a>
+                                )}
+                              </div>
+                              {entry.payment_method && (
+                                <span className="text-xs text-muted-foreground">
+                                  {paymentMethodLabels[entry.payment_method] || entry.payment_method}
+                                </span>
+                              )}
+                              {!isContractor && entry.description && (
+                                <p className="text-xs text-muted-foreground mt-0.5">{entry.description}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(entry.entry_date).toLocaleDateString("he-IL")}
+                            </span>
+                            {canLock && !entry.is_locked && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleLock(entry.id)} title="נעל רשומה">
+                                <Lock className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="מחק רשומה">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>מחיקת רשומה</AlertDialogTitle>
+                                    <AlertDialogDescription>האם למחוק את הרשומה? פעולה זו לא ניתנת לביטול.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>ביטול</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(entry)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">מחק</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>
