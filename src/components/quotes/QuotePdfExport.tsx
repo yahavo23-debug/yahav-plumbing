@@ -340,20 +340,19 @@ function buildQuoteHtml(data: {
   html += sectionTitle("5", "אישור לקוח");
 
   if (signatureUrl && quote.signed_at) {
-    // Signed — show embedded signature
+    // Signed — show embedded signature with legal info
     const signedDate = new Date(quote.signed_at).toLocaleString("he-IL");
     html += `
-      <div style="margin-top:8px;font-size:13px;">
-        <div style="display:flex;gap:40px;margin-bottom:16px;">
-          <div style="flex:1;">
-            <span style="color:#666;">נחתמה בתאריך:</span>
-            <div style="margin-top:4px;font-weight:600;">${signedDate}</div>
+      <div style="margin-top:8px;border:1px solid #e0e0e0;border-radius:8px;padding:16px;background:#fafafa;">
+        <div style="display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;">
+          <div>
+            <p style="font-size:11px;color:#888;margin:0 0 4px;">חתימה:</p>
+            <img src="${signatureUrl}" style="max-height:80px;max-width:280px;border-bottom:2px solid #333;" crossorigin="anonymous" />
           </div>
-        </div>
-        <div>
-          <span style="color:#666;">חתימת לקוח:</span>
-          <div style="margin-top:8px;border:1px solid #e0e0e0;border-radius:6px;padding:8px;background:#fafafa;display:inline-block;">
-            <img src="${signatureUrl}" style="max-height:80px;max-width:280px;" crossorigin="anonymous" />
+          <div style="font-size:12px;line-height:1.8;">
+            ${quote.signed_by ? `<p style="margin:0;"><strong>שם החותם:</strong> ${quote.signed_by}</p>` : ""}
+            <p style="margin:0;"><strong>תאריך ושעה:</strong> ${signedDate}</p>
+            ${quote.ip_address ? `<p style="margin:0;"><strong>כתובת IP:</strong> ${quote.ip_address}</p>` : ""}
           </div>
         </div>
       </div>

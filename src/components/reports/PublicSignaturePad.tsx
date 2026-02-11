@@ -1,5 +1,7 @@
 import { useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, RotateCcw, Pen } from "lucide-react";
@@ -15,6 +17,7 @@ export const PublicSignaturePad = ({ shareToken, onSigned }: PublicSignaturePadP
   const [hasSignature, setHasSignature] = useState(false);
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [signerName, setSignerName] = useState("");
 
   const initCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
     if (!canvas || initialized) return;
@@ -86,6 +89,9 @@ export const PublicSignaturePad = ({ shareToken, onSigned }: PublicSignaturePadP
       const formData = new FormData();
       formData.append("share_token", shareToken);
       formData.append("signature", blob, "signature.png");
+      if (signerName.trim()) {
+        formData.append("signed_by", signerName.trim());
+      }
 
       const { data, error } = await supabase.functions.invoke("sign-public-report", {
         body: formData,
@@ -115,6 +121,15 @@ export const PublicSignaturePad = ({ shareToken, onSigned }: PublicSignaturePadP
         <p className="text-sm text-muted-foreground">
           אני מאשר/ת שקיבלתי את ממצאי הבדיקה והוסברו לי התוצאות וההמלצות.
         </p>
+        <div className="space-y-2">
+          <Label className="text-sm">שם מלא</Label>
+          <Input
+            value={signerName}
+            onChange={(e) => setSignerName(e.target.value)}
+            placeholder="הזן שם מלא..."
+            className="max-w-xs"
+          />
+        </div>
         <div className="border rounded-lg overflow-hidden bg-white">
           <canvas
             ref={initCanvas}
@@ -134,7 +149,7 @@ export const PublicSignaturePad = ({ shareToken, onSigned }: PublicSignaturePadP
             <RotateCcw className="w-3.5 h-3.5" /> נקה
           </Button>
           <Button size="sm" onClick={saveSignature} disabled={!hasSignature || saving} className="gap-1">
-            <Check className="w-3.5 h-3.5" /> {saving ? "שומר..." : "שמור חתימה"}
+            <Check className="w-3.5 h-3.5" /> {saving ? "שומר..." : "חתום ושלח"}
           </Button>
         </div>
       </CardContent>

@@ -334,14 +334,17 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          device_info: string | null
           discount_percent: number
           id: string
           include_vat: boolean
+          ip_address: string | null
           notes: string | null
           quote_number: number
           service_call_id: string
           signature_path: string | null
           signed_at: string | null
+          signed_by: string | null
           status: string
           title: string
           updated_at: string
@@ -350,14 +353,17 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          device_info?: string | null
           discount_percent?: number
           id?: string
           include_vat?: boolean
+          ip_address?: string | null
           notes?: string | null
           quote_number?: number
           service_call_id: string
           signature_path?: string | null
           signed_at?: string | null
+          signed_by?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -366,14 +372,17 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          device_info?: string | null
           discount_percent?: number
           id?: string
           include_vat?: boolean
+          ip_address?: string | null
           notes?: string | null
           quote_number?: number
           service_call_id?: string
           signature_path?: string | null
           signed_at?: string | null
+          signed_by?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -434,16 +443,19 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          device_info: string | null
           findings: string | null
           id: string
           invoice_number: string | null
           invoice_status: string | null
+          ip_address: string | null
           pdf_path: string | null
           quote_summary: string | null
           recommendations: string | null
           service_call_id: string
           signature_date: string | null
           signature_path: string | null
+          signed_by: string | null
           status: string
           title: string
           updated_at: string
@@ -451,16 +463,19 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          device_info?: string | null
           findings?: string | null
           id?: string
           invoice_number?: string | null
           invoice_status?: string | null
+          ip_address?: string | null
           pdf_path?: string | null
           quote_summary?: string | null
           recommendations?: string | null
           service_call_id: string
           signature_date?: string | null
           signature_path?: string | null
+          signed_by?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -468,16 +483,19 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          device_info?: string | null
           findings?: string | null
           id?: string
           invoice_number?: string | null
           invoice_status?: string | null
+          ip_address?: string | null
           pdf_path?: string | null
           quote_summary?: string | null
           recommendations?: string | null
           service_call_id?: string
           signature_date?: string | null
           signature_path?: string | null
+          signed_by?: string | null
           status?: string
           title?: string
           updated_at?: string

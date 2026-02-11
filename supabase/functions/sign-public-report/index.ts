@@ -14,6 +14,7 @@ Deno.serve(async (req) => {
     const formData = await req.formData();
     const shareToken = formData.get("share_token") as string;
     const signatureFile = formData.get("signature") as File;
+    const signedBy = formData.get("signed_by") as string || null;
 
     if (!shareToken || !signatureFile) {
       return new Response(JSON.stringify({ error: "Missing share_token or signature" }), {
@@ -21,6 +22,13 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Capture IP and device info
+    const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || req.headers.get("cf-connecting-ip")
+      || req.headers.get("x-real-ip")
+      || "unknown";
+    const deviceInfo = req.headers.get("user-agent") || "unknown";
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -86,16 +94,23 @@ Deno.serve(async (req) => {
 
     if (uploadError) throw uploadError;
 
-    // Update report with signature
+    // Update report with signature + metadata + status → signed
     const now = new Date().toISOString();
     const { error: updateError } = await supabase
       .from("reports")
-      .update({ signature_path: filePath, signature_date: now })
+      .update({
+        signature_path: filePath,
+        signature_date: now,
+        signed_by: signedBy,
+        ip_address: ipAddress,
+        device_info: deviceInfo,
+        status: "signed",
+      })
       .eq("id", share.report_id);
 
     if (updateError) throw updateError;
 
-    console.log(`Report ${share.report_id} signed via public link`);
+    console.log(`Report ${share.report_id} signed via public link by ${signedBy || "unknown"} from ${ipAddress}`);
 
     return new Response(JSON.stringify({ success: true, signature_date: now }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
