@@ -999,7 +999,7 @@ export function BillingTab({
                 {/* Payment method display/edit */}
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">אמצעי תשלום</Label>
-                  {isAdmin && !detailEntry.is_locked ? (
+                  {isAdmin ? (
                     <Select value={editingPaymentMethod} onValueChange={setEditingPaymentMethod}>
                       <SelectTrigger>
                         <SelectValue placeholder="בחר אמצעי תשלום..." />
@@ -1020,7 +1020,7 @@ export function BillingTab({
                 </div>
 
                 {/* Amount edit */}
-                {isAdmin && !detailEntry.is_locked && (
+                {isAdmin && (
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">סכום (₪)</Label>
                     <Input
@@ -1073,7 +1073,7 @@ export function BillingTab({
                 )}
 
                 {/* Upload receipt for existing entry */}
-                {isAdmin && !detailEntry.is_locked && !receiptUrls[detailEntry.id] && (
+                {isAdmin && !receiptUrls[detailEntry.id] && (
                   <ReceiptUpload
                     entryId={detailEntry.id}
                     customerId={customerId}
@@ -1089,15 +1089,20 @@ export function BillingTab({
                 )}
 
                 {/* Save button */}
-                {isAdmin && !detailEntry.is_locked && (
+                {isAdmin && (
                   <Button onClick={handleSaveDetail} disabled={savingDetail} className="w-full">
                     {savingDetail ? "שומר..." : "שמור שינויים"}
                   </Button>
                 )}
 
-                {detailEntry.is_locked && (
+                {detailEntry.is_locked && !isAdmin && (
                   <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
                     <Lock className="w-3 h-3" /> רשומה נעולה - לא ניתן לערוך
+                  </p>
+                )}
+                {detailEntry.is_locked && isAdmin && (
+                  <p className="text-xs text-warning text-center flex items-center justify-center gap-1">
+                    <Lock className="w-3 h-3" /> רשומה נעולה - ניתנת לעריכה כמנהל בלבד
                   </p>
                 )}
               </div>
