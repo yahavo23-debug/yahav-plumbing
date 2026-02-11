@@ -219,6 +219,7 @@ const ServiceCallForm = () => {
                     <SelectItem value="in_progress">בטיפול</SelectItem>
                     <SelectItem value="completed">הושלם</SelectItem>
                     <SelectItem value="cancelled">בוטל</SelectItem>
+                    <SelectItem value="pending_customer">ממתין לאישור לקוח</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

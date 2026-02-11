@@ -31,6 +31,7 @@ export const statusLabels: Record<string, string> = {
   in_progress: "בטיפול",
   completed: "הושלם",
   cancelled: "בוטל",
+  pending_customer: "ממתין לאישור לקוח",
 };
 
 export const statusColors: Record<string, string> = {
@@ -38,6 +39,7 @@ export const statusColors: Record<string, string> = {
   in_progress: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
   completed: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   cancelled: "bg-muted text-muted-foreground",
+  pending_customer: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
 };
 
 /**
