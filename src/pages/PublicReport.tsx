@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PhotoLightbox } from "@/components/media/PhotoLightbox";
 import { VideoPlayer } from "@/components/media/VideoPlayer";
-import { Wrench, User, Phone, MapPin, Calendar, Image, Film, FileText, Play } from "lucide-react";
+import { PublicSignaturePad } from "@/components/reports/PublicSignaturePad";
+import { Wrench, User, Phone, MapPin, Calendar, Image, Film, FileText, Play, Check } from "lucide-react";
 
 const tagLabels: Record<string, string> = {
   before: "לפני", after: "אחרי", finding: "ממצא", other: "אחר",
@@ -248,9 +249,14 @@ const PublicReport = () => {
         )}
 
         {/* Signature */}
-        {report?.signature_url && (
+        {report?.signature_url ? (
           <Card>
-            <CardHeader><CardTitle className="text-base">חתימה</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-600" />
+                חתימת לקוח התקבלה
+              </CardTitle>
+            </CardHeader>
             <CardContent>
               <img
                 src={report.signature_url}
@@ -259,11 +265,22 @@ const PublicReport = () => {
               />
               {report.signature_date && (
                 <p className="text-sm text-muted-foreground mt-2">
-                  {new Date(report.signature_date).toLocaleDateString("he-IL")}
+                  נחתם: {new Date(report.signature_date).toLocaleDateString("he-IL")}
                 </p>
               )}
             </CardContent>
           </Card>
+        ) : (
+          <PublicSignaturePad
+            shareToken={token!}
+            onSigned={(signatureDate) => {
+              setReport((prev: any) => ({
+                ...prev,
+                signature_date: signatureDate,
+                signature_url: "signed", // Mark as signed to hide the pad
+              }));
+            }}
+          />
         )}
 
         {/* Quote/Invoice */}
