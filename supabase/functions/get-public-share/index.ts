@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
     if (shareType === "quotes") {
       const { data: quotes } = await supabase
         .from("quotes")
-        .select("id, title, status, notes, valid_until, created_at, discount_percent")
+        .select("id, title, status, notes, valid_until, created_at, discount_percent, include_vat, signature_path, signed_at")
         .eq("service_call_id", scId)
         .order("created_at", { ascending: false });
 
@@ -166,16 +166,28 @@ Deno.serve(async (req) => {
           .in("quote_id", quoteIds)
           .order("sort_order");
 
-        responseData.quotes = quotes.map((q: any) => {
+        const quotesWithData = await Promise.all(quotes.map(async (q: any) => {
           const qItems = (items || []).filter((i: any) => i.quote_id === q.id);
           const subtotal = qItems.reduce(
             (sum: number, i: any) => sum + Number(i.quantity) * Number(i.unit_price), 0
           );
           const discount = Number(q.discount_percent) || 0;
           const afterDiscount = subtotal * (1 - discount / 100);
-          const totalWithVat = afterDiscount * 1.18;
-          return { ...q, items: qItems, subtotal, total_with_vat: totalWithVat };
-        });
+          const includeVat = q.include_vat !== false;
+          const totalWithVat = includeVat ? afterDiscount * 1.18 : afterDiscount;
+
+          let signature_url = null;
+          if (q.signature_path) {
+            const { data: sigUrl } = await supabase.storage
+              .from("signatures")
+              .createSignedUrl(q.signature_path, 3600);
+            signature_url = sigUrl?.signedUrl;
+          }
+
+          return { ...q, items: qItems, subtotal, total_with_vat: totalWithVat, signature_url };
+        }));
+
+        responseData.quotes = quotesWithData;
       } else {
         responseData.quotes = [];
       }

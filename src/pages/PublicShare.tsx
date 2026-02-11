@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PhotoLightbox } from "@/components/media/PhotoLightbox";
 import { VideoPlayer } from "@/components/media/VideoPlayer";
+import { toast } from "@/hooks/use-toast";
 import {
   Wrench, User, Phone, MapPin, Calendar, Image, Film,
-  FileText, Play, AlertTriangle, Shield, Eye, CheckCircle,
+  FileText, Play, AlertTriangle, Shield, Eye, CheckCircle, Pen, RotateCcw,
 } from "lucide-react";
 
 const tagLabels: Record<string, string> = {
@@ -165,7 +167,7 @@ const PublicShare = () => {
             onVideoClick={setPlayingVideo}
           />
         )}
-        {shareType === "quotes" && <QuotesSection quotes={data.quotes || []} />}
+        {shareType === "quotes" && <QuotesSection quotes={data.quotes || []} shareToken={token || ""} onQuoteSigned={loadShare} />}
         {shareType === "report" && (
           <ReportSection
             reports={data.reports || []}
@@ -441,7 +443,146 @@ const MediaSection = ({
   </div>
 );
 
-const QuotesSection = ({ quotes }: { quotes: any[] }) => {
+const QuotePublicSignaturePad = ({ quoteId, shareToken, onSigned }: { quoteId: string; shareToken: string; onSigned: () => void }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasSignature, setHasSignature] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const getCtx = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    return canvas.getContext("2d");
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.scale(dpr, dpr);
+      ctx.strokeStyle = "#1a1a2e";
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+    }
+  }, []);
+
+  const getPos = (e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+    if ("touches" in e) {
+      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
+    const ctx = getCtx();
+    if (!ctx) return;
+    setIsDrawing(true);
+    const { x, y } = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDrawing) return;
+    const ctx = getCtx();
+    if (!ctx) return;
+    const { x, y } = getPos(e);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    setHasSignature(true);
+  };
+
+  const endDraw = () => setIsDrawing(false);
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const dpr = window.devicePixelRatio || 1;
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    setHasSignature(false);
+  };
+
+  const saveSignature = async () => {
+    if (!canvasRef.current) return;
+    setSaving(true);
+    try {
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvasRef.current!.toBlob(resolve, "image/png")
+      );
+      if (!blob) throw new Error("Failed to generate signature");
+
+      const formData = new FormData();
+      formData.append("share_token", shareToken);
+      formData.append("quote_id", quoteId);
+      formData.append("signature", blob, "signature.png");
+
+      const response = await supabase.functions.invoke("sign-public-quote", {
+        body: formData,
+      });
+
+      if (response.error) throw response.error;
+      const result = response.data;
+      if (result.error) throw new Error(result.error);
+
+      toast({ title: "חתימה נשמרה", description: "הצעת המחיר נחתמה בהצלחה" });
+      onSigned();
+    } catch (err: any) {
+      console.error("Quote public signature error:", err);
+      toast({ title: "שגיאה", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Pen className="w-4 h-4" /> חתימת לקוח
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          אני מאשר/ת את הצעת המחיר ומסכים/ה לתנאים המפורטים בה.
+        </p>
+        <div className="border rounded-lg overflow-hidden bg-white">
+          <canvas
+            ref={canvasRef}
+            className="w-full cursor-crosshair touch-none"
+            style={{ height: 150 }}
+            onMouseDown={startDraw}
+            onMouseMove={draw}
+            onMouseUp={endDraw}
+            onMouseLeave={endDraw}
+            onTouchStart={startDraw}
+            onTouchMove={draw}
+            onTouchEnd={endDraw}
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={clearCanvas} disabled={!hasSignature || saving} className="gap-1">
+            <RotateCcw className="w-3.5 h-3.5" /> נקה
+          </Button>
+          <Button size="sm" onClick={saveSignature} disabled={!hasSignature || saving} className="gap-1">
+            <CheckCircle className="w-3.5 h-3.5" /> {saving ? "שומר..." : "חתום ואשר"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const QuotesSection = ({ quotes, shareToken, onQuoteSigned }: { quotes: any[]; shareToken: string; onQuoteSigned: () => void }) => {
   if (quotes.length === 0) {
     return (
       <Card>
@@ -505,6 +646,26 @@ const QuotesSection = ({ quotes }: { quotes: any[] }) => {
 
             {quote.notes && (
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">{quote.notes}</p>
+            )}
+
+            {/* Signature section */}
+            {quote.signature_url ? (
+              <Card className="bg-muted/30">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-medium">הצעת מחיר נחתמה</span>
+                  </div>
+                  <img src={quote.signature_url} alt="חתימה" className="max-w-xs border rounded-lg bg-white" />
+                  {quote.signed_at && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {new Date(quote.signed_at).toLocaleString("he-IL")}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <QuotePublicSignaturePad quoteId={quote.id} shareToken={shareToken} onSigned={onQuoteSigned} />
             )}
           </CardContent>
         </Card>
