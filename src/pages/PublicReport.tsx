@@ -31,54 +31,23 @@ const PublicReport = () => {
 
   const loadPublicReport = async () => {
     try {
-      // Verify share token
-      const { data: share, error: shareError } = await supabase
-        .from("report_shares")
-        .select("report_id, is_active, revoked_at, expires_at")
-        .eq("share_token", token!)
-        .single();
-
-      if (shareError || !share) {
-        setError("הקישור אינו תקף");
-        setLoading(false);
-        return;
-      }
-
-      if (!share.is_active || share.revoked_at) {
-        setError("קישור השיתוף בוטל");
-        setLoading(false);
-        return;
-      }
-
-      if (share.expires_at && new Date(share.expires_at) < new Date()) {
-        setError("קישור השיתוף פג תוקף");
-        setLoading(false);
-        return;
-      }
-
-      // Load report data using edge function
-      const { data: rep, error: repError } = await supabase
-        .from("reports")
-        .select("*")
-        .eq("id", share.report_id)
-        .single();
-
-      // Since this is anonymous, the RLS policies for reports won't allow reading
-      // We need to use the share mechanism. Let's fetch via a different approach.
-      // For now, let's use a function-based approach or adjust our strategy.
-
-      // Actually, the report_shares policy allows anon SELECT, but reports policy doesn't allow anon.
-      // We'll need to use the edge function approach. For now, let's try with the share data.
-      
-      // Let's use a simpler approach - create a server function that returns report data given a valid token
-      // For now, we'll use the supabase client with the service role through an edge function
-      
+      // Use edge function directly - it validates the token server-side with service role key
+      // No direct DB queries here since anonymous users are blocked by RLS
       const response = await supabase.functions.invoke("get-public-report", {
         body: { share_token: token },
       });
 
       if (response.error) throw response.error;
       const data = response.data;
+
+      // Handle error responses from the edge function
+      if (data.error) {
+        if (data.error === "Token revoked") setError("קישור השיתוף בוטל");
+        else if (data.error === "Token expired") setError("קישור השיתוף פג תוקף");
+        else if (data.error === "Invalid token") setError("הקישור אינו תקף");
+        else setError("לא ניתן לטעון את הדוח");
+        return;
+      }
 
       setReport(data.report);
       setServiceCall(data.service_call);
@@ -92,8 +61,6 @@ const PublicReport = () => {
       setLoading(false);
     }
   };
-
-  // All media URLs come as signed URLs from the edge function - no public URL fallbacks needed
 
   if (loading) {
     return (
@@ -118,15 +85,11 @@ const PublicReport = () => {
   }
 
   const lightboxPhotos = photos.map((p: any) => ({
-    id: p.id,
-    url: p.url,
-    caption: p.caption,
-    tag: p.tag,
+    id: p.id, url: p.url, caption: p.caption, tag: p.tag,
   }));
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
-      {/* noindex meta */}
       <meta name="robots" content="noindex, nofollow" />
 
       {/* Header */}
@@ -174,9 +137,7 @@ const PublicReport = () => {
         {report?.findings && (
           <Card>
             <CardHeader><CardTitle className="text-base">ממצאים</CardTitle></CardHeader>
-            <CardContent>
-              <p className="text-sm whitespace-pre-wrap">{report.findings}</p>
-            </CardContent>
+            <CardContent><p className="text-sm whitespace-pre-wrap">{report.findings}</p></CardContent>
           </Card>
         )}
 
@@ -184,9 +145,7 @@ const PublicReport = () => {
         {report?.recommendations && (
           <Card>
             <CardHeader><CardTitle className="text-base">המלצות</CardTitle></CardHeader>
-            <CardContent>
-              <p className="text-sm whitespace-pre-wrap">{report.recommendations}</p>
-            </CardContent>
+            <CardContent><p className="text-sm whitespace-pre-wrap">{report.recommendations}</p></CardContent>
           </Card>
         )}
 
@@ -197,22 +156,9 @@ const PublicReport = () => {
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {photos.map((photo: any, i: number) => (
-                  <div
-                    key={photo.id}
-                    className="aspect-square rounded-lg overflow-hidden cursor-pointer bg-muted relative group"
-                    onClick={() => setLightboxIndex(i)}
-                  >
-                    <img
-                      src={photo.url}
-                      alt={photo.caption || ""}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      loading="lazy"
-                    />
-                    {photo.tag && (
-                      <Badge className="absolute top-2 right-2 text-xs bg-black/50 text-white border-0">
-                        {tagLabels[photo.tag]}
-                      </Badge>
-                    )}
+                  <div key={photo.id} className="aspect-square rounded-lg overflow-hidden cursor-pointer bg-muted relative group" onClick={() => setLightboxIndex(i)}>
+                    <img src={photo.url} alt={photo.caption || ""} className="w-full h-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
+                    {photo.tag && <Badge className="absolute top-2 right-2 text-xs bg-black/50 text-white border-0">{tagLabels[photo.tag]}</Badge>}
                   </div>
                 ))}
               </div>
@@ -227,19 +173,11 @@ const PublicReport = () => {
             <CardContent>
               <div className="space-y-3">
                 {videos.map((video: any) => (
-                  <button
-                    key={video.id}
-                    className="w-full flex items-center gap-4 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors text-right"
-                    onClick={() => setPlayingVideo(video)}
-                  >
-                    <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center shrink-0">
-                      <Play className="w-6 h-6 text-primary" />
-                    </div>
+                  <button key={video.id} className="w-full flex items-center gap-4 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors text-right" onClick={() => setPlayingVideo(video)}>
+                    <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center shrink-0"><Play className="w-6 h-6 text-primary" /></div>
                     <div className="flex-1">
                       <p className="font-medium text-sm">{video.title || "סרטון"}</p>
-                      {video.tag && (
-                        <Badge className="text-xs mt-1">{tagLabels[video.tag]}</Badge>
-                      )}
+                      {video.tag && <Badge className="text-xs mt-1">{tagLabels[video.tag]}</Badge>}
                     </div>
                   </button>
                 ))}
@@ -253,23 +191,14 @@ const PublicReport = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Check className="w-4 h-4 text-green-600" />
-                חתימת לקוח התקבלה
+                <Check className="w-4 h-4 text-green-600" /> חתימת לקוח התקבלה
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <img
-                src={report.signature_url}
-                alt="חתימת לקוח"
-                className="max-w-xs border rounded-lg"
-              />
-              {report.signed_by && (
-                <p className="text-sm"><strong>שם החותם:</strong> {report.signed_by}</p>
-              )}
+              <img src={report.signature_url} alt="חתימת לקוח" className="max-w-xs border rounded-lg" />
+              {report.signed_by && <p className="text-sm"><strong>שם החותם:</strong> {report.signed_by}</p>}
               {report.signature_date && (
-                <p className="text-sm text-muted-foreground">
-                  נחתם: {new Date(report.signature_date).toLocaleString("he-IL")}
-                </p>
+                <p className="text-sm text-muted-foreground">נחתם: {new Date(report.signature_date).toLocaleString("he-IL")}</p>
               )}
             </CardContent>
           </Card>
@@ -277,11 +206,7 @@ const PublicReport = () => {
           <PublicSignaturePad
             shareToken={token!}
             onSigned={(signatureDate) => {
-              setReport((prev: any) => ({
-                ...prev,
-                signature_date: signatureDate,
-                signature_url: "signed", // Mark as signed to hide the pad
-              }));
+              setReport((prev: any) => ({ ...prev, signature_date: signatureDate, signature_url: "signed" }));
             }}
           />
         )}
@@ -299,28 +224,12 @@ const PublicReport = () => {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground">
         <p>דוח זה הופק באמצעות מערכת CRM</p>
       </footer>
 
-      {/* Lightbox */}
-      <PhotoLightbox
-        photos={lightboxPhotos}
-        initialIndex={lightboxIndex}
-        open={lightboxIndex >= 0}
-        onClose={() => setLightboxIndex(-1)}
-      />
-
-      {/* Video player */}
-      {playingVideo && (
-        <VideoPlayer
-          url={playingVideo.url}
-          title={playingVideo.title || "סרטון"}
-          open={!!playingVideo}
-          onClose={() => setPlayingVideo(null)}
-        />
-      )}
+      <PhotoLightbox photos={lightboxPhotos} initialIndex={lightboxIndex} open={lightboxIndex >= 0} onClose={() => setLightboxIndex(-1)} />
+      {playingVideo && <VideoPlayer url={playingVideo.url} title={playingVideo.title || "סרטון"} open={!!playingVideo} onClose={() => setPlayingVideo(null)} />}
     </div>
   );
 };
