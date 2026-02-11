@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.sign-public-report]
 verify_jwt = false
+
+[functions.sign-public-quote]
+verify_jwt = false
