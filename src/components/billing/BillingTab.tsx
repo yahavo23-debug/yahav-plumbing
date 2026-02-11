@@ -109,7 +109,7 @@ const entryTypeConfig: Record<
   settled: {
     label: "שילם",
     icon: CheckCircle,
-    color: "bg-muted text-muted-foreground",
+    color: "bg-success/10 text-success",
   },
 };
 
