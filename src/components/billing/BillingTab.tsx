@@ -139,6 +139,9 @@ export function BillingTab({
   const [editingAmount, setEditingAmount] = useState<string>("");
   const [savingDetail, setSavingDetail] = useState(false);
 
+  // Filter state
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState<string>("all");
+
   // Receipt thumbnail URLs cache
   const [receiptUrls, setReceiptUrls] = useState<Record<string, string>>({});
 
@@ -645,6 +648,42 @@ export function BillingTab({
         </Card>
       )}
 
+      {/* Payment Method Filter */}
+      {entries.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground">סנן לפי אמצעי תשלום:</span>
+          <div className="flex gap-1 flex-wrap">
+            <Button
+              variant={filterPaymentMethod === "all" ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs px-2.5"
+              onClick={() => setFilterPaymentMethod("all")}
+            >
+              הכל
+            </Button>
+            {paymentMethods.map((pm) => (
+              <Button
+                key={pm.value}
+                variant={filterPaymentMethod === pm.value ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-xs px-2.5"
+                onClick={() => setFilterPaymentMethod(pm.value)}
+              >
+                {pm.label}
+              </Button>
+            ))}
+            <Button
+              variant={filterPaymentMethod === "none" ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs px-2.5"
+              onClick={() => setFilterPaymentMethod("none")}
+            >
+              ללא
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Entries List */}
       {entries.length === 0 ? (
         <p className="text-center text-muted-foreground py-6">
@@ -652,7 +691,13 @@ export function BillingTab({
         </p>
       ) : (
         <div className="space-y-2">
-          {entries.map((entry) => {
+          {entries
+            .filter((entry) => {
+              if (filterPaymentMethod === "all") return true;
+              if (filterPaymentMethod === "none") return !entry.payment_method;
+              return entry.payment_method === filterPaymentMethod;
+            })
+            .map((entry) => {
             const config =
               entryTypeConfig[entry.entry_type] || entryTypeConfig.charge;
             const Icon = config.icon;
