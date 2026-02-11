@@ -106,6 +106,11 @@ const entryTypeConfig: Record<
     icon: ArrowDownCircle,
     color: "bg-primary/10 text-primary",
   },
+  settled: {
+    label: "שילם",
+    icon: CheckCircle,
+    color: "bg-muted text-muted-foreground",
+  },
 };
 
 export function BillingTab({
@@ -778,6 +783,7 @@ export function BillingTab({
                     <SelectItem value="charge">חיוב</SelectItem>
                     <SelectItem value="payment">תשלום</SelectItem>
                     <SelectItem value="credit">זיכוי</SelectItem>
+                    <SelectItem value="settled">שילם</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
