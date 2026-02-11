@@ -150,6 +150,7 @@ export type Database = {
           entry_type: string
           id: string
           is_locked: boolean | null
+          payment_method: string | null
           receipt_path: string | null
           service_call_id: string | null
         }
@@ -163,6 +164,7 @@ export type Database = {
           entry_type: string
           id?: string
           is_locked?: boolean | null
+          payment_method?: string | null
           receipt_path?: string | null
           service_call_id?: string | null
         }
@@ -176,6 +178,7 @@ export type Database = {
           entry_type?: string
           id?: string
           is_locked?: boolean | null
+          payment_method?: string | null
           receipt_path?: string | null
           service_call_id?: string | null
         }

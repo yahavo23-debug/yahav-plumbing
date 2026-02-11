@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,7 +57,21 @@ interface LedgerEntry {
   created_at: string;
   created_by: string;
   receipt_path?: string | null;
+  payment_method?: string | null;
 }
+
+const paymentMethods = [
+  { value: "cash", label: "מזומן" },
+  { value: "transfer", label: "העברה בנקאית" },
+  { value: "bit", label: "ביט" },
+  { value: "paybox", label: "פייבוקס" },
+  { value: "money", label: "מאני" },
+  { value: "credit_card", label: "סליקה" },
+];
+
+const paymentMethodLabels: Record<string, string> = Object.fromEntries(
+  paymentMethods.map((m) => [m.value, m.label])
+);
 
 interface BillingTabProps {
   customerId: string;
@@ -116,6 +131,13 @@ export function BillingTab({
   const [formAmount, setFormAmount] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formReceiptPath, setFormReceiptPath] = useState<string | null>(null);
+  const [formPaymentMethod, setFormPaymentMethod] = useState<string>("");
+
+  // Detail dialog state
+  const [detailEntry, setDetailEntry] = useState<LedgerEntry | null>(null);
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState<string>("");
+  const [editingAmount, setEditingAmount] = useState<string>("");
+  const [savingDetail, setSavingDetail] = useState(false);
 
   // Receipt thumbnail URLs cache
   const [receiptUrls, setReceiptUrls] = useState<Record<string, string>>({});
@@ -232,6 +254,7 @@ export function BillingTab({
           amount: parseFloat(formAmount),
           description: formDescription.trim() || null,
           receipt_path: formReceiptPath,
+          payment_method: formPaymentMethod || null,
           created_by: user.id,
         });
 
@@ -305,6 +328,36 @@ export function BillingTab({
     setFormAmount("");
     setFormDescription("");
     setFormReceiptPath(null);
+    setFormPaymentMethod("");
+  };
+
+  const handleOpenDetail = (entry: LedgerEntry) => {
+    setDetailEntry(entry);
+    setEditingPaymentMethod(entry.payment_method || "");
+    setEditingAmount(String(entry.amount));
+  };
+
+  const handleSaveDetail = async () => {
+    if (!detailEntry || !isAdmin) return;
+    setSavingDetail(true);
+    try {
+      const { error } = await (supabase as any)
+        .from("customer_ledger")
+        .update({
+          payment_method: editingPaymentMethod || null,
+          amount: parseFloat(editingAmount) || detailEntry.amount,
+        })
+        .eq("id", detailEntry.id);
+      if (error) throw error;
+      toast({ title: "נשמר", description: "פרטי הרשומה עודכנו" });
+      setDetailEntry(null);
+      loadEntries();
+      onBillingChange?.();
+    } catch (err: any) {
+      toast({ title: "שגיאה", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingDetail(false);
+    }
   };
 
   const handleToggleLegalAction = async (checked: boolean) => {
@@ -550,6 +603,21 @@ export function BillingTab({
                 />
               </div>
             </div>
+            {(formType === "payment" || formType === "credit") && (
+              <div className="space-y-1">
+                <Label className="text-xs">אמצעי תשלום</Label>
+                <Select value={formPaymentMethod} onValueChange={setFormPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="בחר אמצעי תשלום..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentMethods.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1">
               <Label className="text-xs">תיאור</Label>
               <Textarea
@@ -590,7 +658,7 @@ export function BillingTab({
             const Icon = config.icon;
             const hasReceipt = !!receiptUrls[entry.id];
             return (
-              <Card key={entry.id}>
+              <Card key={entry.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleOpenDetail(entry)}>
                 <CardContent className="p-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
@@ -623,6 +691,11 @@ export function BillingTab({
                           </a>
                         )}
                       </div>
+                      {entry.payment_method && (
+                        <span className="text-xs text-muted-foreground">
+                          {paymentMethodLabels[entry.payment_method] || entry.payment_method}
+                        </span>
+                      )}
                       {!isContractor && entry.description && (
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {entry.description}
@@ -630,7 +703,7 @@ export function BillingTab({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <span className="text-xs text-muted-foreground">
                       {new Date(entry.entry_date).toLocaleDateString("he-IL")}
                     </span>
@@ -683,6 +756,141 @@ export function BillingTab({
           })}
         </div>
       )}
+
+      {/* Entry Detail Dialog */}
+      <Dialog open={!!detailEntry} onOpenChange={(open) => !open && setDetailEntry(null)}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>פרטי רשומה</DialogTitle>
+          </DialogHeader>
+          {detailEntry && (() => {
+            const config = entryTypeConfig[detailEntry.entry_type] || entryTypeConfig.charge;
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className={`${config.color}`}>{config.label}</Badge>
+                  <span className="text-lg font-bold">₪{Number(detailEntry.amount).toFixed(2)}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {new Date(detailEntry.entry_date).toLocaleDateString("he-IL")}
+                  </span>
+                </div>
+
+                {detailEntry.description && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">תיאור</Label>
+                    <p className="text-sm">{detailEntry.description}</p>
+                  </div>
+                )}
+
+                {/* Payment method display/edit */}
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">אמצעי תשלום</Label>
+                  {isAdmin && !detailEntry.is_locked ? (
+                    <Select value={editingPaymentMethod} onValueChange={setEditingPaymentMethod}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="בחר אמצעי תשלום..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentMethods.map((m) => (
+                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm font-medium">
+                      {detailEntry.payment_method
+                        ? paymentMethodLabels[detailEntry.payment_method] || detailEntry.payment_method
+                        : "לא צוין"}
+                    </p>
+                  )}
+                </div>
+
+                {/* Amount edit */}
+                {isAdmin && !detailEntry.is_locked && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">סכום (₪)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editingAmount}
+                      onChange={(e) => setEditingAmount(e.target.value)}
+                      dir="ltr"
+                    />
+                  </div>
+                )}
+
+                {/* Balance context */}
+                <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">סה"כ חיובים</span>
+                    <span>₪{totalCharges.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">סה"כ תשלומים</span>
+                    <span>₪{totalPayments.toFixed(2)}</span>
+                  </div>
+                  {totalCredits > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">סה"כ זיכויים</span>
+                      <span>₪{totalCredits.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="border-t pt-1 flex justify-between text-sm font-bold">
+                    <span>נותר לתשלום</span>
+                    <span className={balance > 0 ? "text-destructive" : "text-success"}>
+                      ₪{Math.abs(balance).toFixed(2)} {balance > 0 ? "חוב" : balance < 0 ? "זכות" : ""}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Receipt image */}
+                {receiptUrls[detailEntry.id] && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">תמונת תשלום</Label>
+                    <a href={receiptUrls[detailEntry.id]} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={receiptUrls[detailEntry.id]}
+                        alt="קבלה"
+                        className="w-full max-h-48 object-contain rounded-lg border border-input"
+                      />
+                    </a>
+                  </div>
+                )}
+
+                {/* Upload receipt for existing entry */}
+                {isAdmin && !detailEntry.is_locked && !receiptUrls[detailEntry.id] && (
+                  <ReceiptUpload
+                    entryId={detailEntry.id}
+                    customerId={customerId}
+                    onUploaded={async (path) => {
+                      await (supabase as any)
+                        .from("customer_ledger")
+                        .update({ receipt_path: path })
+                        .eq("id", detailEntry.id);
+                      loadEntries();
+                      toast({ title: "הועלה", description: "תמונת התשלום נשמרה" });
+                    }}
+                  />
+                )}
+
+                {/* Save button */}
+                {isAdmin && !detailEntry.is_locked && (
+                  <Button onClick={handleSaveDetail} disabled={savingDetail} className="w-full">
+                    {savingDetail ? "שומר..." : "שמור שינויים"}
+                  </Button>
+                )}
+
+                {detailEntry.is_locked && (
+                  <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
+                    <Lock className="w-3 h-3" /> רשומה נעולה - לא ניתן לערוך
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
