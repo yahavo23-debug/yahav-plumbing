@@ -149,6 +149,7 @@ export type Database = {
           entry_date: string
           entry_type: string
           id: string
+          installments: number | null
           is_locked: boolean | null
           payment_method: string | null
           receipt_path: string | null
@@ -163,6 +164,7 @@ export type Database = {
           entry_date?: string
           entry_type: string
           id?: string
+          installments?: number | null
           is_locked?: boolean | null
           payment_method?: string | null
           receipt_path?: string | null
@@ -177,6 +179,7 @@ export type Database = {
           entry_date?: string
           entry_type?: string
           id?: string
+          installments?: number | null
           is_locked?: boolean | null
           payment_method?: string | null
           receipt_path?: string | null

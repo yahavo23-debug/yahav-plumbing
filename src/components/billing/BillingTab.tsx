@@ -61,6 +61,7 @@ interface LedgerEntry {
   created_by: string;
   receipt_path?: string | null;
   payment_method?: string | null;
+  installments?: number | null;
 }
 
 const paymentMethods = [
@@ -70,6 +71,7 @@ const paymentMethods = [
   { value: "paybox", label: "פייבוקס" },
   { value: "money", label: "מאני" },
   { value: "credit_card", label: "סליקה" },
+  { value: "credit", label: "אשראי" },
 ];
 
 const paymentMethodLabels: Record<string, string> = Object.fromEntries(
@@ -136,11 +138,13 @@ export function BillingTab({
   const [formDescription, setFormDescription] = useState("");
   const [formReceiptPath, setFormReceiptPath] = useState<string | null>(null);
   const [formPaymentMethod, setFormPaymentMethod] = useState<string>("");
+  const [formInstallments, setFormInstallments] = useState<string>("");
 
   // Detail dialog state
   const [detailEntry, setDetailEntry] = useState<LedgerEntry | null>(null);
   const [editingPaymentMethod, setEditingPaymentMethod] = useState<string>("");
   const [editingAmount, setEditingAmount] = useState<string>("");
+  const [editingInstallments, setEditingInstallments] = useState<string>("");
   const [savingDetail, setSavingDetail] = useState(false);
 
   // Filter state
@@ -150,6 +154,7 @@ export function BillingTab({
   const [showQuickPayment, setShowQuickPayment] = useState(false);
   const [quickPaymentMethod, setQuickPaymentMethod] = useState<string>("");
   const [quickPaymentAmount, setQuickPaymentAmount] = useState<string>("");
+  const [quickPaymentInstallments, setQuickPaymentInstallments] = useState<string>("");
   const [quickPaymentReceipt, setQuickPaymentReceipt] = useState<string | null>(null);
   const [savingQuickPayment, setSavingQuickPayment] = useState(false);
 
@@ -332,6 +337,7 @@ export function BillingTab({
           description: formDescription.trim() || null,
           receipt_path: formReceiptPath,
           payment_method: formPaymentMethod || null,
+          installments: formInstallments ? parseInt(formInstallments) : null,
           created_by: user.id,
         });
 
@@ -406,12 +412,14 @@ export function BillingTab({
     setFormDescription("");
     setFormReceiptPath(null);
     setFormPaymentMethod("");
+    setFormInstallments("");
   };
 
   const handleOpenDetail = (entry: LedgerEntry) => {
     setDetailEntry(entry);
     setEditingPaymentMethod(entry.payment_method || "");
     setEditingAmount(String(entry.amount));
+    setEditingInstallments(entry.installments ? String(entry.installments) : "");
   };
 
   const handleSaveDetail = async () => {
@@ -423,6 +431,7 @@ export function BillingTab({
         .update({
           payment_method: editingPaymentMethod || null,
           amount: parseFloat(editingAmount) || detailEntry.amount,
+          installments: editingInstallments ? parseInt(editingInstallments) : null,
         })
         .eq("id", detailEntry.id);
       if (error) throw error;
@@ -451,8 +460,9 @@ export function BillingTab({
           entry_date: new Date().toISOString().split("T")[0],
           entry_type: "payment",
           amount: paymentAmount,
-          description: `אישור תשלום - ${paymentMethodLabels[quickPaymentMethod] || quickPaymentMethod}`,
+          description: `אישור תשלום - ${paymentMethodLabels[quickPaymentMethod] || quickPaymentMethod}${quickPaymentInstallments ? ` (${quickPaymentInstallments} תשלומים)` : ""}`,
           payment_method: quickPaymentMethod,
+          installments: quickPaymentInstallments ? parseInt(quickPaymentInstallments) : null,
           receipt_path: quickPaymentReceipt,
           created_by: user.id,
         });
@@ -463,6 +473,7 @@ export function BillingTab({
       setShowQuickPayment(false);
       setQuickPaymentMethod("");
       setQuickPaymentAmount("");
+      setQuickPaymentInstallments("");
       setQuickPaymentReceipt(null);
       loadEntries();
       onBillingChange?.();
@@ -783,18 +794,32 @@ export function BillingTab({
               </div>
             </div>
             {(formType === "payment" || formType === "credit") && (
-              <div className="space-y-1">
-                <Label className="text-xs">אמצעי תשלום</Label>
-                <Select value={formPaymentMethod} onValueChange={setFormPaymentMethod}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="בחר אמצעי תשלום..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {paymentMethods.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">אמצעי תשלום</Label>
+                  <Select value={formPaymentMethod} onValueChange={setFormPaymentMethod}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="בחר אמצעי תשלום..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {paymentMethods.map((m) => (
+                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">מס׳ תשלומים</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="36"
+                    value={formInstallments}
+                    onChange={(e) => setFormInstallments(e.target.value)}
+                    placeholder={formPaymentMethod === "credit" ? "מס׳ תשלומים באשראי" : "תשלום אחד"}
+                    dir="ltr"
+                  />
+                </div>
               </div>
             )}
             <div className="space-y-1">
@@ -921,9 +946,10 @@ export function BillingTab({
                                   </a>
                                 )}
                               </div>
-                              {entry.payment_method && (
+                              {(entry.payment_method || entry.installments) && (
                                 <span className="text-xs text-muted-foreground">
-                                  {paymentMethodLabels[entry.payment_method] || entry.payment_method}
+                                  {entry.payment_method ? (paymentMethodLabels[entry.payment_method] || entry.payment_method) : ""}
+                                  {entry.installments && entry.installments > 1 ? ` · ${entry.installments} תשלומים` : ""}
                                 </span>
                               )}
                               {!isContractor && entry.description && (
@@ -1029,6 +1055,22 @@ export function BillingTab({
                       step="0.01"
                       value={editingAmount}
                       onChange={(e) => setEditingAmount(e.target.value)}
+                      dir="ltr"
+                    />
+                  </div>
+                )}
+
+                {/* Installments edit */}
+                {isAdmin && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">מס׳ תשלומים</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="36"
+                      value={editingInstallments}
+                      onChange={(e) => setEditingInstallments(e.target.value)}
+                      placeholder="תשלום אחד"
                       dir="ltr"
                     />
                   </div>
@@ -1162,6 +1204,19 @@ export function BillingTab({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">מס׳ תשלומים</Label>
+              <Input
+                type="number"
+                min="1"
+                max="36"
+                value={quickPaymentInstallments}
+                onChange={(e) => setQuickPaymentInstallments(e.target.value)}
+                placeholder={quickPaymentMethod === "credit" ? "מס׳ תשלומים באשראי" : "תשלום אחד"}
+                dir="ltr"
+              />
             </div>
 
             <ReceiptUpload
