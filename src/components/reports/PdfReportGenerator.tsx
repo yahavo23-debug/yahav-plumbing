@@ -91,14 +91,18 @@ export function PdfReportGenerator({
         })
       );
 
-      // Get signature URL
+      // Get signature URL - prefer report signature, fallback to service call signature
       let signatureUrl: string | null = null;
-      if (serviceCall.customer_signature_path) {
+      const sigPath = report.signature_path || serviceCall.customer_signature_path;
+      if (sigPath) {
         const { data } = await supabase.storage
           .from("signatures")
-          .createSignedUrl(serviceCall.customer_signature_path, 600);
+          .createSignedUrl(sigPath, 600);
         signatureUrl = data?.signedUrl || null;
       }
+
+      // Get signature date
+      const signatureDateValue = report.signature_date || serviceCall.customer_signature_date;
 
       // Create hidden container
       const container = document.createElement("div");
@@ -115,6 +119,7 @@ export function PdfReportGenerator({
         quotes: quotesWithItems,
         logoUrl,
         signatureUrl,
+        signatureDate: signatureDateValue,
         dateStr: now.toLocaleDateString("he-IL"),
         timeStr: now.toLocaleTimeString("he-IL", {
           hour: "2-digit",
@@ -275,6 +280,7 @@ function buildReportHtml(data: {
   quotes: any[];
   logoUrl: string | null;
   signatureUrl: string | null;
+  signatureDate: string | null;
   dateStr: string;
   timeStr: string;
 }) {
@@ -286,6 +292,7 @@ function buildReportHtml(data: {
     quotes,
     logoUrl,
     signatureUrl,
+    signatureDate,
     dateStr,
     timeStr,
   } = data;
@@ -411,8 +418,8 @@ function buildReportHtml(data: {
     html += sectionTitle("חתימת לקוח");
     html += `<div style="display:flex;align-items:end;gap:20px;">`;
     html += `<img src="${signatureUrl}" style="max-width:250px;max-height:100px;border-bottom:1px solid #333;" crossorigin="anonymous" />`;
-    if (sc.customer_signature_date) {
-      html += `<p style="font-size:12px;color:#666;">נחתם: ${new Date(sc.customer_signature_date).toLocaleString("he-IL")}</p>`;
+    if (signatureDate) {
+      html += `<p style="font-size:12px;color:#666;">נחתם: ${new Date(signatureDate).toLocaleString("he-IL")}</p>`;
     }
     html += `</div>`;
   }

@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.get-logo-url]
 verify_jwt = false
+
+[functions.sign-public-report]
+verify_jwt = false
