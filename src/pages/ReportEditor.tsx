@@ -15,7 +15,7 @@ import { PhotoGrid } from "@/components/media/PhotoGrid";
 import { DownloadAllPhotos } from "@/components/media/DownloadAllPhotos";
 import { VideoList } from "@/components/media/VideoList";
 import {
-  ArrowRight, Share2, ExternalLink, Copy, Ban, FileText, Send, Lock, Unlock, MessageCircle, AlertTriangle,
+  ArrowRight, Share2, ExternalLink, Copy, Ban, FileText, Send, Lock, Unlock, MessageCircle, AlertTriangle, RefreshCw, CheckCircle2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PdfReportGenerator } from "@/components/reports/PdfReportGenerator";
@@ -183,7 +183,36 @@ const ReportEditor = () => {
     }
   };
 
-  const shareUrl = shareToken ? `${window.location.origin}/r/${shareToken}` : "";
+  const handleRegenerateLink = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      // Revoke existing
+      if (shareToken) {
+        await supabase.from("report_shares")
+          .update({ is_active: false, revoked_at: new Date().toISOString() })
+          .eq("report_id", id!)
+          .eq("is_active", true);
+      }
+      // Create new
+      const { data, error } = await supabase.from("report_shares").insert({
+        report_id: id!,
+        created_by: user.id,
+      }).select("share_token").single();
+
+      if (error) throw error;
+      setShareToken(data.share_token);
+      toast({ title: "קישור חדש נוצר", description: "הקישור הישן בוטל וקישור חדש נוצר" });
+    } catch (err: any) {
+      toast({ title: "שגיאה", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Use published URL for production links, not window.location.origin (which may be preview)
+  const baseUrl = "https://yahav-plumbing.lovable.app";
+  const shareUrl = shareToken ? `${baseUrl}/r/${shareToken}` : "";
   const whatsappUrl = shareUrl ? `https://wa.me/?text=${encodeURIComponent(`שלום, מצורף דוח עבודה לעיון וחתימה:\n${shareUrl}`)}` : "";
 
   if (loading) {
@@ -339,6 +368,11 @@ const ReportEditor = () => {
             <DialogTitle>שליחת דוח לחתימה</DialogTitle>
             <DialogDescription>קישור זה מאפשר צפייה בדוח וחתימה דיגיטלית ללא צורך בהתחברות</DialogDescription>
           </DialogHeader>
+          {/* Link status indicator */}
+          <div className="flex items-center gap-2 text-sm">
+            <CheckCircle2 className="w-4 h-4 text-green-600" />
+            <span className="text-green-700 dark:text-green-400 font-medium">קישור פעיל</span>
+          </div>
           <div className="flex gap-2">
             <Input value={shareUrl} readOnly dir="ltr" className="text-sm" />
             <Button variant="outline" onClick={() => { navigator.clipboard.writeText(shareUrl); toast({ title: "הקישור הועתק" }); }}>
@@ -353,11 +387,14 @@ const ReportEditor = () => {
               <MessageCircle className="w-4 h-4" /> שלח בוואטסאפ
             </a>
           </Button>
-          <DialogFooter>
-            <Button variant="destructive" onClick={handleRevoke} className="gap-2">
-              <Ban className="w-4 h-4" /> בטל קישור שיתוף
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleRegenerateLink} disabled={saving} className="gap-2 flex-1">
+              <RefreshCw className="w-4 h-4" /> צור קישור חדש
             </Button>
-          </DialogFooter>
+            <Button variant="destructive" onClick={handleRevoke} className="gap-2 flex-1">
+              <Ban className="w-4 h-4" /> בטל קישור
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </AppLayout>

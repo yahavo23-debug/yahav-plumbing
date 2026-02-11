@@ -34,7 +34,7 @@ const getPublicBaseUrl = (): string => {
     origin.includes("lovableproject.com") ||
     origin.includes("localhost")
   ) {
-    return "https://soft-spark-story.lovable.app";
+    return "https://yahav-plumbing.lovable.app";
   }
   // In production (published app or custom domain), use the current origin
   return origin;
