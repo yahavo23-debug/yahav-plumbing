@@ -42,6 +42,7 @@ import {
   Clock,
   Trash2,
   Image as ImageIcon,
+  CheckCircle,
 } from "lucide-react";
 import { BillingPdfExport } from "./BillingPdfExport";
 import { ReceiptUpload } from "./ReceiptUpload";
@@ -141,6 +142,13 @@ export function BillingTab({
 
   // Filter state
   const [filterPaymentMethod, setFilterPaymentMethod] = useState<string>("all");
+
+  // Quick payment dialog state
+  const [showQuickPayment, setShowQuickPayment] = useState(false);
+  const [quickPaymentMethod, setQuickPaymentMethod] = useState<string>("");
+  const [quickPaymentAmount, setQuickPaymentAmount] = useState<string>("");
+  const [quickPaymentReceipt, setQuickPaymentReceipt] = useState<string | null>(null);
+  const [savingQuickPayment, setSavingQuickPayment] = useState(false);
 
   // Receipt thumbnail URLs cache
   const [receiptUrls, setReceiptUrls] = useState<Record<string, string>>({});
@@ -363,6 +371,42 @@ export function BillingTab({
     }
   };
 
+  const handleQuickPayment = async () => {
+    if (!user || !quickPaymentMethod || !quickPaymentAmount) return;
+    setSavingQuickPayment(true);
+    try {
+      const paymentAmount = parseFloat(quickPaymentAmount);
+      if (isNaN(paymentAmount) || paymentAmount <= 0) throw new Error("סכום לא תקין");
+
+      const { error } = await (supabase as any)
+        .from("customer_ledger")
+        .insert({
+          customer_id: customerId,
+          entry_date: new Date().toISOString().split("T")[0],
+          entry_type: "payment",
+          amount: paymentAmount,
+          description: `אישור תשלום - ${paymentMethodLabels[quickPaymentMethod] || quickPaymentMethod}`,
+          payment_method: quickPaymentMethod,
+          receipt_path: quickPaymentReceipt,
+          created_by: user.id,
+        });
+
+      if (error) throw error;
+
+      toast({ title: "תשלום אושר", description: `תשלום של ₪${paymentAmount.toFixed(2)} נרשם בהצלחה` });
+      setShowQuickPayment(false);
+      setQuickPaymentMethod("");
+      setQuickPaymentAmount("");
+      setQuickPaymentReceipt(null);
+      loadEntries();
+      onBillingChange?.();
+    } catch (err: any) {
+      toast({ title: "שגיאה", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingQuickPayment(false);
+    }
+  };
+
   const handleToggleLegalAction = async (checked: boolean) => {
     const { error } = await supabase
       .from("customers")
@@ -554,6 +598,21 @@ export function BillingTab({
           hasLegalAction={hasLegalAction}
           legalActionNote={legalActionNote}
         />
+        {canAdd && balance > 0 && (
+          <Button
+            onClick={() => {
+              setQuickPaymentAmount(balance.toFixed(2));
+              setQuickPaymentMethod("");
+              setQuickPaymentReceipt(null);
+              setShowQuickPayment(true);
+            }}
+            variant="outline"
+            size="sm"
+            className="gap-2 text-success border-success/30 hover:bg-success/10"
+          >
+            <CheckCircle className="w-4 h-4" /> אשר תשלום
+          </Button>
+        )}
         {canAdd && (
           <Button
             onClick={() => setShowForm(!showForm)}
@@ -934,6 +993,77 @@ export function BillingTab({
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Payment Dialog */}
+      <Dialog open={showQuickPayment} onOpenChange={setShowQuickPayment}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-success" />
+              אישור תשלום
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">יתרת חוב</span>
+                <span className="font-bold text-destructive">₪{balance.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">סכום לתשלום (₪)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={quickPaymentAmount}
+                onChange={(e) => setQuickPaymentAmount(e.target.value)}
+                dir="ltr"
+              />
+              {quickPaymentAmount && parseFloat(quickPaymentAmount) < balance && (
+                <p className="text-xs text-muted-foreground">
+                  נותר לאחר תשלום: ₪{(balance - parseFloat(quickPaymentAmount)).toFixed(2)}
+                </p>
+              )}
+              {quickPaymentAmount && parseFloat(quickPaymentAmount) >= balance && (
+                <p className="text-xs text-success font-medium">
+                  ✓ החוב ייסגר במלואו
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">אמצעי תשלום</Label>
+              <Select value={quickPaymentMethod} onValueChange={setQuickPaymentMethod}>
+                <SelectTrigger>
+                  <SelectValue placeholder="בחר אמצעי תשלום..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {paymentMethods.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <ReceiptUpload
+              customerId={customerId}
+              onUploaded={(path) => setQuickPaymentReceipt(path)}
+              onRemoved={() => setQuickPaymentReceipt(null)}
+            />
+
+            <Button
+              onClick={handleQuickPayment}
+              disabled={savingQuickPayment || !quickPaymentMethod || !quickPaymentAmount}
+              className="w-full gap-2"
+            >
+              <CheckCircle className="w-4 h-4" />
+              {savingQuickPayment ? "שומר..." : "אשר תשלום"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
