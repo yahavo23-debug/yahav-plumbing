@@ -1,0 +1,2 @@
+ALTER TABLE public.customer_ledger DROP CONSTRAINT check_entry_type;
+ALTER TABLE public.customer_ledger ADD CONSTRAINT check_entry_type CHECK (entry_type IN ('charge', 'payment', 'credit', 'settled'));
