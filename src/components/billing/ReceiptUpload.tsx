@@ -27,8 +27,8 @@ export function ReceiptUpload({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "שגיאה", description: "ניתן להעלות תמונות בלבד", variant: "destructive" });
+    if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+      toast({ title: "שגיאה", description: "ניתן להעלות תמונות או PDF בלבד", variant: "destructive" });
       return;
     }
 
@@ -71,7 +71,7 @@ export function ReceiptUpload({
       <input
         ref={fileRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.pdf,application/pdf"
         capture="environment"
         className="hidden"
         onChange={handleUpload}
@@ -79,11 +79,15 @@ export function ReceiptUpload({
 
       {previewUrl || currentPath ? (
         <div className="relative">
-          <img
-            src={previewUrl || ""}
-            alt="קבלה"
-            className="w-12 h-12 object-cover rounded border border-input"
-          />
+          {currentPath?.endsWith(".pdf") || previewUrl?.endsWith(".pdf") ? (
+            <div className="w-12 h-12 rounded border border-input bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">PDF</div>
+          ) : (
+            <img
+              src={previewUrl || ""}
+              alt="קבלה"
+              className="w-12 h-12 object-cover rounded border border-input"
+            />
+          )}
           <button
             type="button"
             onClick={handleRemove}
