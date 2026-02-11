@@ -30,13 +30,14 @@ type Photo = Tables<"service_call_photos">;
 type Video = Tables<"service_call_videos">;
 
 const statusLabels: Record<string, string> = {
-  open: "פתוח", in_progress: "בטיפול", completed: "הושלם", cancelled: "בוטל",
+  open: "פתוח", in_progress: "בטיפול", completed: "הושלם", cancelled: "בוטל", pending_customer: "ממתין לאישור לקוח",
 };
 const statusColors: Record<string, string> = {
   open: "bg-warning/15 text-warning border-warning/30",
   in_progress: "bg-primary/15 text-primary border-primary/30",
   completed: "bg-success/15 text-success border-success/30",
   cancelled: "bg-destructive/15 text-destructive border-destructive/30",
+  pending_customer: "bg-purple-500/15 text-purple-600 border-purple-500/30",
 };
 const priorityLabels: Record<string, string> = {
   low: "נמוכה", medium: "בינונית", high: "גבוהה", urgent: "דחופה",
@@ -177,6 +178,46 @@ const ServiceCallDetail = () => {
             <Button variant="outline" onClick={() => navigate(`/service-calls/${id}/edit`)} className="gap-2">
               <Edit className="w-4 h-4" /> עריכה
             </Button>
+            {call.status !== "cancelled" && (
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={async () => {
+                  const { error } = await supabase
+                    .from("service_calls")
+                    .update({ status: "cancelled" } as any)
+                    .eq("id", id!);
+                  if (error) {
+                    toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+                  } else {
+                    toast({ title: "בוטל", description: "הקריאה בוטלה בהצלחה" });
+                    setCall({ ...call, status: "cancelled" });
+                  }
+                }}
+              >
+                ביטול קריאה
+              </Button>
+            )}
+            {call.status !== "pending_customer" && call.status !== "cancelled" && call.status !== "completed" && (
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={async () => {
+                  const { error } = await supabase
+                    .from("service_calls")
+                    .update({ status: "pending_customer" } as any)
+                    .eq("id", id!);
+                  if (error) {
+                    toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+                  } else {
+                    toast({ title: "עודכן", description: "הקריאה הועברה לממתין לאישור לקוח" });
+                    setCall({ ...call, status: "pending_customer" });
+                  }
+                }}
+              >
+                ממתין לאישור לקוח
+              </Button>
+            )}
             <Button onClick={handleCreateReport} className="gap-2">
               <FileText className="w-4 h-4" /> דוח עבודה
             </Button>

@@ -12,13 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { getJobTypeLabel } from "@/lib/constants";
 
 const statusLabels: Record<string, string> = {
-  open: "פתוח", in_progress: "בטיפול", completed: "הושלם", cancelled: "בוטל",
+  open: "פתוח", in_progress: "בטיפול", completed: "הושלם", cancelled: "בוטל", pending_customer: "ממתין לאישור לקוח",
 };
 const statusColors: Record<string, string> = {
   open: "bg-warning/15 text-warning border-warning/30",
   in_progress: "bg-primary/15 text-primary border-primary/30",
   completed: "bg-success/15 text-success border-success/30",
   cancelled: "bg-destructive/15 text-destructive border-destructive/30",
+  pending_customer: "bg-purple-500/15 text-purple-600 border-purple-500/30",
 };
 
 const ServiceCalls = () => {
