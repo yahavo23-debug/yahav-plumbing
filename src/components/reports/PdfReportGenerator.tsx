@@ -413,14 +413,27 @@ function buildReportHtml(data: {
     }
   }
 
-  // Signature
+  // Signature block
   if (signatureUrl) {
     html += sectionTitle("חתימת לקוח");
-    html += `<div style="display:flex;align-items:end;gap:20px;">`;
-    html += `<img src="${signatureUrl}" style="max-width:250px;max-height:100px;border-bottom:1px solid #333;" crossorigin="anonymous" />`;
-    if (signatureDate) {
-      html += `<p style="font-size:12px;color:#666;">נחתם: ${new Date(signatureDate).toLocaleString("he-IL")}</p>`;
+    html += `<div style="border:1px solid #e0e0e0;border-radius:8px;padding:16px;background:#fafafa;">`;
+    html += `<div style="display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;">`;
+    html += `<div>`;
+    html += `<p style="font-size:11px;color:#888;margin:0 0 4px;">חתימה:</p>`;
+    html += `<img src="${signatureUrl}" style="max-width:280px;max-height:100px;border-bottom:2px solid #333;" crossorigin="anonymous" />`;
+    html += `</div>`;
+    html += `<div style="font-size:12px;line-height:1.8;">`;
+    if (report.signed_by) {
+      html += `<p style="margin:0;"><strong>שם החותם:</strong> ${report.signed_by}</p>`;
     }
+    if (signatureDate) {
+      html += `<p style="margin:0;"><strong>תאריך ושעה:</strong> ${new Date(signatureDate).toLocaleString("he-IL")}</p>`;
+    }
+    if (report.ip_address) {
+      html += `<p style="margin:0;"><strong>כתובת IP:</strong> ${report.ip_address}</p>`;
+    }
+    html += `</div>`;
+    html += `</div>`;
     html += `</div>`;
   }
 

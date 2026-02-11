@@ -15,15 +15,22 @@ import { PhotoGrid } from "@/components/media/PhotoGrid";
 import { DownloadAllPhotos } from "@/components/media/DownloadAllPhotos";
 import { VideoList } from "@/components/media/VideoList";
 import {
-  ArrowRight, Share2, ExternalLink, Copy, Ban, FileText,
+  ArrowRight, Share2, ExternalLink, Copy, Ban, FileText, Send, Lock, Unlock, MessageCircle, AlertTriangle,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PdfReportGenerator } from "@/components/reports/PdfReportGenerator";
 
+const statusConfig: Record<string, { label: string; color: string }> = {
+  draft: { label: "טיוטה", color: "bg-warning/15 text-warning" },
+  sent: { label: "נשלח לחתימה", color: "bg-primary/15 text-primary" },
+  signed: { label: "נחתם", color: "bg-success/15 text-success" },
+  final: { label: "סופי", color: "bg-muted text-muted-foreground" },
+};
+
 const ReportEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [report, setReport] = useState<any>(null);
   const [serviceCall, setServiceCall] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
@@ -37,6 +44,10 @@ const ReportEditor = () => {
     title: "", findings: "", recommendations: "",
     quote_summary: "", invoice_number: "", invoice_status: "",
   });
+
+  // Is the report locked (signed or final)?
+  const isLocked = report?.status === "signed" || report?.status === "final";
+  const canEdit = !isLocked || isAdmin;
 
   useEffect(() => {
     if (!user || !id) return;
@@ -61,7 +72,6 @@ const ReportEditor = () => {
         invoice_status: rep.invoice_status || "",
       });
 
-      // Load related data
       const [scRes, photosRes, videosRes, shareRes] = await Promise.all([
         supabase.from("service_calls").select("*, customers(*)").eq("id", rep.service_call_id).single(),
         supabase.from("service_call_photos").select("*").eq("service_call_id", rep.service_call_id).order("created_at"),
@@ -85,6 +95,7 @@ const ReportEditor = () => {
   };
 
   const handleSave = async () => {
+    if (!canEdit) return;
     setSaving(true);
     try {
       const { error } = await supabase.from("reports").update(form).eq("id", id!);
@@ -111,25 +122,48 @@ const ReportEditor = () => {
     }
   };
 
-  const handleShare = async () => {
-    if (!user) return;
+  const handleUnlock = async () => {
+    if (!isAdmin) return;
+    setSaving(true);
     try {
-      if (shareToken) {
-        setShareDialogOpen(true);
-        return;
-      }
-
-      const { data, error } = await supabase.from("report_shares").insert({
-        report_id: id!,
-        created_by: user.id,
-      }).select("share_token").single();
-
+      const { error } = await supabase.from("reports").update({ status: "draft" } as any).eq("id", id!);
       if (error) throw error;
-      setShareToken(data.share_token);
-      setShareDialogOpen(true);
-      toast({ title: "קישור שיתוף נוצר" });
+      setReport((r: any) => ({ ...r, status: "draft" }));
+      toast({ title: "הדוח נפתח לעריכה" });
     } catch (err: any) {
       toast({ title: "שגיאה", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSendToSign = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      // Save form first
+      await supabase.from("reports").update({ ...form, status: "sent" } as any).eq("id", id!);
+      setReport((r: any) => ({ ...r, status: "sent" }));
+
+      // Create share link if doesn't exist
+      let token = shareToken;
+      if (!token) {
+        const { data, error } = await supabase.from("report_shares").insert({
+          report_id: id!,
+          created_by: user.id,
+        }).select("share_token").single();
+
+        if (error) throw error;
+        token = data.share_token;
+        setShareToken(token);
+      }
+
+      setShareDialogOpen(true);
+      toast({ title: "הדוח נשלח לחתימה", description: "סטטוס עודכן ל'נשלח'" });
+    } catch (err: any) {
+      toast({ title: "שגיאה", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -150,15 +184,32 @@ const ReportEditor = () => {
   };
 
   const shareUrl = shareToken ? `${window.location.origin}/r/${shareToken}` : "";
+  const whatsappUrl = shareUrl ? `https://wa.me/?text=${encodeURIComponent(`שלום, מצורף דוח עבודה לעיון וחתימה:\n${shareUrl}`)}` : "";
 
   if (loading) {
     return <AppLayout title="טוען דוח..."><p className="text-center py-8">טוען...</p></AppLayout>;
   }
 
   const customer = serviceCall?.customers as any;
+  const status = statusConfig[report?.status] || statusConfig.draft;
 
   return (
     <AppLayout title={form.title || "דוח עבודה"}>
+      {/* Locked banner */}
+      {isLocked && (
+        <div className="flex items-center gap-3 p-3 mb-4 rounded-lg bg-warning/10 border border-warning/30">
+          <Lock className="w-5 h-5 text-warning shrink-0" />
+          <p className="text-sm font-medium text-warning">
+            דוח חתום – לא ניתן לעריכה
+          </p>
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={handleUnlock} className="mr-auto gap-1.5">
+              <Unlock className="w-3.5 h-3.5" /> פתח נעילה
+            </Button>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <Button variant="ghost" onClick={() => navigate(`/service-calls/${report.service_call_id}`)} className="gap-2">
           <ArrowRight className="w-4 h-4" /> חזרה לקריאה
@@ -170,10 +221,20 @@ const ReportEditor = () => {
             customer={customer}
             photos={photos}
           />
-          <Button variant="outline" onClick={handleShare} className="gap-2">
-            <Share2 className="w-4 h-4" /> שתף
-          </Button>
-          {report.status === "draft" && (
+          {/* Show share button if link exists */}
+          {shareToken && (
+            <Button variant="outline" onClick={() => setShareDialogOpen(true)} className="gap-2">
+              <Share2 className="w-4 h-4" /> קישור שיתוף
+            </Button>
+          )}
+          {/* Send to sign — for draft or sent status */}
+          {(report.status === "draft" || report.status === "sent") && (
+            <Button onClick={handleSendToSign} disabled={saving} className="gap-2" variant="default">
+              <Send className="w-4 h-4" /> שלח לחתימה
+            </Button>
+          )}
+          {/* Finalize — for signed reports */}
+          {report.status === "signed" && (
             <Button onClick={handleFinalize} disabled={saving} className="gap-2">
               <FileText className="w-4 h-4" /> סיים דוח
             </Button>
@@ -181,9 +242,24 @@ const ReportEditor = () => {
         </div>
       </div>
 
-      <Badge className={report.status === "final" ? "bg-success/15 text-success mb-4" : "bg-warning/15 text-warning mb-4"}>
-        {report.status === "final" ? "סופי" : "טיוטה"}
+      <Badge className={`${status.color} mb-4`}>
+        {status.label}
       </Badge>
+
+      {/* Signature info display */}
+      {report.signature_path && (
+        <Card className="mb-4 border-success/30">
+          <CardContent className="p-4 text-sm space-y-1">
+            <p className="font-medium text-success flex items-center gap-2">
+              <Lock className="w-4 h-4" /> חתימת לקוח התקבלה
+            </p>
+            {report.signed_by && <p><strong>שם החותם:</strong> {report.signed_by}</p>}
+            {report.signature_date && <p><strong>תאריך:</strong> {new Date(report.signature_date).toLocaleString("he-IL")}</p>}
+            {report.ip_address && <p><strong>כתובת IP:</strong> {report.ip_address}</p>}
+            {report.device_info && <p className="truncate"><strong>מכשיר:</strong> {report.device_info}</p>}
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="details" dir="rtl">
         <TabsList className="mb-4 h-12">
@@ -194,7 +270,6 @@ const ReportEditor = () => {
 
         <TabsContent value="details">
           <div className="space-y-6">
-            {/* Customer info */}
             <Card>
               <CardHeader><CardTitle className="text-base">פרטי לקוח</CardTitle></CardHeader>
               <CardContent className="text-sm space-y-1">
@@ -204,39 +279,40 @@ const ReportEditor = () => {
               </CardContent>
             </Card>
 
-            {/* Report fields */}
             <Card>
               <CardHeader><CardTitle className="text-base">תוכן הדוח</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>כותרת</Label>
-                  <Input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} />
+                  <Input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} disabled={!canEdit} />
                 </div>
                 <div className="space-y-2">
                   <Label>ממצאים</Label>
-                  <Textarea value={form.findings} onChange={(e) => setForm(f => ({ ...f, findings: e.target.value }))} rows={5} />
+                  <Textarea value={form.findings} onChange={(e) => setForm(f => ({ ...f, findings: e.target.value }))} rows={5} disabled={!canEdit} />
                 </div>
                 <div className="space-y-2">
                   <Label>המלצות</Label>
-                  <Textarea value={form.recommendations} onChange={(e) => setForm(f => ({ ...f, recommendations: e.target.value }))} rows={5} />
+                  <Textarea value={form.recommendations} onChange={(e) => setForm(f => ({ ...f, recommendations: e.target.value }))} rows={5} disabled={!canEdit} />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-2">
                     <Label>סיכום הצעת מחיר</Label>
-                    <Input value={form.quote_summary} onChange={(e) => setForm(f => ({ ...f, quote_summary: e.target.value }))} />
+                    <Input value={form.quote_summary} onChange={(e) => setForm(f => ({ ...f, quote_summary: e.target.value }))} disabled={!canEdit} />
                   </div>
                   <div className="space-y-2">
                     <Label>מספר חשבונית</Label>
-                    <Input value={form.invoice_number} onChange={(e) => setForm(f => ({ ...f, invoice_number: e.target.value }))} dir="ltr" />
+                    <Input value={form.invoice_number} onChange={(e) => setForm(f => ({ ...f, invoice_number: e.target.value }))} dir="ltr" disabled={!canEdit} />
                   </div>
                   <div className="space-y-2">
                     <Label>סטטוס חשבונית</Label>
-                    <Input value={form.invoice_status} onChange={(e) => setForm(f => ({ ...f, invoice_status: e.target.value }))} />
+                    <Input value={form.invoice_status} onChange={(e) => setForm(f => ({ ...f, invoice_status: e.target.value }))} disabled={!canEdit} />
                   </div>
                 </div>
-                <Button onClick={handleSave} disabled={saving} className="h-12">
-                  {saving ? "שומר..." : "שמור שינויים"}
-                </Button>
+                {canEdit && (
+                  <Button onClick={handleSave} disabled={saving} className="h-12">
+                    {saving ? "שומר..." : "שמור שינויים"}
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -260,8 +336,8 @@ const ReportEditor = () => {
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>שיתוף דוח</DialogTitle>
-            <DialogDescription>קישור זה מאפשר צפייה בלבד בדוח ללא צורך בהתחברות</DialogDescription>
+            <DialogTitle>שליחת דוח לחתימה</DialogTitle>
+            <DialogDescription>קישור זה מאפשר צפייה בדוח וחתימה דיגיטלית ללא צורך בהתחברות</DialogDescription>
           </DialogHeader>
           <div className="flex gap-2">
             <Input value={shareUrl} readOnly dir="ltr" className="text-sm" />
@@ -272,6 +348,11 @@ const ReportEditor = () => {
               <a href={shareUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-4 h-4" /></a>
             </Button>
           </div>
+          <Button variant="outline" className="gap-2 w-full" asChild>
+            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="w-4 h-4" /> שלח בוואטסאפ
+            </a>
+          </Button>
           <DialogFooter>
             <Button variant="destructive" onClick={handleRevoke} className="gap-2">
               <Ban className="w-4 h-4" /> בטל קישור שיתוף

@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -75,7 +75,10 @@ Deno.serve(async (req) => {
     console.log(`Public report accessed: ${share.report_id} via token: ${share_token.substring(0, 8)}...`);
 
     return new Response(JSON.stringify({
-      report: { ...report, signature_url: signatureUrl },
+      report: {
+        ...report,
+        signature_url: signatureUrl,
+      },
       service_call, customer,
       photos: photosWithUrls, videos: videosWithUrls,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });

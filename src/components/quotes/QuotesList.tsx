@@ -210,9 +210,9 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
           {quotes.map((quote) => (
             <Card
               key={quote.id}
-              className="hover:shadow-md transition-shadow cursor-pointer"
+              className={`hover:shadow-md transition-shadow ${!readOnly && !quote.signature_path ? 'cursor-pointer' : ''}`}
               onClick={() => {
-                if (!readOnly) setEditingId(quote.id);
+                if (!readOnly && !quote.signature_path) setEditingId(quote.id);
               }}
             >
               <CardContent className="p-4">
@@ -293,14 +293,16 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                         </>
                       )}
                       <QuotePdfExport quoteId={quote.id} serviceCallId={serviceCallId} />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setEditingId(quote.id)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                      {!quote.signature_path && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setEditingId(quote.id)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      )}
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">

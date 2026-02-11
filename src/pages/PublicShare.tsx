@@ -448,6 +448,7 @@ const QuotePublicSignaturePad = ({ quoteId, shareToken, onSigned }: { quoteId: s
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [signerName, setSignerName] = useState("");
 
   const getCtx = useCallback(() => {
     const canvas = canvasRef.current;
@@ -525,6 +526,9 @@ const QuotePublicSignaturePad = ({ quoteId, shareToken, onSigned }: { quoteId: s
       formData.append("share_token", shareToken);
       formData.append("quote_id", quoteId);
       formData.append("signature", blob, "signature.png");
+      if (signerName.trim()) {
+        formData.append("signed_by", signerName.trim());
+      }
 
       const response = await supabase.functions.invoke("sign-public-quote", {
         body: formData,
@@ -555,6 +559,15 @@ const QuotePublicSignaturePad = ({ quoteId, shareToken, onSigned }: { quoteId: s
         <p className="text-sm text-muted-foreground">
           אני מאשר/ת את הצעת המחיר ומסכים/ה לתנאים המפורטים בה.
         </p>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">שם מלא</label>
+          <input
+            value={signerName}
+            onChange={(e) => setSignerName(e.target.value)}
+            placeholder="הזן שם מלא..."
+            className="w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+        </div>
         <div className="border rounded-lg overflow-hidden bg-white">
           <canvas
             ref={canvasRef}

@@ -257,15 +257,18 @@ const PublicReport = () => {
                 חתימת לקוח התקבלה
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-2">
               <img
                 src={report.signature_url}
                 alt="חתימת לקוח"
                 className="max-w-xs border rounded-lg"
               />
+              {report.signed_by && (
+                <p className="text-sm"><strong>שם החותם:</strong> {report.signed_by}</p>
+              )}
               {report.signature_date && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  נחתם: {new Date(report.signature_date).toLocaleDateString("he-IL")}
+                <p className="text-sm text-muted-foreground">
+                  נחתם: {new Date(report.signature_date).toLocaleString("he-IL")}
                 </p>
               )}
             </CardContent>

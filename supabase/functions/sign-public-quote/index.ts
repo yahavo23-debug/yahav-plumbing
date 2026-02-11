@@ -15,6 +15,7 @@ Deno.serve(async (req) => {
     const shareToken = formData.get("share_token") as string;
     const quoteId = formData.get("quote_id") as string;
     const signatureFile = formData.get("signature") as File;
+    const signedBy = formData.get("signed_by") as string || null;
 
     if (!shareToken || !quoteId || !signatureFile) {
       return new Response(JSON.stringify({ error: "Missing share_token, quote_id or signature" }), {
@@ -22,6 +23,13 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Capture IP and device info
+    const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || req.headers.get("cf-connecting-ip")
+      || req.headers.get("x-real-ip")
+      || "unknown";
+    const deviceInfo = req.headers.get("user-agent") || "unknown";
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -89,16 +97,23 @@ Deno.serve(async (req) => {
 
     if (uploadError) throw uploadError;
 
-    // Update quote
+    // Update quote with signature + metadata
     const now = new Date().toISOString();
     const { error: updateError } = await supabase
       .from("quotes")
-      .update({ signature_path: filePath, signed_at: now, status: "approved" })
+      .update({
+        signature_path: filePath,
+        signed_at: now,
+        status: "approved",
+        signed_by: signedBy,
+        ip_address: ipAddress,
+        device_info: deviceInfo,
+      })
       .eq("id", quoteId);
 
     if (updateError) throw updateError;
 
-    console.log(`Quote ${quoteId} signed via public link`);
+    console.log(`Quote ${quoteId} signed via public link by ${signedBy || "unknown"} from ${ipAddress}`);
 
     return new Response(JSON.stringify({ success: true, signed_at: now }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
