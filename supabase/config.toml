@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.get-db-size]
 verify_jwt = false
+
+[functions.get-manifest]
+verify_jwt = false
