@@ -26,26 +26,34 @@ export interface FinanceKPIs {
   net: number;
 }
 
-export function useFinanceTransactions(month: string) {
+export type FinancePeriod = "month" | "year" | "all";
+
+export function useFinanceTransactions(period: FinancePeriod, month: string) {
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState<FinanceKPIs>({ totalIncome: 0, totalExpenses: 0, net: 0 });
 
-  const startDate = `${month}-01`;
-  const endDate = (() => {
-    const [y, m] = month.split("-").map(Number);
-    const lastDay = new Date(y, m, 0).getDate();
-    return `${month}-${String(lastDay).padStart(2, "0")}`;
-  })();
-
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any)
+
+    let query = (supabase as any)
       .from("financial_transactions")
       .select("*")
-      .gte("txn_date", startDate)
-      .lte("txn_date", endDate)
       .order("txn_date", { ascending: false });
+
+    if (period === "month") {
+      const startDate = `${month}-01`;
+      const [y, m] = month.split("-").map(Number);
+      const lastDay = new Date(y, m, 0).getDate();
+      const endDate = `${month}-${String(lastDay).padStart(2, "0")}`;
+      query = query.gte("txn_date", startDate).lte("txn_date", endDate);
+    } else if (period === "year") {
+      const y = month.split("-")[0];
+      query = query.gte("txn_date", `${y}-01-01`).lte("txn_date", `${y}-12-31`);
+    }
+    // "all" — no date filter
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Finance load error:", error);
@@ -59,7 +67,7 @@ export function useFinanceTransactions(month: string) {
       setKpis({ totalIncome, totalExpenses, net: totalIncome - totalExpenses });
     }
     setLoading(false);
-  }, [startDate, endDate]);
+  }, [period, month]);
 
   useEffect(() => { load(); }, [load]);
 
