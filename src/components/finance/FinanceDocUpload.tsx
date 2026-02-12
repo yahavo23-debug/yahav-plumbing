@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, Loader2, X, FileText } from "lucide-react";
 
 interface FinanceDocUploadProps {
   currentPath?: string | null;
@@ -13,7 +13,21 @@ interface FinanceDocUploadProps {
 export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: FinanceDocUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isPdf, setIsPdf] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Load signed URL for existing path
+  useEffect(() => {
+    if (currentPath && !previewUrl) {
+      setIsPdf(currentPath.endsWith(".pdf"));
+      supabase.storage
+        .from("finance-docs")
+        .createSignedUrl(currentPath, 300)
+        .then(({ data }) => {
+          if (data?.signedUrl) setPreviewUrl(data.signedUrl);
+        });
+    }
+  }, [currentPath]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -40,6 +54,7 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
 
       if (error) throw error;
 
+      setIsPdf(file.type === "application/pdf");
       setPreviewUrl(URL.createObjectURL(file));
       onUploaded(path);
       toast({ title: "הועלה", description: "המסמך נשמר" });
@@ -54,6 +69,7 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
 
   const handleRemove = () => {
     setPreviewUrl(null);
+    setIsPdf(false);
     onRemoved?.();
   };
 
@@ -69,13 +85,21 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
       />
       {previewUrl || currentPath ? (
         <div className="relative">
-          <div className="w-12 h-12 rounded border border-input bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
-            {(currentPath?.endsWith(".pdf") || previewUrl?.endsWith(".pdf")) ? "PDF" : "📄"}
-          </div>
+          {isPdf ? (
+            <div className="w-16 h-16 rounded border border-input bg-muted flex items-center justify-center">
+              <FileText className="w-6 h-6 text-muted-foreground" />
+            </div>
+          ) : (
+            <img
+              src={previewUrl || ""}
+              alt="תצוגה מקדימה"
+              className="w-16 h-16 rounded border border-input object-cover"
+            />
+          )}
           <button
             type="button"
             onClick={handleRemove}
-            className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
           >
             <X className="w-3 h-3" />
           </button>
