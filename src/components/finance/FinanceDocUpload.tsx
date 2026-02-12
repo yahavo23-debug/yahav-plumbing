@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ImagePlus, Loader2, X, FileText } from "lucide-react";
+import { ImagePlus, Loader2, X, FileText, Maximize2 } from "lucide-react";
 
 interface FinanceDocUploadProps {
   currentPath?: string | null;
@@ -14,9 +15,9 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPdf, setIsPdf] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Load signed URL for existing path
   useEffect(() => {
     if (currentPath && !previewUrl) {
       setIsPdf(currentPath.endsWith(".pdf"));
@@ -74,49 +75,81 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*,.pdf,application/pdf"
-        capture="environment"
-        className="hidden"
-        onChange={handleUpload}
-      />
-      {previewUrl || currentPath ? (
-        <div className="relative">
+    <>
+      <div className="flex items-center gap-2">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,.pdf,application/pdf"
+          capture="environment"
+          className="hidden"
+          onChange={handleUpload}
+        />
+        {previewUrl || currentPath ? (
+          <div className="relative group">
+            {isPdf ? (
+              <div
+                onClick={() => setFullscreen(true)}
+                className="w-16 h-16 rounded border border-input bg-muted flex items-center justify-center cursor-pointer hover:bg-muted/80 transition-colors"
+              >
+                <FileText className="w-6 h-6 text-muted-foreground" />
+              </div>
+            ) : (
+              <img
+                src={previewUrl || ""}
+                alt="תצוגה מקדימה"
+                onClick={() => setFullscreen(true)}
+                className="w-16 h-16 rounded border border-input object-cover cursor-pointer hover:opacity-80 transition-opacity"
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => setFullscreen(true)}
+              className="absolute bottom-0 left-0 w-5 h-5 bg-black/60 text-white rounded-tr rounded-bl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <Maximize2 className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="gap-1.5"
+          >
+            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
+            צרף מסמך
+          </Button>
+        )}
+      </div>
+
+      {/* Fullscreen preview dialog */}
+      <Dialog open={fullscreen} onOpenChange={setFullscreen}>
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-2">
           {isPdf ? (
-            <div className="w-16 h-16 rounded border border-input bg-muted flex items-center justify-center">
-              <FileText className="w-6 h-6 text-muted-foreground" />
-            </div>
+            <iframe
+              src={previewUrl || ""}
+              className="w-full h-[80vh] rounded"
+              title="תצוגת מסמך"
+            />
           ) : (
             <img
               src={previewUrl || ""}
-              alt="תצוגה מקדימה"
-              className="w-16 h-16 rounded border border-input object-cover"
+              alt="תצוגת מסמך"
+              className="w-full max-h-[80vh] object-contain rounded"
             />
           )}
-          <button
-            type="button"
-            onClick={handleRemove}
-            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        </div>
-      ) : (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="gap-1.5"
-        >
-          {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
-          צרף מסמך
-        </Button>
-      )}
-    </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
