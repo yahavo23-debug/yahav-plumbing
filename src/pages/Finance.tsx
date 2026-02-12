@@ -23,7 +23,9 @@ import {
   categoryLabels, paymentMethodLabels,
   docTypeLabels, statusLabels as finStatusLabels, financeCategories,
 } from "@/lib/finance-constants";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
+
+const PIE_COLORS = ["#3b82f6", "#f59e0b", "#22c55e", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16", "#06b6d4", "#e11d48"];
 
 function getMonthDefault(): string {
   const now = new Date();
@@ -55,6 +57,16 @@ export default function Finance() {
       map[day][t.direction] += Number(t.amount);
     });
     return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+  }, [transactions]);
+
+  // Pie chart data: expenses by category
+  const pieData = useMemo(() => {
+    const map: Record<string, number> = {};
+    transactions.filter(t => t.direction === "expense").forEach(t => {
+      const cat = categoryLabels[t.category || ""] || t.category || "אחר";
+      map[cat] = (map[cat] || 0) + Number(t.amount);
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [transactions]);
 
   const filtered = transactions.filter(t => {
@@ -195,48 +207,81 @@ export default function Finance() {
         </Card>
       </div>
 
-      {/* Trend Chart */}
-      {chartData.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">מגמות חודשיות</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={chartData}>
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(v: string) => new Date(v).getDate().toString()}
-                  fontSize={12}
-                />
-                <YAxis fontSize={12} tickFormatter={(v: number) => `₪${v.toLocaleString()}`} />
-                <Tooltip
-                  formatter={(value: number, name: string) => [
-                    `₪${value.toLocaleString("he-IL", { minimumFractionDigits: 2 })}`,
-                    name === "income" ? "הכנסות" : "הוצאות",
-                  ]}
-                  labelFormatter={(label: string) => new Date(label).toLocaleDateString("he-IL")}
-                />
-                <Legend formatter={(value: string) => (value === "income" ? "הכנסות" : "הוצאות")} />
-                <Bar dataKey="income" fill="#22c55e" radius={[4, 4, 0, 0]} name="income" />
-                <Bar dataKey="expense" fill="#ef4444" radius={[4, 4, 0, 0]} name="expense" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
+      {/* Charts row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Trend Chart */}
+        {chartData.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">מגמות חודשיות</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={chartData}>
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(v: string) => new Date(v).getDate().toString()}
+                    fontSize={12}
+                  />
+                  <YAxis fontSize={12} tickFormatter={(v: number) => `₪${v.toLocaleString()}`} />
+                  <Tooltip
+                    formatter={(value: number, name: string) => [
+                      `₪${value.toLocaleString("he-IL", { minimumFractionDigits: 2 })}`,
+                      name === "income" ? "הכנסות" : "הוצאות",
+                    ]}
+                    labelFormatter={(label: string) => new Date(label).toLocaleDateString("he-IL")}
+                  />
+                  <Legend formatter={(value: string) => (value === "income" ? "הכנסות" : "הוצאות")} />
+                  <Bar dataKey="income" fill="#22c55e" radius={[4, 4, 0, 0]} name="income" />
+                  <Bar dataKey="expense" fill="#ef4444" radius={[4, 4, 0, 0]} name="expense" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Pie Chart - expenses by category */}
+        {pieData.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">הוצאות לפי קטגוריה</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={90}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    fontSize={11}
+                  >
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => `₪${value.toLocaleString("he-IL", { minimumFractionDigits: 2 })}`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Tabs for direction + Filters */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)} className="mb-4">
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <TabsList className="grid grid-cols-2 w-64">
-            <TabsTrigger value="expense" className="gap-1.5 data-[state=active]:text-red-600">
-              <TrendingDown className="w-4 h-4 text-red-500" />
-              הוצאות
-            </TabsTrigger>
             <TabsTrigger value="income" className="gap-1.5 data-[state=active]:text-green-600">
               <TrendingUp className="w-4 h-4 text-green-500" />
               הכנסות
+            </TabsTrigger>
+            <TabsTrigger value="expense" className="gap-1.5 data-[state=active]:text-red-600">
+              <TrendingDown className="w-4 h-4 text-red-500" />
+              הוצאות
             </TabsTrigger>
           </TabsList>
 
