@@ -22,6 +22,7 @@ const Customers = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [pendingCustomerIds, setPendingCustomerIds] = useState<Set<string>>(new Set());
+  const [returningCustomerIds, setReturningCustomerIds] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const { user, role, isAdmin } = useAuth();
   const { logAction } = useAuditLog();
@@ -34,6 +35,7 @@ const Customers = () => {
     if (!user) return;
     loadCustomers();
     loadPendingCalls();
+    loadReturningCustomers();
   }, [user]);
 
   const loadPendingCalls = async () => {
@@ -44,6 +46,45 @@ const Customers = () => {
     if (data) {
       setPendingCustomerIds(new Set(data.map((d) => d.customer_id)));
     }
+  };
+
+  const loadReturningCustomers = async () => {
+    // Fetch customers with more than 1 service call
+    const { data: callData } = await supabase
+      .from("service_calls")
+      .select("customer_id");
+    
+    // Fetch customers with more than 1 payment
+    const { data: paymentData } = await (supabase as any)
+      .from("customer_ledger")
+      .select("customer_id")
+      .eq("entry_type", "payment");
+
+    const returning = new Set<string>();
+
+    // Count service calls per customer
+    if (callData) {
+      const callCounts = new Map<string, number>();
+      callData.forEach((d: any) => {
+        callCounts.set(d.customer_id, (callCounts.get(d.customer_id) || 0) + 1);
+      });
+      callCounts.forEach((count, id) => {
+        if (count > 1) returning.add(id);
+      });
+    }
+
+    // Count payments per customer
+    if (paymentData) {
+      const payCounts = new Map<string, number>();
+      paymentData.forEach((d: any) => {
+        payCounts.set(d.customer_id, (payCounts.get(d.customer_id) || 0) + 1);
+      });
+      payCounts.forEach((count, id) => {
+        if (count > 1) returning.add(id);
+      });
+    }
+
+    setReturningCustomerIds(returning);
   };
 
   const loadCustomers = async () => {
@@ -125,6 +166,7 @@ const Customers = () => {
               isAdmin={isAdmin}
               isContractor={isContractor}
               hasPendingCall={pendingCustomerIds.has(customer.id)}
+              isReturning={returningCustomerIds.has(customer.id)}
               onEdit={(id) => navigate(`/customers/${id}/edit`)}
               onDelete={(c) => setDeleteTarget(c)}
             />
