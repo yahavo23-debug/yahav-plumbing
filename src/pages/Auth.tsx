@@ -84,7 +84,7 @@ const Auth = () => {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center space-y-4">
           {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="mx-auto w-16 h-16 rounded-2xl object-contain" />
+            <img src={logoUrl} alt="Logo" className="mx-auto max-h-24 max-w-[200px] rounded-2xl object-contain" />
           ) : (
             <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
               <Wrench className="w-8 h-8 text-primary-foreground" />

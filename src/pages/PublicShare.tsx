@@ -11,6 +11,8 @@ import {
   Wrench, User, Phone, MapPin, Calendar, Image, Film,
   FileText, Play, AlertTriangle, Shield, Eye, CheckCircle, Pen, RotateCcw,
 } from "lucide-react";
+import { useLogo } from "@/hooks/useLogo";
+import { BUSINESS_INFO } from "@/lib/pdf-utils";
 
 const tagLabels: Record<string, string> = {
   before: "לפני", after: "אחרי", finding: "ממצא", other: "אחר",
@@ -51,6 +53,7 @@ const visibleDamageLabels: Record<string, string> = {
 
 const PublicShare = () => {
   const { token } = useParams();
+  const { logoUrl } = useLogo();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -123,14 +126,18 @@ const PublicShare = () => {
       {/* Header */}
       <header className="bg-primary text-primary-foreground py-8 px-4">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-primary-foreground/20 rounded-xl flex items-center justify-center">
-              <Wrench className="w-6 h-6" />
-            </div>
+          <div className="flex items-center gap-4 mb-2">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-14 max-w-[160px] rounded-xl object-contain bg-primary-foreground/10 p-1" />
+            ) : (
+              <div className="w-12 h-12 bg-primary-foreground/20 rounded-xl flex items-center justify-center">
+                <Wrench className="w-6 h-6" />
+              </div>
+            )}
             <div>
               <h1 className="text-2xl font-bold">{shareTypeLabels[shareType]}</h1>
               <p className="text-sm opacity-80">
-                קריאה #{sc?.call_number} — {customer?.name}
+                {BUSINESS_INFO.name} — קריאה #{sc?.call_number} — {customer?.name}
               </p>
             </div>
           </div>
@@ -180,7 +187,8 @@ const PublicShare = () => {
       </main>
 
       <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground">
-        <p>דף זה נוצר לצפייה בלבד</p>
+        <p>{BUSINESS_INFO.name} | {BUSINESS_INFO.subtitle}</p>
+        <p className="mt-1">טלפון: {BUSINESS_INFO.phone}</p>
       </footer>
 
       {/* Lightbox */}
