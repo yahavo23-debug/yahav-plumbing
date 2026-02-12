@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Trash2, Save, X } from "lucide-react";
+import { ScopeOfWorkSection, ScopeOfWorkData, DEFAULT_SCOPE } from "./ScopeOfWorkSection";
 
 const VAT_RATE = 0.18;
 
@@ -34,6 +35,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
   const [validUntil, setValidUntil] = useState("");
   const [discountPercent, setDiscountPercent] = useState(0);
   const [includeVat, setIncludeVat] = useState(true);
+  const [scopeOfWork, setScopeOfWork] = useState<ScopeOfWorkData>({ ...DEFAULT_SCOPE });
   const [items, setItems] = useState<QuoteItem[]>([
     { description: "", quantity: 1, unit_price: 0, sort_order: 0 },
   ]);
@@ -57,6 +59,9 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
       setValidUntil(q.valid_until || "");
       setDiscountPercent(Number(q.discount_percent) || 0);
       setIncludeVat(q.include_vat !== false);
+      if (q.scope_of_work) {
+        setScopeOfWork({ ...DEFAULT_SCOPE, ...q.scope_of_work });
+      }
     }
     if (itemsRes.data && itemsRes.data.length > 0) {
       setItems(
@@ -116,6 +121,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
             valid_until: validUntil || null,
             discount_percent: discountPercent,
             include_vat: includeVat,
+            scope_of_work: scopeOfWork,
           } as any)
           .eq("id", quoteId);
         if (error) throw error;
@@ -129,6 +135,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
             valid_until: validUntil || null,
             discount_percent: discountPercent,
             include_vat: includeVat,
+            scope_of_work: scopeOfWork,
             created_by: user.id,
           } as any)
           .select()
@@ -194,6 +201,9 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
             />
           </div>
         </div>
+
+        {/* Scope of Work */}
+        <ScopeOfWorkSection data={scopeOfWork} onChange={setScopeOfWork} />
 
         {/* Line items */}
         <div className="space-y-2">

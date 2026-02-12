@@ -413,6 +413,7 @@ export type Database = {
           ip_address: string | null
           notes: string | null
           quote_number: number
+          scope_of_work: Json | null
           service_call_id: string
           signature_path: string | null
           signed_at: string | null
@@ -432,6 +433,7 @@ export type Database = {
           ip_address?: string | null
           notes?: string | null
           quote_number?: number
+          scope_of_work?: Json | null
           service_call_id: string
           signature_path?: string | null
           signed_at?: string | null
@@ -451,6 +453,7 @@ export type Database = {
           ip_address?: string | null
           notes?: string | null
           quote_number?: number
+          scope_of_work?: Json | null
           service_call_id?: string
           signature_path?: string | null
           signed_at?: string | null
