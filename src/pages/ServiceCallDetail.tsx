@@ -178,7 +178,26 @@ const ServiceCallDetail = () => {
             <Button variant="outline" onClick={() => navigate(`/service-calls/${id}/edit`)} className="gap-2">
               <Edit className="w-4 h-4" /> עריכה
             </Button>
-            {call.status !== "cancelled" && (
+            {call.status === "cancelled" ? (
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={async () => {
+                  const { error } = await supabase
+                    .from("service_calls")
+                    .update({ status: "open" } as any)
+                    .eq("id", id!);
+                  if (error) {
+                    toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+                  } else {
+                    toast({ title: "שוחזר", description: "הקריאה הוחזרה לסטטוס פתוח" });
+                    setCall({ ...call, status: "open" });
+                  }
+                }}
+              >
+                החזר קריאה
+              </Button>
+            ) : (
               <Button
                 variant="outline"
                 className="gap-2"
