@@ -60,9 +60,19 @@ export default function Finance() {
   }, [transactions]);
 
   // Pie chart data: expenses by category
-  const pieData = useMemo(() => {
+  const expensePieData = useMemo(() => {
     const map: Record<string, number> = {};
     transactions.filter(t => t.direction === "expense").forEach(t => {
+      const cat = categoryLabels[t.category || ""] || t.category || "אחר";
+      map[cat] = (map[cat] || 0) + Number(t.amount);
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [transactions]);
+
+  // Pie chart data: income by category
+  const incomePieData = useMemo(() => {
+    const map: Record<string, number> = {};
+    transactions.filter(t => t.direction === "income").forEach(t => {
       const cat = categoryLabels[t.category || ""] || t.category || "אחר";
       map[cat] = (map[cat] || 0) + Number(t.amount);
     });
@@ -208,7 +218,7 @@ export default function Finance() {
       </div>
 
       {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Trend Chart */}
         {chartData.length > 0 && (
           <Card>
@@ -241,7 +251,7 @@ export default function Finance() {
         )}
 
         {/* Pie Chart - expenses by category */}
-        {pieData.length > 0 && (
+        {expensePieData.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">הוצאות לפי קטגוריה</CardTitle>
@@ -250,7 +260,7 @@ export default function Finance() {
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie
-                    data={pieData}
+                    data={expensePieData}
                     dataKey="value"
                     nameKey="name"
                     cx="50%"
@@ -259,7 +269,37 @@ export default function Finance() {
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                     fontSize={11}
                   >
-                    {pieData.map((_, i) => (
+                    {expensePieData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => `₪${value.toLocaleString("he-IL", { minimumFractionDigits: 2 })}`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Pie Chart - income by category */}
+        {incomePieData.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">הכנסות לפי קטגוריה</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={incomePieData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={90}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    fontSize={11}
+                  >
+                    {incomePieData.map((_, i) => (
                       <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                     ))}
                   </Pie>
