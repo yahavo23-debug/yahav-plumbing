@@ -49,18 +49,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get DB size
-    const { data, error } = await adminClient.rpc("get_database_size_bytes" as any);
-    
-    if (error) {
-      // Fallback: try raw query via pg
-      return new Response(JSON.stringify({ error: "Could not fetch DB size" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Get DB size + storage size
+    const [dbRes, storageRes] = await Promise.all([
+      adminClient.rpc("get_database_size_bytes" as any),
+      adminClient.rpc("get_storage_size_bytes" as any),
+    ]);
 
-    return new Response(JSON.stringify({ size_bytes: data }), {
+    return new Response(JSON.stringify({
+      db_size_bytes: dbRes.data ?? 0,
+      storage_size_bytes: storageRes.data ?? 0,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
