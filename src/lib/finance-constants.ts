@@ -10,6 +10,7 @@ export const financeCategories = [
   { value: "professional", label: "שירותים מקצועיים" },
   { value: "materials", label: "חומרים" },
   { value: "service_income", label: "הכנסה משירות" },
+  { value: "contractor_income", label: "הכנסה מקבלן" },
   { value: "other", label: "אחר" },
 ];
 
