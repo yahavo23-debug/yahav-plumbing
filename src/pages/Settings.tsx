@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { User, Shield, Wrench, ClipboardList, HardHat } from "lucide-react";
+import { User, Shield, Wrench, ClipboardList, HardHat, Cloud, ExternalLink } from "lucide-react";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { AuditLogViewer } from "@/components/settings/AuditLogViewer";
 import { LogoUpload } from "@/components/settings/LogoUpload";
@@ -165,6 +165,34 @@ const Settings = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Admin-only: Cloud Management */}
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Cloud className="w-4 h-4" /> ניהול ענן
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>• גיבויים מתבצעים <strong>אוטומטית</strong> על ידי התשתית.</p>
+                <p>• נפח האחסון כולל מסד נתונים, תמונות, וידאו ומסמכים.</p>
+                <p>• ניתן להגדיל משאבים בהתאם לצורך.</p>
+              </div>
+              <p className="text-sm text-muted-foreground">לצפייה בנפח אחסון, ניהול גיבויים ושדרוג משאבים — יש לגשת ללוח הבקרה של הענן:</p>
+              <a
+                href="https://lovable.dev/projects"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" className="gap-2 mt-1">
+                  <ExternalLink className="w-4 h-4" /> פתח לוח בקרה ענן
+                </Button>
+              </a>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Admin-only: Logo */}
         {isAdmin && <LogoUpload />}
