@@ -1,19 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Search, Phone, MapPin, Mail, MoreVertical, Edit, Trash2 } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
-import { CustomerBillingBadgeInline } from "@/components/billing/CustomerBillingBadgeInline";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { CustomerCard } from "@/components/customers/CustomerCard";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -25,6 +21,7 @@ const Customers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [pendingCustomerIds, setPendingCustomerIds] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const { user, role, isAdmin } = useAuth();
   const { logAction } = useAuditLog();
@@ -36,7 +33,18 @@ const Customers = () => {
   useEffect(() => {
     if (!user) return;
     loadCustomers();
+    loadPendingCalls();
   }, [user]);
+
+  const loadPendingCalls = async () => {
+    const { data } = await supabase
+      .from("service_calls")
+      .select("customer_id")
+      .eq("status", "pending_customer");
+    if (data) {
+      setPendingCustomerIds(new Set(data.map((d) => d.customer_id)));
+    }
+  };
 
   const loadCustomers = async () => {
     const { data, error } = await supabase
@@ -49,7 +57,6 @@ const Customers = () => {
       toast({ title: "שגיאה", description: "לא ניתן לטעון את רשימת הלקוחות", variant: "destructive" });
     } else {
       setCustomers(data || []);
-      // Audit log for contractor viewing customer list
       logAction({
         action: "view_customer_list",
         resource_type: "customer_list",
@@ -112,67 +119,15 @@ const Customers = () => {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((customer) => (
-            <Card
+            <CustomerCard
               key={customer.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => navigate(`/customers/${customer.id}`)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-lg">{customer.name}</h3>
-                  <div className="flex items-center gap-1">
-                    {!isContractor && <CustomerBillingBadgeInline customerId={customer.id} />}
-                    {isAdmin && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenuItem onClick={() => navigate(`/customers/${customer.id}/edit`)}>
-                            <Edit className="w-4 h-4 ml-2" /> עריכה
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => setDeleteTarget(customer)}
-                          >
-                            <Trash2 className="w-4 h-4 ml-2" /> מחיקה
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-                </div>
-                {!isContractor && (
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    {customer.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-3.5 h-3.5" /> {customer.phone}
-                      </div>
-                    )}
-                    {customer.email && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-3.5 h-3.5" /> {customer.email}
-                      </div>
-                    )}
-                    {(customer.city || customer.address) && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-3.5 h-3.5" /> {customer.city} {customer.address}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {isContractor && customer.city && (
-                  <p className="text-sm text-muted-foreground">{customer.city}</p>
-                )}
-              </CardContent>
-            </Card>
+              customer={customer}
+              isAdmin={isAdmin}
+              isContractor={isContractor}
+              hasPendingCall={pendingCustomerIds.has(customer.id)}
+              onEdit={(id) => navigate(`/customers/${id}/edit`)}
+              onDelete={(c) => setDeleteTarget(c)}
+            />
           ))}
         </div>
       )}
