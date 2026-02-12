@@ -908,6 +908,7 @@ export type Database = {
         Returns: boolean
       }
       get_customer_for_sc: { Args: { _sc_id: string }; Returns: string }
+      get_database_size_bytes: { Args: never; Returns: number }
       get_sc_id_for_photo: { Args: { _photo_id: string }; Returns: string }
       get_sc_id_for_quote: { Args: { _quote_id: string }; Returns: string }
       get_sc_id_for_report: { Args: { _report_id: string }; Returns: string }

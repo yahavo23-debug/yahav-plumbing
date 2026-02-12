@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { User, Shield, Wrench, ClipboardList, HardHat, Cloud, ExternalLink } from "lucide-react";
+import { User, Shield, Wrench, ClipboardList, HardHat, Cloud, Database, RefreshCw } from "lucide-react";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { AuditLogViewer } from "@/components/settings/AuditLogViewer";
 import { LogoUpload } from "@/components/settings/LogoUpload";
@@ -18,6 +19,76 @@ const ROLE_DISPLAY: Record<string, { label: string; icon: React.ReactNode }> = {
   technician: { label: "טכנאי", icon: <Wrench className="w-3.5 h-3.5" /> },
   secretary: { label: "מזכירה", icon: <ClipboardList className="w-3.5 h-3.5" /> },
   contractor: { label: "קבלן", icon: <HardHat className="w-3.5 h-3.5" /> },
+};
+
+const DB_LIMIT_MB = 500;
+const STORAGE_LIMIT_GB = 1;
+
+const CloudStorageInfo = () => {
+  const [dbSizeMB, setDbSizeMB] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchSize = async () => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data, error } = await supabase.functions.invoke("get-db-size", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!error && data?.size_bytes) {
+        setDbSizeMB(Math.round((data.size_bytes / (1024 * 1024)) * 10) / 10);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchSize(); }, []);
+
+  const pct = dbSizeMB != null ? Math.min((dbSizeMB / DB_LIMIT_MB) * 100, 100) : 0;
+
+  return (
+    <CardContent className="space-y-4">
+      <div className="text-sm text-muted-foreground space-y-1">
+        <p>• גיבויים מתבצעים <strong>אוטומטית</strong> על ידי התשתית.</p>
+        <p>• נפח האחסון כולל מסד נתונים, תמונות, וידאו ומסמכים.</p>
+        <p>• ניתן להגדיל משאבים בהתאם לצורך.</p>
+      </div>
+
+      {/* DB size meter */}
+      <div className="space-y-2 rounded-lg border p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium flex items-center gap-1.5">
+            <Database className="w-3.5 h-3.5" /> מסד נתונים
+          </span>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={fetchSize} disabled={loading}>
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+        {dbSizeMB != null ? (
+          <>
+            <Progress value={pct} className="h-2" />
+            <p className="text-xs text-muted-foreground" dir="ltr">
+              {dbSizeMB} MB / {DB_LIMIT_MB} MB ({pct.toFixed(1)}%)
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">{loading ? "טוען..." : "לא ניתן לטעון"}</p>
+        )}
+      </div>
+
+      {/* File storage info */}
+      <div className="rounded-lg border p-3">
+        <span className="text-sm font-medium">אחסון קבצים</span>
+        <p className="text-xs text-muted-foreground mt-1">מכסה: {STORAGE_LIMIT_GB} GB (תמונות, וידאו, מסמכים)</p>
+      </div>
+
+      <p className="text-sm text-muted-foreground">לצפייה מפורטת — יש לגשת ללוח הבקרה דרך עורך הפרויקט (לחצן Cloud בצד שמאל).</p>
+    </CardContent>
+  );
 };
 
 const Settings = () => {
@@ -174,14 +245,7 @@ const Settings = () => {
                 <Cloud className="w-4 h-4" /> ניהול ענן
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>• גיבויים מתבצעים <strong>אוטומטית</strong> על ידי התשתית.</p>
-                <p>• נפח האחסון כולל מסד נתונים, תמונות, וידאו ומסמכים.</p>
-                <p>• ניתן להגדיל משאבים בהתאם לצורך.</p>
-              </div>
-              <p className="text-sm text-muted-foreground">לצפייה בנפח אחסון, ניהול גיבויים ושדרוג משאבים — יש לגשת ללוח הבקרה דרך עורך הפרויקט (לחצן Cloud בצד שמאל).</p>
-            </CardContent>
+            <CloudStorageInfo />
           </Card>
         )}
 
