@@ -39,7 +39,7 @@ export default function Finance() {
   const { isAdmin, role } = useAuth();
   const canEdit = isAdmin || role === "secretary";
 
-  const [period, setPeriod] = useState<FinancePeriod>("month");
+  const [period, setPeriod] = useState<FinancePeriod>("all");
   const [month, setMonth] = useState(getMonthDefault);
   const { transactions, loading, kpis, refresh } = useFinanceTransactions(period, month);
 
