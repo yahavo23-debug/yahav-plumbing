@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { FileDown, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { buildPdfHeader, buildPdfFooter, BUSINESS_INFO, renderCanvasToPdf } from "@/lib/pdf-utils";
+import { buildPdfHeader, buildPdfFooter, BUSINESS_INFO, renderCanvasToPdf, escapeHtml, escapeHtmlWithBreaks } from "@/lib/pdf-utils";
 
 interface QuotePdfExportProps {
   quoteId: string;
@@ -196,7 +196,7 @@ function buildQuoteHtml(data: {
     `<h2 style="font-size:15px;font-weight:700;margin:22px 0 10px;color:#1a56db;">${num}) ${text}</h2>`;
 
   const infoRow = (label: string, value: string) =>
-    value ? `<tr><td style="padding:4px 8px;font-size:13px;font-weight:600;color:#555;width:120px;vertical-align:top;">${label}</td><td style="padding:4px 8px;font-size:13px;">${value}</td></tr>` : "";
+    value ? `<tr><td style="padding:4px 8px;font-size:13px;font-weight:600;color:#555;width:120px;vertical-align:top;">${label}</td><td style="padding:4px 8px;font-size:13px;">${escapeHtml(value)}</td></tr>` : "";
 
   let html = buildPdfHeader({
     title: "הצעת מחיר",
@@ -238,7 +238,7 @@ function buildQuoteHtml(data: {
   // 1) Findings
   if (findings) {
     html += sectionTitle("1", "אבחון / ממצאים");
-    html += `<p style="font-size:13px;margin:0 0 8px;padding:10px 14px;background:#fff8f0;border-right:3px solid #f59e0b;border-radius:4px;">${findings.replace(/\n/g, "<br/>")}</p>`;
+    html += `<p style="font-size:13px;margin:0 0 8px;padding:10px 14px;background:#fff8f0;border-right:3px solid #f59e0b;border-radius:4px;">${escapeHtmlWithBreaks(findings)}</p>`;
   }
 
   // 2) What the service includes
@@ -275,7 +275,7 @@ function buildQuoteHtml(data: {
     const lineTotal = Number(item.quantity) * Number(item.unit_price);
     html += `
       <tr>
-        <td style="padding:7px 10px;border-bottom:1px solid #eee;">${item.description || ""}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #eee;">${escapeHtml(item.description)}</td>
         <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #eee;">${item.quantity}</td>
         <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #eee;">יח׳</td>
         <td style="padding:7px 10px;text-align:center;border-bottom:1px solid #eee;">₪${Number(item.unit_price).toFixed(2)}</td>
@@ -350,7 +350,7 @@ function buildQuoteHtml(data: {
             <img src="${signatureUrl}" style="max-height:80px;max-width:280px;border-bottom:2px solid #333;" crossorigin="anonymous" />
           </div>
           <div style="font-size:12px;line-height:1.8;">
-            ${quote.signed_by ? `<p style="margin:0;"><strong>שם החותם:</strong> ${quote.signed_by}</p>` : ""}
+            ${quote.signed_by ? `<p style="margin:0;"><strong>שם החותם:</strong> ${escapeHtml(quote.signed_by)}</p>` : ""}
             <p style="margin:0;"><strong>תאריך ושעה:</strong> ${signedDate}</p>
             ${quote.ip_address ? `<p style="margin:0;"><strong>כתובת IP:</strong> ${quote.ip_address}</p>` : ""}
           </div>
@@ -383,7 +383,7 @@ function buildQuoteHtml(data: {
   if (quote.notes) {
     html += `
       <div style="margin-top:18px;padding:10px 14px;background:#fffbeb;border-right:3px solid #f59e0b;border-radius:4px;font-size:13px;">
-        <strong>הערות:</strong><br/>${quote.notes.replace(/\n/g, "<br/>")}
+        <strong>הערות:</strong><br/>${escapeHtmlWithBreaks(quote.notes)}
       </div>
     `;
   }
