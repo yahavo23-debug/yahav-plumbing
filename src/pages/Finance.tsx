@@ -156,8 +156,8 @@ export default function Finance() {
           <CardContent className="p-4 flex items-center gap-3">
             <FileText className="w-5 h-5 text-primary shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">קובץ הייצוא מוכן להורדה</p>
-              <p className="text-xs text-muted-foreground truncate">{exportUrl}</p>
+              <p className="text-sm font-medium">📦 חבילת הייצוא מוכנה להורדה (ZIP)</p>
+              <p className="text-xs text-muted-foreground">כולל קובץ Excel + כל המסמכים המצורפים • תקף 7 ימים</p>
             </div>
             <Button size="sm" variant="outline" onClick={copyExportUrl} className="gap-1.5 shrink-0">
               <Copy className="w-3.5 h-3.5" /> העתק קישור
