@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.sign-public-quote]
 verify_jwt = false
+
+[functions.get-db-size]
+verify_jwt = false
