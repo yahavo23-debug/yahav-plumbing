@@ -15,7 +15,7 @@ import { PhotoGrid } from "@/components/media/PhotoGrid";
 import { DownloadAllPhotos } from "@/components/media/DownloadAllPhotos";
 import { VideoList } from "@/components/media/VideoList";
 import {
-  ArrowRight, Share2, ExternalLink, Copy, Ban, FileText, Send, Lock, Unlock, MessageCircle, AlertTriangle, RefreshCw, CheckCircle2,
+  ArrowRight, Share2, ExternalLink, Copy, Ban, FileText, Send, Lock, MessageCircle, AlertTriangle, RefreshCw, CheckCircle2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PdfReportGenerator } from "@/components/reports/PdfReportGenerator";
@@ -45,9 +45,9 @@ const ReportEditor = () => {
     quote_summary: "", invoice_number: "", invoice_status: "",
   });
 
-  // Is the report locked (signed or final)?
+  // Is the report locked (signed or final)? — permanently locked, no one can edit
   const isLocked = report?.status === "signed" || report?.status === "final";
-  const canEdit = !isLocked || isAdmin;
+  const canEdit = !isLocked;
 
   useEffect(() => {
     if (!user || !id) return;
@@ -122,20 +122,7 @@ const ReportEditor = () => {
     }
   };
 
-  const handleUnlock = async () => {
-    if (!isAdmin) return;
-    setSaving(true);
-    try {
-      const { error } = await supabase.from("reports").update({ status: "draft" } as any).eq("id", id!);
-      if (error) throw error;
-      setReport((r: any) => ({ ...r, status: "draft" }));
-      toast({ title: "הדוח נפתח לעריכה" });
-    } catch (err: any) {
-      toast({ title: "שגיאה", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
+  // Unlock removed — signed/final reports are permanently locked
 
   const handleSendToSign = async () => {
     if (!user) return;
@@ -229,13 +216,8 @@ const ReportEditor = () => {
         <div className="flex items-center gap-3 p-3 mb-4 rounded-lg bg-warning/10 border border-warning/30">
           <Lock className="w-5 h-5 text-warning shrink-0" />
           <p className="text-sm font-medium text-warning">
-            דוח חתום – לא ניתן לעריכה
+            דוח חתום – נעול לצמיתות, לא ניתן לעריכה
           </p>
-          {isAdmin && (
-            <Button variant="outline" size="sm" onClick={handleUnlock} className="mr-auto gap-1.5">
-              <Unlock className="w-3.5 h-3.5" /> פתח נעילה
-            </Button>
-          )}
         </div>
       )}
 

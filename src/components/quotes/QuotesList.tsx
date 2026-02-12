@@ -207,12 +207,14 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
         </Card>
       ) : (
         <div className="space-y-3">
-          {quotes.map((quote) => (
+          {quotes.map((quote) => {
+            const isSigned = !!quote.signature_path;
+            return (
             <Card
               key={quote.id}
-              className={`hover:shadow-md transition-shadow ${!readOnly && !quote.signature_path ? 'cursor-pointer' : ''}`}
+              className={`hover:shadow-md transition-shadow ${!readOnly && !isSigned ? 'cursor-pointer' : ''}`}
               onClick={() => {
-                if (!readOnly && !quote.signature_path) setEditingId(quote.id);
+                if (!readOnly && !isSigned) setEditingId(quote.id);
               }}
             >
               <CardContent className="p-4">
@@ -244,7 +246,12 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                       )}
                     </div>
                   </div>
-                  {!readOnly && (
+                  {!readOnly && isSigned && (
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <QuotePdfExport quoteId={quote.id} serviceCallId={serviceCallId} />
+                    </div>
+                  )}
+                  {!readOnly && !isSigned && (
                     <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
                       {/* Convert to job — for approved or sent quotes */}
                       {(quote.status === "approved" || quote.status === "sent") && (
@@ -252,7 +259,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                       )}
 
                       {/* Signature — for sent/approved quotes without signature */}
-                      {!quote.signature_path && (quote.status === "sent" || quote.status === "approved") && (
+                      {(quote.status === "sent" || quote.status === "approved") && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -293,16 +300,14 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                         </>
                       )}
                       <QuotePdfExport quoteId={quote.id} serviceCallId={serviceCallId} />
-                      {!quote.signature_path && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setEditingId(quote.id)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setEditingId(quote.id)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -341,7 +346,8 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                 )}
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
