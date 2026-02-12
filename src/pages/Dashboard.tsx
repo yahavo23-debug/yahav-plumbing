@@ -57,11 +57,11 @@ const Dashboard = () => {
   };
 
   const statCards = [
-    { icon: Users, label: "לקוחות", value: stats.totalCustomers, color: "text-primary" },
-    { icon: AlertCircle, label: "קריאות פתוחות", value: stats.openCalls, color: "text-warning" },
-    { icon: Clock, label: "בטיפול", value: stats.inProgressCalls, color: "text-primary" },
-    { icon: CheckCircle2, label: "הושלמו", value: stats.completedCalls, color: "text-success" },
-    { icon: FileText, label: "דוחות", value: stats.totalReports, color: "text-muted-foreground" },
+    { icon: Users, label: "לקוחות", value: stats.totalCustomers, color: "text-primary", path: "/customers" },
+    { icon: AlertCircle, label: "קריאות פתוחות", value: stats.openCalls, color: "text-warning", path: "/service-calls?status=open" },
+    { icon: Clock, label: "בטיפול", value: stats.inProgressCalls, color: "text-primary", path: "/service-calls?status=in_progress" },
+    { icon: CheckCircle2, label: "הושלמו", value: stats.completedCalls, color: "text-success", path: "/service-calls?status=completed" },
+    { icon: FileText, label: "דוחות", value: stats.totalReports, color: "text-muted-foreground", path: "/reports" },
   ];
 
   const statusLabels: Record<string, string> = {
@@ -83,7 +83,11 @@ const Dashboard = () => {
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         {statCards.map((stat) => (
-          <Card key={stat.label} className="hover:shadow-md transition-shadow">
+          <Card
+            key={stat.label}
+            className="hover:shadow-md transition-shadow cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+            onClick={() => navigate(stat.path)}
+          >
             <CardContent className="p-4 flex flex-col items-center text-center gap-2">
               <stat.icon className={`w-8 h-8 ${stat.color}`} />
               <span className="text-2xl font-bold">{loading ? "..." : stat.value}</span>
