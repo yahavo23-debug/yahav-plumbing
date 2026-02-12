@@ -180,16 +180,7 @@ const Settings = () => {
                 <p>• נפח האחסון כולל מסד נתונים, תמונות, וידאו ומסמכים.</p>
                 <p>• ניתן להגדיל משאבים בהתאם לצורך.</p>
               </div>
-              <p className="text-sm text-muted-foreground">לצפייה בנפח אחסון, ניהול גיבויים ושדרוג משאבים — יש לגשת ללוח הבקרה של הענן:</p>
-              <a
-                href="https://lovable.dev/projects"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="outline" className="gap-2 mt-1">
-                  <ExternalLink className="w-4 h-4" /> פתח לוח בקרה ענן
-                </Button>
-              </a>
+              <p className="text-sm text-muted-foreground">לצפייה בנפח אחסון, ניהול גיבויים ושדרוג משאבים — יש לגשת ללוח הבקרה דרך עורך הפרויקט (לחצן Cloud בצד שמאל).</p>
             </CardContent>
           </Card>
         )}
