@@ -28,6 +28,10 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
   const [direction, setDirection] = useState<string>(editTransaction?.direction || "expense");
   const [amount, setAmount] = useState(editTransaction ? String(editTransaction.amount) : "");
   const [category, setCategory] = useState(editTransaction?.category || "");
+  const [customCategory, setCustomCategory] = useState(
+    editTransaction?.category && !financeCategories.some(c => c.value === editTransaction.category)
+      ? editTransaction.category : ""
+  );
   const [paymentMethod, setPaymentMethod] = useState(editTransaction?.payment_method || "");
   const [counterpartyName, setCounterpartyName] = useState(editTransaction?.counterparty_name || "");
   const [notes, setNotes] = useState(editTransaction?.notes || "");
@@ -45,7 +49,7 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
         txn_date: txnDate,
         direction,
         amount: parseFloat(amount),
-        category: category || null,
+        category: category === "other_custom" ? (customCategory.trim() || "אחר") : (category || null),
         payment_method: paymentMethod || null,
         counterparty_name: counterpartyName.trim() || null,
         notes: notes.trim() || null,
@@ -121,14 +125,24 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
           {/* Category */}
           <div>
             <Label>קטגוריה</Label>
-            <Select value={category} onValueChange={setCategory}>
+            <Select value={category} onValueChange={(v) => { setCategory(v); if (v !== "other_custom") setCustomCategory(""); }}>
               <SelectTrigger><SelectValue placeholder="בחר קטגוריה" /></SelectTrigger>
               <SelectContent>
                 {financeCategories.map(c => (
                   <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                 ))}
+                <SelectItem value="other_custom">אחר (טקסט חופשי)</SelectItem>
               </SelectContent>
             </Select>
+            {category === "other_custom" && (
+              <Input
+                className="mt-2"
+                value={customCategory}
+                onChange={e => setCustomCategory(e.target.value)}
+                placeholder="הקלד קטגוריה..."
+                maxLength={100}
+              />
+            )}
           </div>
 
           {/* Payment method */}
