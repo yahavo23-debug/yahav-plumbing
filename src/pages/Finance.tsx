@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -37,7 +38,7 @@ export default function Finance() {
 
   const [showForm, setShowForm] = useState(false);
   const [editTxn, setEditTxn] = useState<FinanceTransaction | null>(null);
-  const [filterDirection, setFilterDirection] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<string>("expense");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
@@ -45,7 +46,7 @@ export default function Finance() {
   const [exportUrl, setExportUrl] = useState<string | null>(null);
 
   const filtered = transactions.filter(t => {
-    if (filterDirection !== "all" && t.direction !== filterDirection) return false;
+    if (t.direction !== activeTab) return false;
     if (filterCategory !== "all" && t.category !== filterCategory) return false;
     if (filterStatus !== "all" && t.status !== filterStatus) return false;
     return true;
@@ -182,35 +183,40 @@ export default function Finance() {
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <Select value={filterDirection} onValueChange={setFilterDirection}>
-          <SelectTrigger className="w-32"><SelectValue placeholder="כיוון" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">הכל</SelectItem>
-            <SelectItem value="income">הכנסה</SelectItem>
-            <SelectItem value="expense">הוצאה</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="קטגוריה" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">הכל</SelectItem>
-            {financeCategories.map(c => (
-              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-32"><SelectValue placeholder="סטטוס" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">הכל</SelectItem>
-            <SelectItem value="paid">שולם</SelectItem>
-            <SelectItem value="debt">חוב</SelectItem>
-            <SelectItem value="credit">זיכוי</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Tabs for direction + Filters */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)} className="mb-4">
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <TabsList className="grid grid-cols-2 w-64">
+            <TabsTrigger value="expense" className="gap-1.5">
+              <TrendingDown className="w-4 h-4" />
+              הוצאות
+            </TabsTrigger>
+            <TabsTrigger value="income" className="gap-1.5">
+              <TrendingUp className="w-4 h-4" />
+              הכנסות
+            </TabsTrigger>
+          </TabsList>
+
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger className="w-40"><SelectValue placeholder="קטגוריה" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">הכל</SelectItem>
+              {financeCategories.map(c => (
+                <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-32"><SelectValue placeholder="סטטוס" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">הכל</SelectItem>
+              <SelectItem value="paid">שולם</SelectItem>
+              <SelectItem value="debt">חוב</SelectItem>
+              <SelectItem value="credit">זיכוי</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </Tabs>
 
       {/* Transactions Table */}
       <Card>
@@ -229,7 +235,6 @@ export default function Finance() {
                 <thead>
                   <tr className="border-b border-border bg-muted/50">
                     <th className="text-right px-4 py-3 font-medium">תאריך</th>
-                    <th className="text-right px-4 py-3 font-medium">כיוון</th>
                     <th className="text-right px-4 py-3 font-medium">סכום</th>
                     <th className="text-right px-4 py-3 font-medium">קטגוריה</th>
                     <th className="text-right px-4 py-3 font-medium">אמצעי</th>
@@ -243,11 +248,6 @@ export default function Finance() {
                   {filtered.map(t => (
                     <tr key={t.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3">{new Date(t.txn_date).toLocaleDateString("he-IL")}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={t.direction === "income" ? "default" : "destructive"} className="text-xs">
-                          {directionLabels[t.direction] || t.direction}
-                        </Badge>
-                      </td>
                       <td className="px-4 py-3 font-medium">₪{Number(t.amount).toLocaleString("he-IL", { minimumFractionDigits: 2 })}</td>
                       <td className="px-4 py-3 text-muted-foreground">{categoryLabels[t.category || ""] || t.category || "—"}</td>
                       <td className="px-4 py-3 text-muted-foreground">{paymentMethodLabels[t.payment_method || ""] || t.payment_method || "—"}</td>
