@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { buildPdfHeader, buildPdfFooter, renderCanvasToPdf } from "@/lib/pdf-utils";
+import { buildPdfHeader, buildPdfFooter, renderCanvasToPdf, escapeHtml } from "@/lib/pdf-utils";
 
 interface PdfReportGeneratorProps {
   report: any;
@@ -301,7 +301,7 @@ function buildReportHtml(data: {
     `<h2 style="font-size:15px;font-weight:700;margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid #e0e0e0;">${text}</h2>`;
   const field = (label: string, value: string | null | undefined) =>
     value
-      ? `<p style="font-size:13px;margin:4px 0;"><strong>${label}:</strong> ${value}</p>`
+      ? `<p style="font-size:13px;margin:4px 0;"><strong>${label}:</strong> ${escapeHtml(value)}</p>`
       : "";
 
   let html = buildPdfHeader({
@@ -400,12 +400,12 @@ function buildReportHtml(data: {
       const total = afterDiscount * 1.18;
 
       html += `<div style="margin-bottom:12px;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;">`;
-      html += `<div style="background:#f0f4ff;padding:8px 12px;font-weight:600;font-size:13px;">${quote.title || "הצעת מחיר"}</div>`;
+      html += `<div style="background:#f0f4ff;padding:8px 12px;font-weight:600;font-size:13px;">${escapeHtml(quote.title) || "הצעת מחיר"}</div>`;
       html += `<table style="width:100%;font-size:12px;border-collapse:collapse;">`;
       html += `<thead><tr style="background:#f8f9fa;"><th style="padding:6px;text-align:right;border-bottom:1px solid #e0e0e0;">תיאור</th><th style="padding:6px;text-align:center;border-bottom:1px solid #e0e0e0;">כמות</th><th style="padding:6px;text-align:center;border-bottom:1px solid #e0e0e0;">מחיר</th><th style="padding:6px;text-align:center;border-bottom:1px solid #e0e0e0;">סה"כ</th></tr></thead>`;
       html += `<tbody>`;
       for (const item of items) {
-        html += `<tr><td style="padding:6px;border-bottom:1px solid #f0f0f0;">${item.description}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">${item.quantity}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">₪${Number(item.unit_price).toFixed(2)}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">₪${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}</td></tr>`;
+        html += `<tr><td style="padding:6px;border-bottom:1px solid #f0f0f0;">${escapeHtml(item.description)}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">${item.quantity}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">₪${Number(item.unit_price).toFixed(2)}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">₪${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}</td></tr>`;
       }
       html += `</tbody></table>`;
       html += `<div style="padding:8px 12px;text-align:left;font-weight:700;font-size:14px;border-top:1px solid #e0e0e0;">סה"כ כולל מע"מ: ₪${total.toFixed(2)}</div>`;
@@ -424,7 +424,7 @@ function buildReportHtml(data: {
     html += `</div>`;
     html += `<div style="font-size:12px;line-height:1.8;">`;
     if (report.signed_by) {
-      html += `<p style="margin:0;"><strong>שם החותם:</strong> ${report.signed_by}</p>`;
+      html += `<p style="margin:0;"><strong>שם החותם:</strong> ${escapeHtml(report.signed_by)}</p>`;
     }
     if (signatureDate) {
       html += `<p style="margin:0;"><strong>תאריך ושעה:</strong> ${new Date(signatureDate).toLocaleString("he-IL")}</p>`;

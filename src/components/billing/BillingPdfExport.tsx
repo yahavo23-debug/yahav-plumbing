@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { FileDown, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { buildPdfHeader, buildPdfFooter, renderCanvasToPdf } from "@/lib/pdf-utils";
+import { buildPdfHeader, buildPdfFooter, renderCanvasToPdf, escapeHtml } from "@/lib/pdf-utils";
 
 interface LedgerEntry {
   id: string;
@@ -217,9 +217,9 @@ function buildBillingHtml(data: {
 
   html += `
       <h2 style="font-size:14px;font-weight:700;margin:0 0 8px;">פרטי לקוח</h2>
-      <p style="font-size:13px;margin:4px 0;"><strong>שם:</strong> ${customerName}</p>
-      ${customerPhone ? `<p style="font-size:13px;margin:4px 0;"><strong>טלפון:</strong> ${customerPhone}</p>` : ""}
-      ${customerCity || customerAddress ? `<p style="font-size:13px;margin:4px 0;"><strong>כתובת:</strong> ${[customerCity, customerAddress].filter(Boolean).join(" ")}</p>` : ""}
+      <p style="font-size:13px;margin:4px 0;"><strong>שם:</strong> ${escapeHtml(customerName)}</p>
+      ${customerPhone ? `<p style="font-size:13px;margin:4px 0;"><strong>טלפון:</strong> ${escapeHtml(customerPhone)}</p>` : ""}
+      ${customerCity || customerAddress ? `<p style="font-size:13px;margin:4px 0;"><strong>כתובת:</strong> ${escapeHtml([customerCity, customerAddress].filter(Boolean).join(" "))}</p>` : ""}
     </div>
 
     <!-- Summary cards -->
@@ -247,7 +247,7 @@ function buildBillingHtml(data: {
   if (overdueSince) {
     html += `
       <div style="background:#fef3c7;padding:10px 14px;border-radius:6px;margin-bottom:16px;border:1px solid #f59e0b;">
-        <p style="font-size:13px;margin:0;color:#92400e;"><strong>⚠ פיגור:</strong> מאז ${new Date(overdueSince).toLocaleDateString("he-IL")} (${overdueDays} ימים)</p>
+        <p style="font-size:13px;margin:0;color:#92400e;"><strong>⚠ פיגור:</strong> מאז ${escapeHtml(new Date(overdueSince).toLocaleDateString("he-IL"))} (${overdueDays} ימים)</p>
       </div>
     `;
   }
@@ -257,7 +257,7 @@ function buildBillingHtml(data: {
     html += `
       <div style="background:#fef2f2;padding:10px 14px;border-radius:6px;margin-bottom:16px;border:1px solid #ef4444;">
         <p style="font-size:13px;margin:0;color:#991b1b;"><strong>⚖ טיפול משפטי פעיל</strong></p>
-        ${legalActionNote ? `<p style="font-size:12px;margin:4px 0 0;color:#991b1b;">${legalActionNote}</p>` : ""}
+        ${legalActionNote ? `<p style="font-size:12px;margin:4px 0 0;color:#991b1b;">${escapeHtml(legalActionNote)}</p>` : ""}
       </div>
     `;
   }
@@ -289,10 +289,10 @@ function buildBillingHtml(data: {
 
     html += `
       <tr>
-        <td style="padding:8px;border-bottom:1px solid #f0f0f0;">${new Date(entry.entry_date).toLocaleDateString("he-IL")}</td>
-        <td style="padding:8px;text-align:center;border-bottom:1px solid #f0f0f0;color:${typeColor};font-weight:600;">${typeLabel}</td>
+        <td style="padding:8px;border-bottom:1px solid #f0f0f0;">${escapeHtml(new Date(entry.entry_date).toLocaleDateString("he-IL"))}</td>
+        <td style="padding:8px;text-align:center;border-bottom:1px solid #f0f0f0;color:${typeColor};font-weight:600;">${escapeHtml(typeLabel)}</td>
         <td style="padding:8px;text-align:center;border-bottom:1px solid #f0f0f0;font-weight:600;">₪${Number(entry.amount).toFixed(2)}</td>
-        <td style="padding:8px;border-bottom:1px solid #f0f0f0;">${entry.description || "—"}</td>
+        <td style="padding:8px;border-bottom:1px solid #f0f0f0;">${escapeHtml(entry.description) || "—"}</td>
         <td style="padding:8px;text-align:center;border-bottom:1px solid #f0f0f0;">
           ${entry.receiptUrl ? `<img src="${entry.receiptUrl}" style="width:60px;height:45px;object-fit:cover;border-radius:3px;border:1px solid #ddd;" crossorigin="anonymous" />` : "—"}
         </td>

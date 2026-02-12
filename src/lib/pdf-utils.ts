@@ -1,5 +1,27 @@
 // Shared PDF utilities — business info, header/footer builders, page rendering
 
+/**
+ * Escapes HTML special characters to prevent XSS/injection in PDF templates.
+ */
+export function escapeHtml(text: string | null | undefined): string {
+  if (!text) return "";
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  };
+  return String(text).replace(/[&<>"']/g, (m) => map[m]);
+}
+
+/**
+ * Escapes HTML and converts newlines to <br/> tags for multi-line fields.
+ */
+export function escapeHtmlWithBreaks(text: string | null | undefined): string {
+  return escapeHtml(text).replace(/\n/g, "<br/>");
+}
+
 export const BUSINESS_INFO = {
   name: "יהב אינסטלציה",
   subtitle: "איתור נזילות וצילום קווי ביוב",
