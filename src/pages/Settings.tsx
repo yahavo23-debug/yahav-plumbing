@@ -22,10 +22,11 @@ const ROLE_DISPLAY: Record<string, { label: string; icon: React.ReactNode }> = {
 };
 
 const DB_LIMIT_MB = 500;
-const STORAGE_LIMIT_GB = 1;
+const STORAGE_LIMIT_MB = 1024; // 1 GB
 
 const CloudStorageInfo = () => {
   const [dbSizeMB, setDbSizeMB] = useState<number | null>(null);
+  const [storageSizeMB, setStorageSizeMB] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchSize = async () => {
@@ -36,8 +37,9 @@ const CloudStorageInfo = () => {
       const { data, error } = await supabase.functions.invoke("get-db-size", {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
-      if (!error && data?.size_bytes) {
-        setDbSizeMB(Math.round((data.size_bytes / (1024 * 1024)) * 10) / 10);
+      if (!error && data) {
+        if (data.db_size_bytes) setDbSizeMB(Math.round((data.db_size_bytes / (1024 * 1024)) * 10) / 10);
+        if (data.storage_size_bytes != null) setStorageSizeMB(Math.round((data.storage_size_bytes / (1024 * 1024)) * 10) / 10);
       }
     } catch {
       // silent
@@ -48,13 +50,15 @@ const CloudStorageInfo = () => {
 
   useEffect(() => { fetchSize(); }, []);
 
-  const pct = dbSizeMB != null ? Math.min((dbSizeMB / DB_LIMIT_MB) * 100, 100) : 0;
+  const dbPct = dbSizeMB != null ? Math.min((dbSizeMB / DB_LIMIT_MB) * 100, 100) : 0;
+  const storagePct = storageSizeMB != null ? Math.min((storageSizeMB / STORAGE_LIMIT_MB) * 100, 100) : 0;
+
+  const formatSize = (mb: number) => mb >= 1024 ? `${(mb / 1024).toFixed(2)} GB` : `${mb} MB`;
 
   return (
     <CardContent className="space-y-4">
       <div className="text-sm text-muted-foreground space-y-1">
         <p>• גיבויים מתבצעים <strong>אוטומטית</strong> על ידי התשתית.</p>
-        <p>• נפח האחסון כולל מסד נתונים, תמונות, וידאו ומסמכים.</p>
         <p>• ניתן להגדיל משאבים בהתאם לצורך.</p>
       </div>
 
@@ -70,9 +74,9 @@ const CloudStorageInfo = () => {
         </div>
         {dbSizeMB != null ? (
           <>
-            <Progress value={pct} className="h-2" />
+            <Progress value={dbPct} className="h-2" />
             <p className="text-xs text-muted-foreground" dir="ltr">
-              {dbSizeMB} MB / {DB_LIMIT_MB} MB ({pct.toFixed(1)}%)
+              {formatSize(dbSizeMB)} / {formatSize(DB_LIMIT_MB)} ({dbPct.toFixed(1)}%)
             </p>
           </>
         ) : (
@@ -80,10 +84,21 @@ const CloudStorageInfo = () => {
         )}
       </div>
 
-      {/* File storage info */}
-      <div className="rounded-lg border p-3">
-        <span className="text-sm font-medium">אחסון קבצים</span>
-        <p className="text-xs text-muted-foreground mt-1">מכסה: {STORAGE_LIMIT_GB} GB (תמונות, וידאו, מסמכים)</p>
+      {/* File storage meter */}
+      <div className="space-y-2 rounded-lg border p-3">
+        <span className="text-sm font-medium flex items-center gap-1.5">
+          <Cloud className="w-3.5 h-3.5" /> אחסון קבצים (תמונות, וידאו, מסמכים)
+        </span>
+        {storageSizeMB != null ? (
+          <>
+            <Progress value={storagePct} className="h-2" />
+            <p className="text-xs text-muted-foreground" dir="ltr">
+              {formatSize(storageSizeMB)} / {formatSize(STORAGE_LIMIT_MB)} ({storagePct.toFixed(1)}%)
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">{loading ? "טוען..." : "לא ניתן לטעון"}</p>
+        )}
       </div>
 
       <p className="text-sm text-muted-foreground">לצפייה מפורטת — יש לגשת ללוח הבקרה דרך עורך הפרויקט (לחצן Cloud בצד שמאל).</p>
