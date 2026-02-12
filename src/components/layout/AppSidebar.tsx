@@ -95,13 +95,15 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
 
       {/* Footer */}
       <div className="p-2 border-t border-sidebar-border space-y-1">
-        <button
-          onClick={() => navigate("/settings")}
-          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-sm"
-        >
-          <Settings className="w-5 h-5 shrink-0" />
-          {!collapsed && <span>הגדרות</span>}
-        </button>
+        {role === "admin" && (
+          <button
+            onClick={() => navigate("/settings")}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-sm"
+          >
+            <Settings className="w-5 h-5 shrink-0" />
+            {!collapsed && <span>הגדרות</span>}
+          </button>
+        )}
         <button
           onClick={signOut}
           className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-destructive hover:bg-sidebar-accent transition-colors text-sm"

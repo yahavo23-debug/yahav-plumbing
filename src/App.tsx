@@ -68,17 +68,17 @@ function AppRoutes() {
       <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
       <Route path="/customers/new" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><CustomerForm /></ProtectedRoute>} />
       <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
-      <Route path="/customers/:id/edit" element={<ProtectedRoute allowedRoles={["admin"]}><CustomerForm /></ProtectedRoute>} />
+      <Route path="/customers/:id/edit" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><CustomerForm /></ProtectedRoute>} />
       <Route path="/service-calls" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary", "contractor"]}><ServiceCalls /></ProtectedRoute>} />
-      <Route path="/service-calls/new" element={<ProtectedRoute allowedRoles={["admin", "technician"]}><CustomerSelect /></ProtectedRoute>} />
-      <Route path="/service-calls/new/:customerId" element={<ProtectedRoute allowedRoles={["admin", "technician"]}><ServiceCallForm /></ProtectedRoute>} />
+      <Route path="/service-calls/new" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><CustomerSelect /></ProtectedRoute>} />
+      <Route path="/service-calls/new/:customerId" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ServiceCallForm /></ProtectedRoute>} />
       <Route path="/service-calls/:id" element={<ProtectedRoute><ServiceCallDetail /></ProtectedRoute>} />
-      <Route path="/service-calls/:id/edit" element={<ProtectedRoute allowedRoles={["admin", "technician"]}><ServiceCallForm /></ProtectedRoute>} />
+      <Route path="/service-calls/:id/edit" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ServiceCallForm /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><Reports /></ProtectedRoute>} />
       <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ReportEditor /></ProtectedRoute>} />
       <Route path="/dispatch" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><DispatchBoard /></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><Finance /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute allowedRoles={["admin"]}><Settings /></ProtectedRoute>} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>
