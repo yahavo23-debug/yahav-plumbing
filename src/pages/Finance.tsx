@@ -11,13 +11,14 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
-import { useFinanceTransactions, FinanceTransaction } from "@/hooks/useFinanceTransactions";
+import { useFinanceTransactions, FinanceTransaction, FinancePeriod } from "@/hooks/useFinanceTransactions";
 import { FinanceTransactionForm } from "@/components/finance/FinanceTransactionForm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import {
   Plus, TrendingUp, TrendingDown, ArrowDownUp, Trash2,
-  Pencil, Download, Loader2, FileText, Copy,
+  Pencil, Download, Loader2, FileText, Copy, RotateCcw,
+  Calendar, CalendarDays, ListChecks,
 } from "lucide-react";
 import {
   categoryLabels, paymentMethodLabels,
@@ -32,12 +33,15 @@ function getMonthDefault(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+const HEBREW_MONTHS = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
+
 export default function Finance() {
   const { isAdmin, role } = useAuth();
   const canEdit = isAdmin || role === "secretary";
 
+  const [period, setPeriod] = useState<FinancePeriod>("month");
   const [month, setMonth] = useState(getMonthDefault);
-  const { transactions, loading, kpis, refresh } = useFinanceTransactions(month);
+  const { transactions, loading, kpis, refresh } = useFinanceTransactions(period, month);
 
   const [showForm, setShowForm] = useState(false);
   const [editTxn, setEditTxn] = useState<FinanceTransaction | null>(null);
@@ -48,7 +52,23 @@ export default function Finance() {
   const [exporting, setExporting] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
 
-  // Pie chart data: expenses by category
+  // Active filter label
+  const periodLabel = useMemo(() => {
+    if (period === "all") return "כל התקופות";
+    if (period === "year") return `שנת ${month.split("-")[0]}`;
+    const [y, m] = month.split("-").map(Number);
+    return `${HEBREW_MONTHS[m - 1]} ${y}`;
+  }, [period, month]);
+
+  const hasActiveFilters = filterCategory !== "all" || filterStatus !== "all";
+
+  const resetFilters = () => {
+    setFilterCategory("all");
+    setFilterStatus("all");
+    setActiveTab("expense");
+  };
+
+  // Pie chart data
   const expensePieData = useMemo(() => {
     const map: Record<string, number> = {};
     transactions.filter(t => t.direction === "expense").forEach(t => {
@@ -58,7 +78,6 @@ export default function Finance() {
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [transactions]);
 
-  // Pie chart data: income by category
   const incomePieData = useMemo(() => {
     const map: Record<string, number> = {};
     transactions.filter(t => t.direction === "income").forEach(t => {
@@ -117,23 +136,43 @@ export default function Finance() {
     }
   };
 
-  const monthLabel = (() => {
-    const [y, m] = month.split("-").map(Number);
-    const months = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
-    return `${months[m - 1]} ${y}`;
-  })();
-
   return (
     <AppLayout title="כספים">
-      {/* Month selector + Actions */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <Input
-          type="month"
-          value={month}
-          onChange={e => { setMonth(e.target.value); setExportUrl(null); }}
-          className="w-48"
-        />
-        <span className="text-sm font-medium text-muted-foreground">{monthLabel}</span>
+      {/* Period toggle */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <Tabs value={period} onValueChange={(v) => { setPeriod(v as FinancePeriod); setExportUrl(null); }}>
+          <TabsList>
+            <TabsTrigger value="month" className="gap-1.5">
+              <Calendar className="w-4 h-4" /> חודש נוכחי
+            </TabsTrigger>
+            <TabsTrigger value="year" className="gap-1.5">
+              <CalendarDays className="w-4 h-4" /> שנה
+            </TabsTrigger>
+            <TabsTrigger value="all" className="gap-1.5">
+              <ListChecks className="w-4 h-4" /> כל התקופות
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {period === "month" && (
+          <Input
+            type="month"
+            value={month}
+            onChange={e => { setMonth(e.target.value); setExportUrl(null); }}
+            className="w-48"
+          />
+        )}
+        {period === "year" && (
+          <Select value={month.split("-")[0]} onValueChange={(y) => { setMonth(`${y}-01`); setExportUrl(null); }}>
+            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 5 }, (_, i) => {
+                const y = new Date().getFullYear() - i;
+                return <SelectItem key={y} value={String(y)}>{y}</SelectItem>;
+              })}
+            </SelectContent>
+          </Select>
+        )}
 
         <div className="mr-auto flex gap-2">
           {canEdit && (
@@ -148,6 +187,21 @@ export default function Finance() {
             </Button>
           )}
         </div>
+      </div>
+
+      {/* Active filter indicator + safety counter */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <Badge variant="secondary" className="text-sm px-3 py-1 gap-1.5">
+          📊 מציג: {periodLabel}
+        </Badge>
+        <Badge variant="outline" className="text-sm px-3 py-1">
+          סה״כ רשומות: {loading ? "..." : transactions.length}
+        </Badge>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1.5 text-muted-foreground hover:text-foreground">
+            <RotateCcw className="w-3.5 h-3.5" /> איפוס מסננים
+          </Button>
+        )}
       </div>
 
       {/* Export URL */}
@@ -208,7 +262,6 @@ export default function Finance() {
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Pie Chart - expenses by category */}
         {expensePieData.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
@@ -217,19 +270,9 @@ export default function Finance() {
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
-                  <Pie
-                    data={expensePieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    fontSize={11}
-                  >
-                    {expensePieData.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
+                  <Pie data={expensePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={11}>
+                    {expensePieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(value: number) => `₪${value.toLocaleString("he-IL", { minimumFractionDigits: 2 })}`} />
                 </PieChart>
@@ -237,8 +280,6 @@ export default function Finance() {
             </CardContent>
           </Card>
         )}
-
-        {/* Pie Chart - income by category */}
         {incomePieData.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
@@ -247,19 +288,9 @@ export default function Finance() {
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
-                  <Pie
-                    data={incomePieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    fontSize={11}
-                  >
-                    {incomePieData.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
+                  <Pie data={incomePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={11}>
+                    {incomePieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(value: number) => `₪${value.toLocaleString("he-IL", { minimumFractionDigits: 2 })}`} />
                 </PieChart>
@@ -274,12 +305,10 @@ export default function Finance() {
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <TabsList className="grid grid-cols-2 w-64">
             <TabsTrigger value="income" className="gap-1.5 data-[state=active]:text-green-600">
-              <TrendingUp className="w-4 h-4 text-green-500" />
-              הכנסות
+              <TrendingUp className="w-4 h-4 text-green-500" /> הכנסות
             </TabsTrigger>
             <TabsTrigger value="expense" className="gap-1.5 data-[state=active]:text-red-600">
-              <TrendingDown className="w-4 h-4 text-red-500" />
-              הוצאות
+              <TrendingDown className="w-4 h-4 text-red-500" /> הוצאות
             </TabsTrigger>
           </TabsList>
 
@@ -287,9 +316,7 @@ export default function Finance() {
             <SelectTrigger className="w-40"><SelectValue placeholder="קטגוריה" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">הכל</SelectItem>
-              {financeCategories.map(c => (
-                <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-              ))}
+              {financeCategories.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -301,6 +328,12 @@ export default function Finance() {
               <SelectItem value="credit">זיכוי</SelectItem>
             </SelectContent>
           </Select>
+
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1.5 text-muted-foreground">
+              <RotateCcw className="w-3.5 h-3.5" /> איפוס
+            </Button>
+          )}
         </div>
       </Tabs>
 
@@ -312,8 +345,17 @@ export default function Finance() {
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>אין רשומות לחודש זה</p>
+            <div className="text-center py-12 text-muted-foreground space-y-2">
+              <p className="text-base font-medium">🔍 אין רשומות תואמות למסננים שנבחרו</p>
+              <p className="text-sm">
+                {transactions.length > 0
+                  ? `נמצאו ${transactions.length} רשומות בתקופה זו — נסה לשנות את המסננים או לחץ על "איפוס מסננים"`
+                  : `אין רשומות בתקופה "${periodLabel}". נסה לעבור ל"כל התקופות" כדי לראות את כל הנתונים.`
+                }
+              </p>
+              <Button variant="outline" size="sm" onClick={resetFilters} className="mt-2 gap-1.5">
+                <RotateCcw className="w-3.5 h-3.5" /> איפוס מסננים
+              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">
