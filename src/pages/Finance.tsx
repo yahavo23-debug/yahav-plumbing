@@ -23,7 +23,7 @@ import {
   categoryLabels, paymentMethodLabels,
   docTypeLabels, statusLabels as finStatusLabels, financeCategories,
 } from "@/lib/finance-constants";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
+import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 const PIE_COLORS = ["#3b82f6", "#f59e0b", "#22c55e", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16", "#06b6d4", "#e11d48"];
 
@@ -47,17 +47,6 @@ export default function Finance() {
 
   const [exporting, setExporting] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
-
-  // Chart data: group by day
-  const chartData = useMemo(() => {
-    const map: Record<string, { date: string; income: number; expense: number }> = {};
-    transactions.forEach(t => {
-      const day = t.txn_date;
-      if (!map[day]) map[day] = { date: day, income: 0, expense: 0 };
-      map[day][t.direction] += Number(t.amount);
-    });
-    return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
-  }, [transactions]);
 
   // Pie chart data: expenses by category
   const expensePieData = useMemo(() => {
@@ -218,38 +207,7 @@ export default function Finance() {
       </div>
 
       {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Trend Chart */}
-        {chartData.length > 0 && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">מגמות חודשיות</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={chartData}>
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={(v: string) => new Date(v).getDate().toString()}
-                    fontSize={12}
-                  />
-                  <YAxis fontSize={12} tickFormatter={(v: number) => `₪${v.toLocaleString()}`} />
-                  <Tooltip
-                    formatter={(value: number, name: string) => [
-                      `₪${value.toLocaleString("he-IL", { minimumFractionDigits: 2 })}`,
-                      name === "income" ? "הכנסות" : "הוצאות",
-                    ]}
-                    labelFormatter={(label: string) => new Date(label).toLocaleDateString("he-IL")}
-                  />
-                  <Legend formatter={(value: string) => (value === "income" ? "הכנסות" : "הוצאות")} />
-                  <Bar dataKey="income" fill="#22c55e" radius={[4, 4, 0, 0]} name="income" />
-                  <Bar dataKey="expense" fill="#ef4444" radius={[4, 4, 0, 0]} name="expense" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Pie Chart - expenses by category */}
         {expensePieData.length > 0 && (
           <Card>
