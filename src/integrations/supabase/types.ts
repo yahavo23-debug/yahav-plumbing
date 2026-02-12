@@ -250,6 +250,78 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_transactions: {
+        Row: {
+          amount: number
+          category: string | null
+          counterparty_name: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          customer_id: string | null
+          direction: string
+          doc_path: string | null
+          doc_type: string | null
+          id: string
+          notes: string | null
+          payment_method: string | null
+          service_call_id: string | null
+          status: string
+          txn_date: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          counterparty_name?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          customer_id?: string | null
+          direction: string
+          doc_path?: string | null
+          doc_type?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          service_call_id?: string | null
+          status?: string
+          txn_date?: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          counterparty_name?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          customer_id?: string | null
+          direction?: string
+          doc_path?: string | null
+          doc_type?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          service_call_id?: string | null
+          status?: string
+          txn_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_service_call_id_fkey"
+            columns: ["service_call_id"]
+            isOneToOne: false
+            referencedRelation: "service_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

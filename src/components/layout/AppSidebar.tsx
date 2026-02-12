@@ -11,6 +11,7 @@ import {
   Settings,
   ChevronRight,
   CalendarDays,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -27,6 +28,7 @@ const navItems: NavItem[] = [
   { icon: Users, label: "לקוחות", path: "/customers", roles: "all" },
   { icon: Wrench, label: "קריאות שירות", path: "/service-calls", roles: ["admin", "technician", "secretary", "contractor"] },
   { icon: FileText, label: "דוחות", path: "/reports", roles: ["admin", "technician", "secretary"] },
+  { icon: Wallet, label: "כספים", path: "/finance", roles: ["admin", "secretary"] },
 ];
 
 interface AppSidebarProps {
