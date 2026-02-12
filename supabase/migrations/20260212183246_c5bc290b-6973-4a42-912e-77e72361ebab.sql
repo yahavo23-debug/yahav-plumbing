@@ -1,0 +1,1 @@
+ALTER TABLE public.quotes ADD COLUMN scope_of_work jsonb DEFAULT null;
