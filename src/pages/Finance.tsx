@@ -48,6 +48,8 @@ export default function Finance() {
   const [activeTab, setActiveTab] = useState<string>("expense");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const [exporting, setExporting] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
@@ -93,6 +95,21 @@ export default function Finance() {
     if (filterStatus !== "all" && t.status !== filterStatus) return false;
     return true;
   });
+
+  const openDoc = async (docPath: string) => {
+    setPreviewLoading(true);
+    try {
+      const { data, error } = await supabase.storage.from("finance-docs").createSignedUrl(docPath, 3600);
+      if (error) throw error;
+      if (data?.signedUrl) {
+        setPreviewUrl(data.signedUrl);
+      }
+    } catch (err: any) {
+      toast({ title: "שגיאה", description: "לא ניתן לפתוח את המסמך", variant: "destructive" });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     const txn = transactions.find(t => t.id === id);
@@ -374,7 +391,9 @@ export default function Finance() {
                 </thead>
                 <tbody>
                   {filtered.map(t => (
-                    <tr key={t.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                    <tr key={t.id} className={`border-b border-border hover:bg-muted/30 transition-colors ${t.doc_path ? "cursor-pointer" : ""}`}
+                      onClick={() => t.doc_path && openDoc(t.doc_path)}
+                    >
                       <td className="px-4 py-3">{new Date(t.txn_date).toLocaleDateString("he-IL")}</td>
                       <td className="px-4 py-3 font-medium">₪{Number(t.amount).toLocaleString("he-IL", { minimumFractionDigits: 2 })}</td>
                       <td className="px-4 py-3 text-muted-foreground">{categoryLabels[t.category || ""] || t.category || "—"}</td>
@@ -385,11 +404,13 @@ export default function Finance() {
                       </td>
                       <td className="px-4 py-3">
                         {t.doc_path ? (
-                          <Badge variant="secondary" className="text-xs">{docTypeLabels[t.doc_type || ""] || "📄"}</Badge>
+                          <Badge variant="secondary" className="text-xs cursor-pointer hover:bg-primary/20 transition-colors">
+                            📄 {docTypeLabels[t.doc_type || ""] || "מסמך"}
+                          </Badge>
                         ) : "—"}
                       </td>
                       {canEdit && (
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                           <div className="flex gap-1">
                             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditTxn(t); setShowForm(true); }}>
                               <Pencil className="w-3.5 h-3.5" />
@@ -431,6 +452,27 @@ export default function Finance() {
           onSaved={refresh}
           editTransaction={editTxn}
         />
+      )}
+
+      {/* Document preview dialog */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setPreviewUrl(null)}>
+          <div className="relative max-w-4xl max-h-[90vh] w-full" onClick={e => e.stopPropagation()}>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="absolute -top-10 left-0 gap-1.5"
+              onClick={() => setPreviewUrl(null)}
+            >
+              ✕ סגור
+            </Button>
+            {previewUrl.match(/\.pdf/i) ? (
+              <iframe src={previewUrl} className="w-full h-[85vh] rounded-lg bg-white" />
+            ) : (
+              <img src={previewUrl} alt="מסמך מצורף" className="max-w-full max-h-[85vh] mx-auto rounded-lg object-contain" />
+            )}
+          </div>
+        </div>
       )}
     </AppLayout>
   );
