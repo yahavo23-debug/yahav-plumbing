@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -20,9 +20,10 @@ import {
   Pencil, Download, Loader2, FileText, Copy,
 } from "lucide-react";
 import {
-  categoryLabels, paymentMethodLabels, directionLabels,
+  categoryLabels, paymentMethodLabels,
   docTypeLabels, statusLabels as finStatusLabels, financeCategories,
 } from "@/lib/finance-constants";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 function getMonthDefault(): string {
   const now = new Date();
@@ -44,6 +45,17 @@ export default function Finance() {
 
   const [exporting, setExporting] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
+
+  // Chart data: group by day
+  const chartData = useMemo(() => {
+    const map: Record<string, { date: string; income: number; expense: number }> = {};
+    transactions.forEach(t => {
+      const day = t.txn_date;
+      if (!map[day]) map[day] = { date: day, income: 0, expense: 0 };
+      map[day][t.direction] += Number(t.amount);
+    });
+    return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+  }, [transactions]);
 
   const filtered = transactions.filter(t => {
     if (t.direction !== activeTab) return false;
@@ -183,16 +195,47 @@ export default function Finance() {
         </Card>
       </div>
 
+      {/* Trend Chart */}
+      {chartData.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">מגמות חודשיות</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={chartData}>
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(v: string) => new Date(v).getDate().toString()}
+                  fontSize={12}
+                />
+                <YAxis fontSize={12} tickFormatter={(v: number) => `₪${v.toLocaleString()}`} />
+                <Tooltip
+                  formatter={(value: number, name: string) => [
+                    `₪${value.toLocaleString("he-IL", { minimumFractionDigits: 2 })}`,
+                    name === "income" ? "הכנסות" : "הוצאות",
+                  ]}
+                  labelFormatter={(label: string) => new Date(label).toLocaleDateString("he-IL")}
+                />
+                <Legend formatter={(value: string) => (value === "income" ? "הכנסות" : "הוצאות")} />
+                <Bar dataKey="income" fill="#22c55e" radius={[4, 4, 0, 0]} name="income" />
+                <Bar dataKey="expense" fill="#ef4444" radius={[4, 4, 0, 0]} name="expense" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tabs for direction + Filters */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)} className="mb-4">
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <TabsList className="grid grid-cols-2 w-64">
-            <TabsTrigger value="expense" className="gap-1.5">
-              <TrendingDown className="w-4 h-4" />
+            <TabsTrigger value="expense" className="gap-1.5 data-[state=active]:text-red-600">
+              <TrendingDown className="w-4 h-4 text-red-500" />
               הוצאות
             </TabsTrigger>
-            <TabsTrigger value="income" className="gap-1.5">
-              <TrendingUp className="w-4 h-4" />
+            <TabsTrigger value="income" className="gap-1.5 data-[state=active]:text-green-600">
+              <TrendingUp className="w-4 h-4 text-green-500" />
               הכנסות
             </TabsTrigger>
           </TabsList>
