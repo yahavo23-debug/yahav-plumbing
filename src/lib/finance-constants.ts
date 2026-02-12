@@ -24,6 +24,7 @@ export const financePaymentMethods = [
   { value: "check", label: "צ׳ק" },
   { value: "bit", label: "ביט" },
   { value: "paybox", label: "פייבוקס" },
+  { value: "standing_order", label: "הוראת קבע" },
 ];
 
 export const paymentMethodLabels: Record<string, string> = Object.fromEntries(
