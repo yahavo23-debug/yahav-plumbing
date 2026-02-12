@@ -20,23 +20,30 @@
     <meta name="twitter:site" content="@Lovable" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
+    <link rel="manifest" href="https://xglagkbblribtztkkovo.supabase.co/functions/v1/get-manifest" />
     <script>
-      // Dynamic manifest with logo from branding settings
+      // Set apple-touch-icon dynamically from branding settings
       (function() {
-        var link = document.createElement('link');
-        link.rel = 'manifest';
-        link.href = 'https://xglagkbblribtztkkovo.supabase.co/functions/v1/get-manifest';
-        document.head.appendChild(link);
-
-        // Also set apple-touch-icon dynamically
-        fetch('https://xglagkbblribtztkkovo.supabase.co/functions/v1/get-logo-url')
+        fetch('https://xglagkbblribtztkkovo.supabase.co/functions/v1/get-logo-url', {
+          method: 'POST',
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhnbGFna2JibHJpYnR6dGtrb3ZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzOTYxNTIsImV4cCI6MjA4NTk3MjE1Mn0.0Gcphh17KXGfm4f-Is-YUW7qg_lhMfR39AR8a09N_SA',
+            'Content-Type': 'application/json'
+          }
+        })
           .then(function(r) { return r.json(); })
           .then(function(d) {
             if (d && d.url) {
               var apple = document.createElement('link');
               apple.rel = 'apple-touch-icon';
+              apple.sizes = '180x180';
               apple.href = d.url;
               document.head.appendChild(apple);
+              var favicon = document.createElement('link');
+              favicon.rel = 'icon';
+              favicon.type = 'image/jpeg';
+              favicon.href = d.url;
+              document.head.appendChild(favicon);
             }
           })
           .catch(function() {});

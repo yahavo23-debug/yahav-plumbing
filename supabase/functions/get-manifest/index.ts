@@ -33,10 +33,14 @@ Deno.serve(async (req) => {
       iconUrl = signedData?.signedUrl || null;
     }
 
+    // Detect type from path
+    const isJpg = branding?.logo_path?.endsWith('.jpg') || branding?.logo_path?.endsWith('.jpeg');
+    const mimeType = isJpg ? "image/jpeg" : "image/png";
+
     const icons = iconUrl
       ? [
-          { src: iconUrl, sizes: "192x192", type: "image/png", purpose: "any maskable" },
-          { src: iconUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" },
+          { src: iconUrl, sizes: "192x192", type: mimeType, purpose: "any maskable" },
+          { src: iconUrl, sizes: "512x512", type: mimeType, purpose: "any maskable" },
         ]
       : [];
 
