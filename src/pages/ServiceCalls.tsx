@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,9 @@ const statusColors: Record<string, string> = {
 const ServiceCalls = () => {
   const [calls, setCalls] = useState<any[]>([]);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<string>("all");
+  const [searchParams] = useSearchParams();
+  const initialStatus = searchParams.get("status") || "all";
+  const [filter, setFilter] = useState<string>(initialStatus);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user, isAdmin, role } = useAuth();
