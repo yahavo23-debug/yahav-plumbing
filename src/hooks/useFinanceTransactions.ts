@@ -36,35 +36,55 @@ export function useFinanceTransactions(period: FinancePeriod, month: string) {
   const load = useCallback(async () => {
     setLoading(true);
 
-    let query = (supabase as any)
-      .from("financial_transactions")
-      .select("*")
-      .order("txn_date", { ascending: false });
+    try {
+      const allData: FinanceTransaction[] = [];
+      const batchSize = 1000;
+      let offset = 0;
+      let hasMore = true;
 
-    if (period === "month") {
-      const startDate = `${month}-01`;
-      const [y, m] = month.split("-").map(Number);
-      const lastDay = new Date(y, m, 0).getDate();
-      const endDate = `${month}-${String(lastDay).padStart(2, "0")}`;
-      query = query.gte("txn_date", startDate).lte("txn_date", endDate);
-    } else if (period === "year") {
-      const y = month.split("-")[0];
-      query = query.gte("txn_date", `${y}-01-01`).lte("txn_date", `${y}-12-31`);
-    }
-    // "all" — no date filter
+      while (hasMore) {
+        let query = (supabase as any)
+          .from("financial_transactions")
+          .select("*")
+          .order("txn_date", { ascending: false })
+          .range(offset, offset + batchSize - 1);
 
-    const { data, error } = await query;
+        if (period === "month") {
+          const startDate = `${month}-01`;
+          const [y, m] = month.split("-").map(Number);
+          const lastDay = new Date(y, m, 0).getDate();
+          const endDate = `${month}-${String(lastDay).padStart(2, "0")}`;
+          query = query.gte("txn_date", startDate).lte("txn_date", endDate);
+        } else if (period === "year") {
+          const y = month.split("-")[0];
+          query = query.gte("txn_date", `${y}-01-01`).lte("txn_date", `${y}-12-31`);
+        }
 
-    if (error) {
-      console.error("Finance load error:", error);
-      setTransactions([]);
-    } else {
-      const txns = (data || []) as FinanceTransaction[];
-      setTransactions(txns);
+        const { data, error } = await query;
 
-      const totalIncome = txns.filter(t => t.direction === "income").reduce((s, t) => s + Number(t.amount), 0);
-      const totalExpenses = txns.filter(t => t.direction === "expense").reduce((s, t) => s + Number(t.amount), 0);
+        if (error) {
+          console.error("Finance load error:", error);
+          setTransactions([]);
+          setLoading(false);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          allData.push(...(data as FinanceTransaction[]));
+          offset += batchSize;
+          hasMore = data.length === batchSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      setTransactions(allData);
+      const totalIncome = allData.filter(t => t.direction === "income").reduce((s, t) => s + Number(t.amount), 0);
+      const totalExpenses = allData.filter(t => t.direction === "expense").reduce((s, t) => s + Number(t.amount), 0);
       setKpis({ totalIncome, totalExpenses, net: totalIncome - totalExpenses });
+    } catch (err) {
+      console.error("Finance load error:", err);
+      setTransactions([]);
     }
     setLoading(false);
   }, [period, month]);
