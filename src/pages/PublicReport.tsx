@@ -7,6 +7,8 @@ import { PhotoLightbox } from "@/components/media/PhotoLightbox";
 import { VideoPlayer } from "@/components/media/VideoPlayer";
 import { PublicSignaturePad } from "@/components/reports/PublicSignaturePad";
 import { Wrench, User, Phone, MapPin, Calendar, Image, Film, FileText, Play, Check } from "lucide-react";
+import { useLogo } from "@/hooks/useLogo";
+import { BUSINESS_INFO } from "@/lib/pdf-utils";
 
 const tagLabels: Record<string, string> = {
   before: "לפני", after: "אחרי", finding: "ממצא", other: "אחר",
@@ -14,6 +16,7 @@ const tagLabels: Record<string, string> = {
 
 const PublicReport = () => {
   const { token } = useParams();
+  const { logoUrl } = useLogo();
   const [report, setReport] = useState<any>(null);
   const [serviceCall, setServiceCall] = useState<any>(null);
   const [customer, setCustomer] = useState<any>(null);
@@ -95,13 +98,17 @@ const PublicReport = () => {
       {/* Header */}
       <header className="bg-primary text-primary-foreground py-8 px-4">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-primary-foreground/20 rounded-xl flex items-center justify-center">
-              <Wrench className="w-6 h-6" />
-            </div>
+          <div className="flex items-center gap-4 mb-4">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-14 max-w-[160px] rounded-xl object-contain bg-primary-foreground/10 p-1" />
+            ) : (
+              <div className="w-12 h-12 bg-primary-foreground/20 rounded-xl flex items-center justify-center">
+                <Wrench className="w-6 h-6" />
+              </div>
+            )}
             <div>
               <h1 className="text-2xl font-bold">{report?.title}</h1>
-              <p className="text-sm opacity-80">דוח עבודה</p>
+              <p className="text-sm opacity-80">{BUSINESS_INFO.name} — דוח עבודה</p>
             </div>
           </div>
         </div>
@@ -225,7 +232,8 @@ const PublicReport = () => {
       </main>
 
       <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground">
-        <p>דוח זה הופק באמצעות מערכת CRM</p>
+        <p>{BUSINESS_INFO.name} | {BUSINESS_INFO.subtitle}</p>
+        <p className="mt-1">טלפון: {BUSINESS_INFO.phone}</p>
       </footer>
 
       <PhotoLightbox photos={lightboxPhotos} initialIndex={lightboxIndex} open={lightboxIndex >= 0} onClose={() => setLightboxIndex(-1)} />
