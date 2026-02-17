@@ -24,6 +24,22 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Validate file size (max 2MB)
+    if (signatureFile.size > 2 * 1024 * 1024) {
+      return new Response(JSON.stringify({ error: "File too large (max 2MB)" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate MIME type
+    if (!signatureFile.type.startsWith("image/")) {
+      return new Response(JSON.stringify({ error: "Invalid file type, must be an image" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Capture IP and device info
     const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       || req.headers.get("cf-connecting-ip")
@@ -87,8 +103,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Upload signature
+    // Upload signature - verify PNG magic bytes
     const arrayBuffer = await signatureFile.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    const isPNG = bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47;
+    if (!isPNG) {
+      return new Response(JSON.stringify({ error: "Only PNG format allowed" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const filePath = `public/${quoteId}/customer-signature-${Date.now()}.png`;
 
     const { error: uploadError } = await supabase.storage
