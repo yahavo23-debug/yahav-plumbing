@@ -603,6 +603,63 @@ const QuotePublicSignaturePad = ({ quoteId, shareToken, onSigned }: { quoteId: s
   );
 };
 
+const scopeSectionLabels: Record<string, { title: string; titleEn: string }> = {
+  project_overview: { title: "סקירת הפרויקט", titleEn: "Project Overview" },
+  demolition: { title: "פירוק והכנה", titleEn: "Demolition & Preparation" },
+  plumbing: { title: "התקנת אינסטלציה", titleEn: "Plumbing Installation" },
+  materials_note: { title: "הערכת חומרים", titleEn: "Materials Estimate" },
+  equipment_note: { title: "ציוד", titleEn: "Equipment" },
+  warranty_note: { title: "אחריות", titleEn: "Warranty" },
+};
+
+const PublicScopeOfWork = ({ scope }: { scope: any }) => {
+  const sections: { label: string; value: string }[] = [];
+
+  if (scope.project_overview) sections.push({ label: "סקירת הפרויקט", value: scope.project_overview });
+  if (scope.demolition) sections.push({ label: "פירוק והכנה", value: scope.demolition });
+  if (scope.plumbing) sections.push({ label: "התקנת אינסטלציה", value: scope.plumbing });
+  if (scope.drying_included) {
+    sections.push({ label: "ייבוש תת-רצפתי", value: `כלול${scope.drying_duration_days ? ` — ${scope.drying_duration_days} ימים` : ""}` });
+  }
+  if (scope.restoration_included && scope.restoration_details) {
+    sections.push({ label: "שיקום מבנה", value: scope.restoration_details });
+  }
+  if (scope.tiling_included) {
+    const method = scope.tiling_pricing_method === "sqm" ? "למ\"ר" : scope.tiling_pricing_method === "daily" ? "ליום" : "";
+    const price = scope.tiling_price ? `₪${scope.tiling_price} ${method}` : "כלול";
+    sections.push({ label: "ריצוף", value: price });
+  }
+  if (scope.materials_note) sections.push({ label: "חומרים", value: scope.materials_note });
+  if (scope.workforce_crew_size || scope.workforce_duration_days) {
+    const parts = [];
+    if (scope.workforce_crew_size) parts.push(`${scope.workforce_crew_size} עובדים`);
+    if (scope.workforce_duration_days) parts.push(`${scope.workforce_duration_days} ימים`);
+    sections.push({ label: "כוח אדם", value: parts.join(" | ") });
+  }
+  if (scope.equipment_note) sections.push({ label: "ציוד", value: scope.equipment_note });
+  if (scope.warranty_note) sections.push({ label: "אחריות", value: scope.warranty_note });
+
+  if (sections.length === 0) return null;
+
+  return (
+    <Card className="bg-muted/20">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <FileText className="w-4 h-4" /> תכולת עבודה
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {sections.map((s, i) => (
+          <div key={i}>
+            <p className="text-xs font-semibold text-muted-foreground mb-0.5">{s.label}</p>
+            <p className="text-sm whitespace-pre-wrap">{s.value}</p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+};
+
 const QuotesSection = ({ quotes, shareToken, onQuoteSigned }: { quotes: any[]; shareToken: string; onQuoteSigned: () => void }) => {
   if (quotes.length === 0) {
     return (
@@ -620,7 +677,7 @@ const QuotesSection = ({ quotes, shareToken, onQuoteSigned }: { quotes: any[]; s
         <Card key={quote.id}>
           <CardHeader>
             <CardTitle className="text-base flex items-center justify-between">
-              <span>{quote.title || "הצעת מחיר"}</span>
+              <span>{quote.title || "הצעת מחיר"} {quote.quote_number ? `#${quote.quote_number}` : ""}</span>
               <Badge variant="secondary">{quoteStatusLabels[quote.status] || quote.status}</Badge>
             </CardTitle>
           </CardHeader>
@@ -669,18 +726,24 @@ const QuotesSection = ({ quotes, shareToken, onQuoteSigned }: { quotes: any[]; s
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">{quote.notes}</p>
             )}
 
+            {/* Scope of Work */}
+            {quote.scope_of_work && <PublicScopeOfWork scope={quote.scope_of_work} />}
+
             {/* Signature section */}
             {quote.signature_url ? (
               <Card className="bg-muted/30">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium">הצעת מחיר נחתמה</span>
+                    <span className="text-sm font-medium">הצעת מחיר נחתמה ואושרה</span>
                   </div>
                   <img src={quote.signature_url} alt="חתימה" className="max-w-xs border rounded-lg bg-white" />
+                  {quote.signed_by && (
+                    <p className="text-sm mt-2"><strong>שם החותם:</strong> {quote.signed_by}</p>
+                  )}
                   {quote.signed_at && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      {new Date(quote.signed_at).toLocaleString("he-IL")}
+                    <p className="text-sm text-muted-foreground mt-1">
+                      נחתם: {new Date(quote.signed_at).toLocaleString("he-IL")}
                     </p>
                   )}
                 </CardContent>

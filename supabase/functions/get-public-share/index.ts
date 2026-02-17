@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
     if (shareType === "quotes") {
       const { data: quotes } = await supabase
         .from("quotes")
-        .select("id, title, status, notes, valid_until, created_at, discount_percent, include_vat, signature_path, signed_at")
+        .select("id, title, status, notes, valid_until, created_at, discount_percent, include_vat, signature_path, signed_at, signed_by, quote_number, scope_of_work")
         .eq("service_call_id", scId)
         .order("created_at", { ascending: false });
 
