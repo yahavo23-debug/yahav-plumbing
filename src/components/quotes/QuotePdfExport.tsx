@@ -235,14 +235,23 @@ function buildQuoteHtml(data: {
     </div>
   `;
 
-  // 1) Findings
-  if (findings) {
-    html += sectionTitle("1", "אבחון / ממצאים");
-    html += `<p style="font-size:13px;margin:0 0 8px;padding:10px 14px;background:#fff8f0;border-right:3px solid #f59e0b;border-radius:4px;">${escapeHtmlWithBreaks(findings)}</p>`;
+  // Scope of Work section
+  if (quote.scope_of_work) {
+    html += buildScopeOfWorkHtml(quote.scope_of_work, sectionTitle);
   }
 
-  // 2) What the service includes
-  html += sectionTitle("2", "מה כולל השירות");
+  // 1) Findings
+  const findingsSectionNum = quote.scope_of_work ? "2" : "1";
+  const serviceSectionNum = quote.scope_of_work ? "3" : "2";
+  const itemsSectionNum = quote.scope_of_work ? "4" : "3";
+  const termsSectionNum = quote.scope_of_work ? "5" : "4";
+  const approvalSectionNum = quote.scope_of_work ? "6" : "5";
+
+  if (findings) {
+    html += sectionTitle(findingsSectionNum, "אבחון / ממצאים");
+    html += `<p style="font-size:13px;margin:0 0 8px;padding:10px 14px;background:#fff8f0;border-right:3px solid #f59e0b;border-radius:4px;">${escapeHtmlWithBreaks(findings)}</p>`;
+  }
+  html += sectionTitle(serviceSectionNum, "מה כולל השירות");
   const serviceIncludes = [
     "ביקור ובדיקת שטח",
     "אבחון מקצועי והצגת ממצאים ללקוח",
@@ -256,8 +265,8 @@ function buildQuoteHtml(data: {
   }
   html += `</ul>`;
 
-  // 3) Line items table
-  html += sectionTitle("3", "הצעת מחיר – סעיפים");
+  // Line items table
+  html += sectionTitle(itemsSectionNum, "הצעת מחיר – סעיפים");
   html += `
     <table style="width:100%;font-size:12px;border-collapse:collapse;border:1px solid #ddd;margin-bottom:4px;">
       <thead>
@@ -321,8 +330,8 @@ function buildQuoteHtml(data: {
     </div>
   `;
 
-  // 4) Terms
-  html += sectionTitle("4", "תנאים והבהרות");
+  // Terms
+  html += sectionTitle(termsSectionNum, "תנאים והבהרות");
   const terms = [
     `ההצעה תקפה ל-${validDaysText} ימים.`,
     "המחיר כולל את הסעיפים המפורטים בלבד.",
@@ -336,8 +345,8 @@ function buildQuoteHtml(data: {
   }
   html += `</ul>`;
 
-  // 5) Customer approval
-  html += sectionTitle("5", "אישור לקוח");
+  // Customer approval
+  html += sectionTitle(approvalSectionNum, "אישור לקוח");
 
   if (signatureUrl && quote.signed_at) {
     // Signed — show embedded signature with legal info
@@ -389,6 +398,42 @@ function buildQuoteHtml(data: {
   }
 
   html += buildPdfFooter(dateStr, new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }));
+
+  return html;
+}
+
+function buildScopeOfWorkHtml(scope: any, sectionTitle: (num: string, text: string) => string): string {
+  let html = sectionTitle("1", "תכולת עבודה (Scope of Work)");
+
+  const scopeRow = (label: string, value: string) =>
+    `<div style="margin-bottom:8px;">
+      <p style="font-size:11px;font-weight:700;color:#666;margin:0 0 2px;">${label}</p>
+      <p style="font-size:13px;margin:0;white-space:pre-wrap;">${escapeHtmlWithBreaks(value)}</p>
+    </div>`;
+
+  if (scope.project_overview) html += scopeRow("סקירת הפרויקט", scope.project_overview);
+  if (scope.demolition) html += scopeRow("פירוק והכנה", scope.demolition);
+  if (scope.plumbing) html += scopeRow("התקנת אינסטלציה", scope.plumbing);
+  if (scope.drying_included) {
+    html += scopeRow("ייבוש תת-רצפתי", `כלול${scope.drying_duration_days ? ` — ${scope.drying_duration_days} ימים` : ""}`);
+  }
+  if (scope.restoration_included && scope.restoration_details) {
+    html += scopeRow("שיקום מבנה", scope.restoration_details);
+  }
+  if (scope.tiling_included) {
+    const method = scope.tiling_pricing_method === "sqm" ? 'למ"ר' : scope.tiling_pricing_method === "daily" ? "ליום" : "";
+    const price = scope.tiling_price ? `₪${scope.tiling_price} ${method}` : "כלול";
+    html += scopeRow("ריצוף", price);
+  }
+  if (scope.materials_note) html += scopeRow("חומרים", scope.materials_note);
+  if (scope.workforce_crew_size || scope.workforce_duration_days) {
+    const parts = [];
+    if (scope.workforce_crew_size) parts.push(`${scope.workforce_crew_size} עובדים`);
+    if (scope.workforce_duration_days) parts.push(`${scope.workforce_duration_days} ימים`);
+    html += scopeRow("כוח אדם", parts.join(" | "));
+  }
+  if (scope.equipment_note) html += scopeRow("ציוד", scope.equipment_note);
+  if (scope.warranty_note) html += scopeRow("אחריות", scope.warranty_note);
 
   return html;
 }

@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { QuoteEditor } from "./QuoteEditor";
 import { QuoteSignaturePad } from "./QuoteSignaturePad";
 import { ConvertQuoteToJob } from "./ConvertQuoteToJob";
-import { Plus, Edit, Trash2, FileText, Pen } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, Pen, Unlock } from "lucide-react";
 import { QuotePdfExport } from "./QuotePdfExport";
 import {
   AlertDialog,
@@ -62,6 +63,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [signingQuoteId, setSigningQuoteId] = useState<string | null>(null);
+  const { isAdmin } = useAuth();
 
   const loadQuotes = useCallback(async () => {
     const { data: quotesData, error } = await supabase
@@ -159,9 +161,26 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
     setSigningQuoteId(null);
     setQuotes((prev) =>
       prev.map((q) =>
-        q.id === quoteId ? { ...q, signature_path: path, signed_at: date } : q
+        q.id === quoteId ? { ...q, signature_path: path, signed_at: date, status: "approved" } : q
       )
     );
+  };
+
+  const handleUnlock = async (quoteId: string) => {
+    const { error } = await supabase
+      .from("quotes")
+      .update({ signature_path: null, signed_at: null, signed_by: null, status: "sent" } as any)
+      .eq("id", quoteId);
+    if (error) {
+      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "נעילה הוסרה", description: "ההצעה נפתחה לעריכה מחדש" });
+      setQuotes((prev) =>
+        prev.map((q) =>
+          q.id === quoteId ? { ...q, signature_path: null, signed_at: null, status: "sent" } : q
+        )
+      );
+    }
   };
 
   if (!readOnly && (creating || editingId)) {
@@ -249,6 +268,29 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                   {!readOnly && isSigned && (
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <QuotePdfExport quoteId={quote.id} serviceCallId={serviceCallId} />
+                      {isAdmin && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="פתח נעילה">
+                              <Unlock className="w-4 h-4 text-amber-600" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>פתיחת נעילת הצעת מחיר</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                פעולה זו תסיר את חתימת הלקוח ותפתח את ההצעה לעריכה מחדש. האם להמשיך?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>ביטול</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleUnlock(quote.id)}>
+                                פתח נעילה
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   )}
                   {!readOnly && !isSigned && (
