@@ -197,6 +197,45 @@ const ServiceCallDetail = () => {
               >
                 החזר קריאה
               </Button>
+            ) : call.status === "pending_customer" ? (
+              <>
+                <Button
+                  variant="outline"
+                  className="gap-2 text-success hover:bg-success hover:text-success-foreground"
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from("service_calls")
+                      .update({ status: "in_progress" } as any)
+                      .eq("id", id!);
+                    if (error) {
+                      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+                    } else {
+                      toast({ title: "אושר", description: "הקריאה אושרה והועברה לבטיפול" });
+                      setCall({ ...call, status: "in_progress" });
+                    }
+                  }}
+                >
+                  אושר
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from("service_calls")
+                      .update({ status: "cancelled" } as any)
+                      .eq("id", id!);
+                    if (error) {
+                      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+                    } else {
+                      toast({ title: "בוטל", description: "הקריאה בוטלה" });
+                      setCall({ ...call, status: "cancelled" });
+                    }
+                  }}
+                >
+                  בוטל
+                </Button>
+              </>
             ) : (
               <Button
                 variant="outline"
