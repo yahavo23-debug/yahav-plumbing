@@ -81,7 +81,6 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
           ref={fileRef}
           type="file"
           accept="image/*,.pdf,application/pdf"
-          capture="environment"
           className="hidden"
           onChange={handleUpload}
         />
