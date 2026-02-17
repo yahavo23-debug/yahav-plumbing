@@ -72,7 +72,6 @@ export function ReceiptUpload({
         ref={fileRef}
         type="file"
         accept="image/*,.pdf,application/pdf"
-        capture="environment"
         className="hidden"
         onChange={handleUpload}
       />
