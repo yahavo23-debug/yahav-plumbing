@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { QuoteEditor } from "./QuoteEditor";
 import { QuoteSignaturePad } from "./QuoteSignaturePad";
 import { ConvertQuoteToJob } from "./ConvertQuoteToJob";
-import { Plus, Edit, Trash2, FileText, Pen, Unlock } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, Pen, Unlock, Send, Loader2 } from "lucide-react";
 import { QuotePdfExport } from "./QuotePdfExport";
 import {
   AlertDialog,
@@ -57,13 +57,27 @@ interface QuotesListProps {
   readOnly?: boolean;
 }
 
+// Get the public-facing base URL for share links
+const getPublicBaseUrl = (): string => {
+  const origin = window.location.origin;
+  if (
+    origin.includes("preview--") ||
+    origin.includes("lovableproject.com") ||
+    origin.includes("localhost")
+  ) {
+    return "https://yahav-plumbing.lovable.app";
+  }
+  return origin;
+};
+
 export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps) => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [signingQuoteId, setSigningQuoteId] = useState<string | null>(null);
-  const { isAdmin } = useAuth();
+  const [sendingQuoteId, setSendingQuoteId] = useState<string | null>(null);
+  const { user, isAdmin } = useAuth();
 
   const loadQuotes = useCallback(async () => {
     const { data: quotesData, error } = await supabase
@@ -183,6 +197,55 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
     }
   };
 
+  const handleSendToCustomer = async (quoteId: string, quoteNumber: number) => {
+    if (!user) return;
+    setSendingQuoteId(quoteId);
+    try {
+      // Make sure quote is in "sent" status
+      const quote = quotes.find(q => q.id === quoteId);
+      if (quote && quote.status === "draft") {
+        await handleStatusChange(quoteId, "sent");
+      }
+
+      // Check for existing share link
+      const { data: existing } = await supabase
+        .from("service_call_shares")
+        .select("share_token")
+        .eq("service_call_id", serviceCallId)
+        .eq("share_type", "quotes")
+        .eq("is_active", true)
+        .is("revoked_at", null)
+        .limit(1) as any;
+
+      let token: string;
+      if (existing && existing.length > 0) {
+        token = existing[0].share_token;
+      } else {
+        const { data, error } = await supabase
+          .from("service_call_shares")
+          .insert({
+            service_call_id: serviceCallId,
+            share_type: "quotes",
+            created_by: user.id,
+          } as any)
+          .select("share_token")
+          .single() as any;
+        if (error) throw error;
+        token = data.share_token;
+      }
+
+      const baseUrl = getPublicBaseUrl();
+      const url = `${baseUrl}/s/${token}`;
+      const text = encodeURIComponent(`הצעת מחיר #${quoteNumber} לצפייה ולחתימה:\n${url}`);
+      window.open(`https://wa.me/?text=${text}`, "_blank");
+    } catch (err: any) {
+      console.error("Send to customer error:", err);
+      toast({ title: "שגיאה", description: "לא ניתן ליצור קישור שיתוף", variant: "destructive" });
+    } finally {
+      setSendingQuoteId(null);
+    }
+  };
+
   if (!readOnly && (creating || editingId)) {
     return (
       <QuoteEditor
@@ -267,6 +330,16 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                   </div>
                   {!readOnly && isSigned && (
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={sendingQuoteId === quote.id}
+                        onClick={() => handleSendToCustomer(quote.id, quote.quote_number)}
+                      >
+                        {sendingQuoteId === quote.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                        שלח ללקוח
+                      </Button>
                       <QuotePdfExport quoteId={quote.id} serviceCallId={serviceCallId} />
                       {isAdmin && (
                         <AlertDialog>
@@ -295,6 +368,18 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                   )}
                   {!readOnly && !isSigned && (
                     <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                      {/* Send to customer for signing */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={sendingQuoteId === quote.id}
+                        onClick={() => handleSendToCustomer(quote.id, quote.quote_number)}
+                      >
+                        {sendingQuoteId === quote.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                        שלח ללקוח לחתימה
+                      </Button>
+
                       {/* Convert to job — for approved or sent quotes */}
                       {(quote.status === "approved" || quote.status === "sent") && (
                         <ConvertQuoteToJob quoteId={quote.id} serviceCallId={serviceCallId} />
