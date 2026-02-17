@@ -80,7 +80,7 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
         <input
           ref={fileRef}
           type="file"
-          accept="image/*,.pdf,application/pdf"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,application/pdf"
           className="hidden"
           onChange={handleUpload}
         />
