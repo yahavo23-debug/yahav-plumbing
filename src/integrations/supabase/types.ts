@@ -147,6 +147,7 @@ export type Database = {
           created_by: string
           customer_id: string
           description: string | null
+          details: Json | null
           expense_date: string
           id: string
           receipt_path: string | null
@@ -159,6 +160,7 @@ export type Database = {
           created_by?: string
           customer_id: string
           description?: string | null
+          details?: Json | null
           expense_date?: string
           id?: string
           receipt_path?: string | null
@@ -171,6 +173,7 @@ export type Database = {
           created_by?: string
           customer_id?: string
           description?: string | null
+          details?: Json | null
           expense_date?: string
           id?: string
           receipt_path?: string | null
