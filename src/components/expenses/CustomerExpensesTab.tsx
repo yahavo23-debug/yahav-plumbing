@@ -349,12 +349,26 @@ export function CustomerExpensesTab({ customerId, customerName }: Props) {
                   </div>
                 </div>
                 {formWorkerCount && formWorkDays && formWorkerCost && (
-                  <p className="text-xs text-muted-foreground">
-                    חישוב: {formWorkerCount} עובדים × {formWorkDays} ימים × ₪{parseFloat(formWorkerCost).toLocaleString()} ={" "}
-                    <span className="font-bold text-foreground">
-                      ₪{(parseInt(formWorkerCount) * parseFloat(formWorkDays) * parseFloat(formWorkerCost)).toLocaleString()}
-                    </span>
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      חישוב: {formWorkerCount} עובדים × {formWorkDays} ימים × ₪{parseFloat(formWorkerCost).toLocaleString()} ={" "}
+                      <span className="font-bold text-foreground">
+                        ₪{(parseInt(formWorkerCount) * parseFloat(formWorkDays) * parseFloat(formWorkerCost)).toLocaleString()}
+                      </span>
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs gap-1"
+                      onClick={() => {
+                        const calc = parseInt(formWorkerCount) * parseFloat(formWorkDays) * parseFloat(formWorkerCost);
+                        if (!isNaN(calc) && calc > 0) setFormAmount(calc.toString());
+                      }}
+                    >
+                      העבר לסכום
+                    </Button>
+                  </div>
                 )}
                 <div className="space-y-1">
                   <Label className="text-xs">הערות קבלן</Label>
