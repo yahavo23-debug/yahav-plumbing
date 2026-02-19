@@ -51,3 +51,22 @@ export function getJobTypeLabel(jobType: string | null | undefined): string {
   if (!jobType) return "—";
   return serviceTypeLabels[jobType] || jobType;
 }
+
+/** Lead source options for customers */
+export const leadSources = [
+  { value: "facebook", label: "פייסבוק", color: "bg-blue-500" },
+  { value: "instagram", label: "אינסטגרם", color: "bg-pink-500" },
+  { value: "madrag", label: "מדרג", color: "bg-purple-700" },
+  { value: "easy_shapatz", label: "איזי שפץ", color: "bg-amber-700" },
+  { value: "word_of_mouth", label: "פה לאוזן", color: "bg-green-500" },
+  { value: "referral", label: "המלצה", color: "bg-teal-500" },
+  { value: "contractor", label: "קבלן", color: "bg-orange-500" },
+];
+
+export const leadSourceLabels: Record<string, string> = Object.fromEntries(
+  leadSources.map((s) => [s.value, s.label])
+);
+
+export const leadSourceColors: Record<string, string> = Object.fromEntries(
+  leadSources.map((s) => [s.value, s.color])
+);

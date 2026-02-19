@@ -9,6 +9,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { leadSourceColors, leadSourceLabels } from "@/lib/constants";
 
 type Customer = Tables<"customers">;
 
@@ -41,15 +42,24 @@ export function CustomerCard({ customer, isAdmin, isContractor, hasPendingCall, 
     >
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className={cn(
-            "font-semibold text-lg",
-            isDebt && "text-destructive",
-            !isDebt && hasPendingCall && "text-purple-600 dark:text-purple-400",
-            showGold && "text-amber-600 dark:text-amber-400"
-          )}>
-            {customer.name}
-            {showGold && <Crown className="inline w-4 h-4 mr-1 text-amber-500" />}
-          </h3>
+          <div className="flex items-center gap-2">
+            {/* Lead source dot */}
+            {(customer as any).lead_source && leadSourceColors[(customer as any).lead_source] && (
+              <span
+                className={`w-2.5 h-2.5 rounded-full shrink-0 ${leadSourceColors[(customer as any).lead_source]}`}
+                title={leadSourceLabels[(customer as any).lead_source] || (customer as any).lead_source}
+              />
+            )}
+            <h3 className={cn(
+              "font-semibold text-lg",
+              isDebt && "text-destructive",
+              !isDebt && hasPendingCall && "text-purple-600 dark:text-purple-400",
+              showGold && "text-amber-600 dark:text-amber-400"
+            )}>
+              {customer.name}
+              {showGold && <Crown className="inline w-4 h-4 mr-1 text-amber-500" />}
+            </h3>
+          </div>
           <div className="flex items-center gap-1">
             {!isContractor && <CustomerBillingBadgeInline customerId={customer.id} />}
             {isAdmin && (

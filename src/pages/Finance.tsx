@@ -25,7 +25,7 @@ import {
   docTypeLabels, statusLabels as finStatusLabels, financeCategories,
 } from "@/lib/finance-constants";
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-
+import { PendingQuotesPanel } from "@/components/finance/PendingQuotesPanel";
 const PIE_COLORS = ["#3b82f6", "#f59e0b", "#22c55e", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16", "#06b6d4", "#e11d48"];
 
 function getMonthDefault(): string {
@@ -239,6 +239,9 @@ export default function Finance() {
           </CardContent>
         </Card>
       )}
+
+      {/* Pending Quotes */}
+      <PendingQuotesPanel />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

@@ -474,7 +474,28 @@ export function BillingTab({
 
       if (error) throw error;
 
-      toast({ title: "תשלום אושר", description: `תשלום של ₪${paymentAmount.toFixed(2)} נרשם בהצלחה` });
+      // Auto-create income entry in financial_transactions
+      try {
+        await (supabase as any).from("financial_transactions").insert({
+          direction: "income",
+          amount: paymentAmount,
+          txn_date: new Date().toISOString().split("T")[0],
+          category: "service_income",
+          payment_method: quickPaymentMethod,
+          counterparty_name: customerName || null,
+          customer_id: customerId,
+          notes: `אישור תשלום מגבייה - ${paymentMethodLabels[quickPaymentMethod] || quickPaymentMethod}${quickPaymentInstallments ? ` (${quickPaymentInstallments} תשלומים)` : ""}`,
+          status: "paid",
+          doc_path: quickPaymentReceipt || null,
+          doc_type: quickPaymentReceipt ? "receipt" : null,
+          created_by: user.id,
+        });
+      } catch (finErr) {
+        console.error("Auto finance income error:", finErr);
+        // Don't fail the whole operation if finance entry fails
+      }
+
+      toast({ title: "תשלום אושר", description: `תשלום של ₪${paymentAmount.toFixed(2)} נרשם בהצלחה (+ הכנסה בכספים)` });
       setShowQuickPayment(false);
       setQuickPaymentMethod("");
       setQuickPaymentAmount("");
