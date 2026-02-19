@@ -348,7 +348,30 @@ export function BillingTab({
 
       if (error) throw error;
 
-      toast({ title: "נשמר", description: "הרשומה נוספה בהצלחה" });
+      // Auto-create income in financial_transactions for payment entries
+      if (formType === "payment") {
+        const methodLabel = paymentMethodLabels[formPaymentMethod] || formPaymentMethod || "";
+        try {
+          await (supabase as any).from("financial_transactions").insert({
+            direction: "income",
+            amount: parseFloat(formAmount),
+            txn_date: formDate,
+            category: "service_income",
+            payment_method: formPaymentMethod || null,
+            counterparty_name: customerName || null,
+            customer_id: customerId,
+            notes: formDescription.trim() || `תשלום - ${methodLabel}`,
+            status: "paid",
+            doc_path: formReceiptPath || null,
+            doc_type: formReceiptPath ? "receipt" : null,
+            created_by: user.id,
+          });
+        } catch (finErr) {
+          console.error("Auto finance income error:", finErr);
+        }
+      }
+
+      toast({ title: "נשמר", description: "הרשומה נוספה בהצלחה" + (formType === "payment" ? " (+ הכנסה בכספים)" : "") });
       setShowForm(false);
       resetForm();
       loadEntries();
@@ -440,7 +463,32 @@ export function BillingTab({
         })
         .eq("id", detailEntry.id);
       if (error) throw error;
-      toast({ title: "נשמר", description: "פרטי הרשומה עודכנו" });
+
+      // Auto-create/update income in financial_transactions for payment entries
+      if (detailEntry.entry_type === "payment") {
+        const finalAmount = parseFloat(editingAmount) || detailEntry.amount;
+        const methodLabel = paymentMethodLabels[editingPaymentMethod] || editingPaymentMethod || "";
+        try {
+          await (supabase as any).from("financial_transactions").insert({
+            direction: "income",
+            amount: finalAmount,
+            txn_date: detailEntry.entry_date,
+            category: "service_income",
+            payment_method: editingPaymentMethod || null,
+            counterparty_name: customerName || null,
+            customer_id: customerId,
+            notes: `תשלום מגבייה - ${methodLabel}${editingInstallments ? ` (${editingInstallments} תשלומים)` : ""}`,
+            status: "paid",
+            doc_path: detailEntry.receipt_path || null,
+            doc_type: detailEntry.receipt_path ? "receipt" : null,
+            created_by: user!.id,
+          });
+        } catch (finErr) {
+          console.error("Auto finance income error:", finErr);
+        }
+      }
+
+      toast({ title: "נשמר", description: "פרטי הרשומה עודכנו" + (detailEntry.entry_type === "payment" ? " (+ הכנסה בכספים)" : "") });
       setDetailEntry(null);
       loadEntries();
       onBillingChange?.();
