@@ -206,6 +206,11 @@ export function CustomerExpensesTab({ customerId, customerName }: Props) {
                 <p className={`text-lg font-bold ${(billing.totalPayments - totalExpenses) >= 0 ? "text-success" : "text-destructive"}`}>
                   ₪{(billing.totalPayments - totalExpenses).toLocaleString()}
                 </p>
+                {billing.totalPayments > 0 && (
+                  <p className={`text-sm mt-1 font-medium ${(billing.totalPayments - totalExpenses) >= 0 ? "text-success" : "text-destructive"}`}>
+                    {Math.round(((billing.totalPayments - totalExpenses) / billing.totalPayments) * 100)}%
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
