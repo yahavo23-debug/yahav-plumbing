@@ -14,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Receipt, Package, Wrench, HelpCircle, TrendingUp, TrendingDown, ArrowUpDown } from "lucide-react";
+import { Plus, Trash2, Receipt, Package, Wrench, HelpCircle, TrendingUp, TrendingDown, ArrowUpDown, Users, CalendarDays } from "lucide-react";
 import { useCustomerBilling } from "@/hooks/useCustomerBilling";
 
 interface Expense {
@@ -69,6 +69,12 @@ export function CustomerExpensesTab({ customerId, customerName }: Props) {
   const [formReceiptPath, setFormReceiptPath] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Contractor-specific fields
+  const [formWorkerCount, setFormWorkerCount] = useState("");
+  const [formWorkDays, setFormWorkDays] = useState("");
+  const [formWorkerCost, setFormWorkerCost] = useState("");
+  const [formContractorNotes, setFormContractorNotes] = useState("");
+
   // Delete state
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -94,6 +100,10 @@ export function CustomerExpensesTab({ customerId, customerName }: Props) {
     setFormSupplier("");
     setFormDate(new Date().toISOString().slice(0, 10));
     setFormReceiptPath("");
+    setFormWorkerCount("");
+    setFormWorkDays("");
+    setFormWorkerCost("");
+    setFormContractorNotes("");
   };
 
   const handleSave = async () => {
@@ -104,6 +114,18 @@ export function CustomerExpensesTab({ customerId, customerName }: Props) {
     }
 
     setSaving(true);
+
+    // Build contractor details if applicable
+    let details: Record<string, any> | null = null;
+    if (formCategory === "contractor") {
+      details = {};
+      if (formWorkerCount) details.worker_count = parseInt(formWorkerCount);
+      if (formWorkDays) details.work_days = parseInt(formWorkDays);
+      if (formWorkerCost) details.worker_cost = parseFloat(formWorkerCost);
+      if (formContractorNotes.trim()) details.notes = formContractorNotes.trim();
+      if (Object.keys(details).length === 0) details = null;
+    }
+
     const { error } = await (supabase as any).from("customer_expenses").insert({
       customer_id: customerId,
       amount,
@@ -112,6 +134,7 @@ export function CustomerExpensesTab({ customerId, customerName }: Props) {
       supplier_name: formSupplier.trim() || null,
       expense_date: formDate,
       receipt_path: formReceiptPath || null,
+      details,
     });
 
     if (error) {
@@ -259,11 +282,11 @@ export function CustomerExpensesTab({ customerId, customerName }: Props) {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">שם ספק</Label>
+                <Label className="text-xs">{formCategory === "contractor" ? "שם קבלן" : "שם ספק"}</Label>
                 <Input
                   value={formSupplier}
                   onChange={(e) => setFormSupplier(e.target.value)}
-                  placeholder="שם החנות / ספק"
+                  placeholder={formCategory === "contractor" ? "שם הקבלן" : "שם החנות / ספק"}
                 />
               </div>
               <div className="space-y-1">
@@ -275,6 +298,70 @@ export function CustomerExpensesTab({ customerId, customerName }: Props) {
                 />
               </div>
             </div>
+
+            {/* Contractor-specific fields */}
+            {formCategory === "contractor" && (
+              <div className="border border-warning/30 rounded-lg p-4 bg-warning/5 space-y-4">
+                <p className="text-sm font-medium flex items-center gap-2 text-warning">
+                  <Wrench className="w-4 h-4" /> פרטי קבלן משנה
+                </p>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs flex items-center gap-1">
+                      <Users className="w-3 h-3" /> כמות עובדים
+                    </Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={formWorkerCount}
+                      onChange={(e) => setFormWorkerCount(e.target.value)}
+                      placeholder="1"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs flex items-center gap-1">
+                      <CalendarDays className="w-3 h-3" /> ימי עבודה
+                    </Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      step="0.5"
+                      value={formWorkDays}
+                      onChange={(e) => setFormWorkDays(e.target.value)}
+                      placeholder="1"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">עלות לעובד ליום (₪)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formWorkerCost}
+                      onChange={(e) => setFormWorkerCost(e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                {formWorkerCount && formWorkDays && formWorkerCost && (
+                  <p className="text-xs text-muted-foreground">
+                    חישוב: {formWorkerCount} עובדים × {formWorkDays} ימים × ₪{parseFloat(formWorkerCost).toLocaleString()} ={" "}
+                    <span className="font-bold text-foreground">
+                      ₪{(parseInt(formWorkerCount) * parseFloat(formWorkDays) * parseFloat(formWorkerCost)).toLocaleString()}
+                    </span>
+                  </p>
+                )}
+                <div className="space-y-1">
+                  <Label className="text-xs">הערות קבלן</Label>
+                  <Textarea
+                    value={formContractorNotes}
+                    onChange={(e) => setFormContractorNotes(e.target.value)}
+                    placeholder="סוג עבודה, תנאים מיוחדים..."
+                    rows={2}
+                  />
+                </div>
+              </div>
+            )}
             <div className="space-y-1">
               <Label className="text-xs">תיאור</Label>
               <Textarea
@@ -333,6 +420,26 @@ export function CustomerExpensesTab({ customerId, customerName }: Props) {
                         {exp.supplier_name && exp.description && <span>·</span>}
                         {exp.description && <span className="truncate max-w-xs">{exp.description}</span>}
                       </div>
+                      {exp.category === "contractor" && (exp as any).details && (
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                          {(exp as any).details.worker_count && (
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3 h-3" /> {(exp as any).details.worker_count} עובדים
+                            </span>
+                          )}
+                          {(exp as any).details.work_days && (
+                            <span className="flex items-center gap-1">
+                              <CalendarDays className="w-3 h-3" /> {(exp as any).details.work_days} ימים
+                            </span>
+                          )}
+                          {(exp as any).details.worker_cost && (
+                            <span>₪{(exp as any).details.worker_cost}/עובד/יום</span>
+                          )}
+                          {(exp as any).details.notes && (
+                            <span className="truncate max-w-xs">· {(exp as any).details.notes}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
