@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { BillingTab } from "@/components/billing/BillingTab";
 import { CustomerBillingBadge } from "@/components/billing/CustomerBillingBadge";
+import { CustomerExpensesTab } from "@/components/expenses/CustomerExpensesTab";
 import { useCustomerBilling } from "@/hooks/useCustomerBilling";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -145,6 +146,9 @@ const CustomerDetail = () => {
           </TabsTrigger>
           <TabsTrigger value="billing" className="text-base px-6 h-10">
             חשבון
+          </TabsTrigger>
+          <TabsTrigger value="expenses" className="text-base px-6 h-10">
+            עלות עבודה
           </TabsTrigger>
         </TabsList>
 
@@ -277,6 +281,11 @@ const CustomerDetail = () => {
             customerAddress={customer.address}
             onBillingChange={billing.refresh}
           />
+        </TabsContent>
+
+        {/* Expenses Tab */}
+        <TabsContent value="expenses">
+          <CustomerExpensesTab customerId={id!} customerName={customer.name} />
         </TabsContent>
       </Tabs>
 

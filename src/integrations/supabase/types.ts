@@ -139,6 +139,53 @@ export type Database = {
           },
         ]
       }
+      customer_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          created_by: string
+          customer_id: string
+          description: string | null
+          expense_date: string
+          id: string
+          receipt_path: string | null
+          supplier_name: string | null
+        }
+        Insert: {
+          amount: number
+          category?: string
+          created_at?: string
+          created_by?: string
+          customer_id: string
+          description?: string | null
+          expense_date?: string
+          id?: string
+          receipt_path?: string | null
+          supplier_name?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          description?: string | null
+          expense_date?: string
+          id?: string
+          receipt_path?: string | null
+          supplier_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_expenses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_ledger: {
         Row: {
           amount: number
