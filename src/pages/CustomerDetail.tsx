@@ -42,6 +42,7 @@ const priorityColors: Record<string, string> = {
   urgent: "bg-destructive/10 text-destructive",
 };
 import { getJobTypeLabel } from "@/lib/constants";
+import { leadSourceLabels, leadSourceColors } from "@/lib/constants";
 
 const serviceTypeLabels: Record<string, string> = {
   leak_detection: "איתור נזילה",
@@ -245,6 +246,19 @@ const CustomerDetail = () => {
                   {customer.notes && (
                     <div className="pt-2 border-t border-border">
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">{customer.notes}</p>
+                    </div>
+                  )}
+                  {(customer as any).lead_source && (
+                    <div className="pt-2 border-t border-border flex items-center gap-2">
+                      <span className={`w-3 h-3 rounded-full ${leadSourceColors[(customer as any).lead_source] || "bg-muted"}`} />
+                      <span className="text-sm font-medium">
+                        מקור: {leadSourceLabels[(customer as any).lead_source] || (customer as any).lead_source}
+                      </span>
+                      {(customer as any).lead_source_note && (
+                        <span className="text-sm text-muted-foreground">
+                          — {(customer as any).lead_source_note}
+                        </span>
+                      )}
                     </div>
                   )}
                 </>

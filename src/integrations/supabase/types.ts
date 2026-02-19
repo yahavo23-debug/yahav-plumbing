@@ -212,10 +212,13 @@ export type Database = {
           email: string | null
           has_legal_action: boolean
           id: string
+          lead_source: string | null
+          lead_source_note: string | null
           legal_action_note: string | null
           name: string
           notes: string | null
           phone: string | null
+          source_contractor_id: string | null
           updated_at: string
         }
         Insert: {
@@ -227,10 +230,13 @@ export type Database = {
           email?: string | null
           has_legal_action?: boolean
           id?: string
+          lead_source?: string | null
+          lead_source_note?: string | null
           legal_action_note?: string | null
           name: string
           notes?: string | null
           phone?: string | null
+          source_contractor_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -242,10 +248,13 @@ export type Database = {
           email?: string | null
           has_legal_action?: boolean
           id?: string
+          lead_source?: string | null
+          lead_source_note?: string | null
           legal_action_note?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
+          source_contractor_id?: string | null
           updated_at?: string
         }
         Relationships: []
