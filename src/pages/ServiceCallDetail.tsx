@@ -205,17 +205,17 @@ const ServiceCallDetail = () => {
                   onClick={async () => {
                     const { error } = await supabase
                       .from("service_calls")
-                      .update({ status: "in_progress" } as any)
+                      .update({ status: "completed", completed_at: new Date().toISOString() } as any)
                       .eq("id", id!);
                     if (error) {
                       toast({ title: "שגיאה", description: error.message, variant: "destructive" });
                     } else {
-                      toast({ title: "אושר", description: "הקריאה אושרה והועברה לבטיפול" });
-                      setCall({ ...call, status: "in_progress" });
+                      toast({ title: "טופל", description: "הקריאה סומנה כטופלה" });
+                      setCall({ ...call, status: "completed" });
                     }
                   }}
                 >
-                  אושר
+                  טופל
                 </Button>
                 <Button
                   variant="outline"
