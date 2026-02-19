@@ -348,8 +348,8 @@ export function BillingTab({
 
       if (error) throw error;
 
-      // Auto-create income in financial_transactions for payment entries
-      if (formType === "payment") {
+      // Auto-create income in financial_transactions for payment/settled entries
+      if (formType === "payment" || formType === "settled") {
         const methodLabel = paymentMethodLabels[formPaymentMethod] || formPaymentMethod || "";
         try {
           await (supabase as any).from("financial_transactions").insert({
@@ -360,7 +360,7 @@ export function BillingTab({
             payment_method: formPaymentMethod || null,
             counterparty_name: customerName || null,
             customer_id: customerId,
-            notes: formDescription.trim() || `תשלום - ${methodLabel}`,
+            notes: formDescription.trim() || `${formType === "settled" ? "שילם" : "תשלום"} - ${methodLabel}`,
             status: "paid",
             doc_path: formReceiptPath || null,
             doc_type: formReceiptPath ? "receipt" : null,
@@ -371,7 +371,7 @@ export function BillingTab({
         }
       }
 
-      toast({ title: "נשמר", description: "הרשומה נוספה בהצלחה" + (formType === "payment" ? " (+ הכנסה בכספים)" : "") });
+      toast({ title: "נשמר", description: "הרשומה נוספה בהצלחה" + ((formType === "payment" || formType === "settled") ? " (+ הכנסה בכספים)" : "") });
       setShowForm(false);
       resetForm();
       loadEntries();
@@ -464,8 +464,8 @@ export function BillingTab({
         .eq("id", detailEntry.id);
       if (error) throw error;
 
-      // Auto-create/update income in financial_transactions for payment entries
-      if (detailEntry.entry_type === "payment") {
+      // Auto-create/update income in financial_transactions for payment/settled entries
+      if (detailEntry.entry_type === "payment" || detailEntry.entry_type === "settled") {
         const finalAmount = parseFloat(editingAmount) || detailEntry.amount;
         const methodLabel = paymentMethodLabels[editingPaymentMethod] || editingPaymentMethod || "";
         try {
@@ -477,7 +477,7 @@ export function BillingTab({
             payment_method: editingPaymentMethod || null,
             counterparty_name: customerName || null,
             customer_id: customerId,
-            notes: `תשלום מגבייה - ${methodLabel}${editingInstallments ? ` (${editingInstallments} תשלומים)` : ""}`,
+            notes: `${detailEntry.entry_type === "settled" ? "שילם" : "תשלום"} מגבייה - ${methodLabel}${editingInstallments ? ` (${editingInstallments} תשלומים)` : ""}`,
             status: "paid",
             doc_path: detailEntry.receipt_path || null,
             doc_type: detailEntry.receipt_path ? "receipt" : null,
@@ -488,7 +488,7 @@ export function BillingTab({
         }
       }
 
-      toast({ title: "נשמר", description: "פרטי הרשומה עודכנו" + (detailEntry.entry_type === "payment" ? " (+ הכנסה בכספים)" : "") });
+      toast({ title: "נשמר", description: "פרטי הרשומה עודכנו" + ((detailEntry.entry_type === "payment" || detailEntry.entry_type === "settled") ? " (+ הכנסה בכספים)" : "") });
       setDetailEntry(null);
       loadEntries();
       onBillingChange?.();
@@ -868,7 +868,7 @@ export function BillingTab({
                 />
               </div>
             </div>
-            {(formType === "payment" || formType === "credit") && (
+            {(formType === "payment" || formType === "credit" || formType === "settled") && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
                   <Label className="text-xs">אמצעי תשלום</Label>
