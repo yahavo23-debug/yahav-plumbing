@@ -14,7 +14,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Receipt, Package, Wrench, HelpCircle } from "lucide-react";
+import { Plus, Trash2, Receipt, Package, Wrench, HelpCircle, TrendingUp, TrendingDown, ArrowUpDown } from "lucide-react";
+import { useCustomerBilling } from "@/hooks/useCustomerBilling";
 
 interface Expense {
   id: string;
@@ -54,6 +55,7 @@ interface Props {
 
 export function CustomerExpensesTab({ customerId, customerName }: Props) {
   const { isAdmin } = useAuth();
+  const billing = useCustomerBilling(customerId);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -144,7 +146,50 @@ export function CustomerExpensesTab({ customerId, customerName }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Summary Cards */}
+      {/* Profitability Summary */}
+      {!billing.loading && (
+        <Card className="border-2 border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ArrowUpDown className="w-4 h-4" />
+              סיכום רווחיות
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-3 rounded-lg bg-success/10">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <TrendingUp className="w-4 h-4 text-success" />
+                  <p className="text-xs text-muted-foreground">הכנסות מגבייה</p>
+                </div>
+                <p className="text-lg font-bold text-success">
+                  ₪{billing.totalPayments.toLocaleString()}
+                </p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-destructive/10">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <TrendingDown className="w-4 h-4 text-destructive" />
+                  <p className="text-xs text-muted-foreground">הוצאות בפועל</p>
+                </div>
+                <p className="text-lg font-bold text-destructive">
+                  ₪{totalExpenses.toLocaleString()}
+                </p>
+              </div>
+              <div className={`text-center p-3 rounded-lg ${(billing.totalPayments - totalExpenses) >= 0 ? "bg-success/10" : "bg-destructive/10"}`}>
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <ArrowUpDown className="w-4 h-4" />
+                  <p className="text-xs text-muted-foreground">רווח נקי</p>
+                </div>
+                <p className={`text-lg font-bold ${(billing.totalPayments - totalExpenses) >= 0 ? "text-success" : "text-destructive"}`}>
+                  ₪{(billing.totalPayments - totalExpenses).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Category Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card>
           <CardContent className="p-3 text-center">
