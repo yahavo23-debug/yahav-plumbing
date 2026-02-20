@@ -1,9 +1,11 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, TrendingUp, TrendingDown, FileDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import jsPDF from "jspdf";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, ReferenceLine, Legend,
@@ -130,6 +132,8 @@ function DataRow({ label, values, totVal, indent, bold, kind, positive, showPct,
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ProfitabilityReport() {
   const [year, setYear] = useState(getYear);
+  const [exporting, setExporting] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [txns, setTxns] = useState<TxnRow[]>([]);
 
@@ -178,7 +182,7 @@ export default function ProfitabilityReport() {
     return Object.values(map).map(m => {
       const grossProfit = m.revenue - m.directCosts; // שכר עבודה = 0
       const operatingProfit = grossProfit - m.ga;
-      const vatProfit = operatingProfit > 0 ? operatingProfit * 0.83 : operatingProfit;
+      const vatProfit = operatingProfit > 0 ? operatingProfit * 0.82 : operatingProfit;
       const monthlyBalance = m.receipts - m.payments;
       cum += monthlyBalance;
       return { ...m, grossProfit, operatingProfit, vatProfit, monthlyBalance, cumulative: cum };
@@ -225,8 +229,119 @@ export default function ProfitabilityReport() {
   }));
 
   const years = Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - i));
-
   const lastCum = activeMonths[activeMonths.length - 1]?.cumulative ?? 0;
+
+  // ── PDF Export ────────────────────────────────────────────────────────────
+  const exportPDF = useCallback(async () => {
+    setExporting(true);
+    try {
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      doc.addFileToVFS("Helvetica-Bold.ttf", "");
+      doc.setR2L(true);
+
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 10;
+      const colW = 22;
+      const labelW = 58;
+
+      // Header
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Profitability Report - ${year}`, pageW / 2, 16, { align: "center" });
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(`VAT estimate 18% | Generated: ${new Date().toLocaleDateString("he-IL")}`, pageW / 2, 22, { align: "center" });
+
+      // Column headers
+      const months = activeMonths.map(m => m.shortLabel);
+      const headers = ["Row", ...months, "Total"];
+      let y = 30;
+      doc.setFillColor(240, 240, 245);
+      doc.rect(margin, y, pageW - margin * 2, 7, "F");
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.text("Row", margin + 2, y + 5);
+      headers.slice(1).forEach((h, i) => {
+        doc.text(h, margin + labelW + i * colW + 2, y + 5);
+      });
+      y += 8;
+
+      // Section bg colors
+      const sectionBg: [number, number, number] = [220, 228, 240];
+      const subtotalBg: [number, number, number] = [235, 245, 235];
+      const totalBg: [number, number, number] = [210, 235, 210];
+
+      type PDFRow =
+        | { type: "section"; label: string }
+        | { type: "data"; label: string; values: number[]; total: number; bold?: boolean; kind?: "sub" | "total" };
+
+      const rows: PDFRow[] = [
+        { type: "section", label: "1. Revenue" },
+        { type: "data", label: "Revenue from services", values: V("revenue"), total: T.revenue, bold: true, kind: "sub" },
+        { type: "section", label: "2. Cost of Sales" },
+        { type: "data", label: "Direct costs (materials, contractor, tools)", values: V("directCosts"), total: T.directCosts },
+        { type: "data", label: "Labor costs", values: activeMonths.map(() => 0), total: 0 },
+        { type: "data", label: "Gross Profit", values: V("grossProfit"), total: T.grossProfit, bold: true, kind: "sub" },
+        { type: "section", label: "3. G&A" },
+        { type: "data", label: "G&A (car, phone, insurance, marketing...)", values: V("ga"), total: T.ga },
+        { type: "data", label: "Operating Profit (EBIT)", values: V("operatingProfit"), total: T.operatingProfit, bold: true, kind: "sub" },
+        { type: "section", label: "4. Finance" },
+        { type: "data", label: "Finance & other expenses", values: V("finance"), total: T.finance },
+        { type: "data", label: "Profit after VAT (18% est.)", values: V("vatProfit"), total: T.vatProfit, bold: true, kind: "sub" },
+        { type: "section", label: "5. Cash Flow" },
+        { type: "data", label: "Loans & funds (standing orders)", values: V("loans"), total: T.loans },
+        { type: "data", label: "Receipts (cash in)", values: V("receipts"), total: T.receipts },
+        { type: "data", label: "Payments (cash out)", values: V("payments"), total: T.payments },
+        { type: "data", label: "Monthly surplus / deficit", values: V("monthlyBalance"), total: T.monthlyBalance, bold: true, kind: "sub" },
+        { type: "data", label: "Cumulative balance", values: V("cumulative"), total: lastCum, bold: true, kind: "total" },
+      ];
+
+      for (const r of rows) {
+        if (r.type === "section") {
+          doc.setFillColor(...sectionBg);
+          doc.rect(margin, y, pageW - margin * 2, 6, "F");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(7.5);
+          doc.setTextColor(80, 80, 120);
+          doc.text(r.label, margin + 2, y + 4.5);
+          doc.setTextColor(0, 0, 0);
+          y += 7;
+        } else {
+          const isSubtotal = r.kind === "sub";
+          const isTotal = r.kind === "total";
+          if (isTotal) { doc.setFillColor(...totalBg); doc.rect(margin, y, pageW - margin * 2, 6.5, "F"); }
+          else if (isSubtotal) { doc.setFillColor(...subtotalBg); doc.rect(margin, y, pageW - margin * 2, 6.5, "F"); }
+          doc.setFont("helvetica", r.bold ? "bold" : "normal");
+          doc.setFontSize(7.5);
+          doc.text(r.label, margin + (r.bold ? 2 : 5), y + 4.5);
+          r.values.forEach((v, i) => {
+            const x = margin + labelW + i * colW;
+            const s = fmt(v);
+            doc.setTextColor(v < 0 ? 200 : v > 0 && (isSubtotal || isTotal) ? 20 : 50, v < 0 ? 30 : 100, v < 0 ? 30 : 50);
+            doc.text(s, x + colW - 2, y + 4.5, { align: "right" });
+          });
+          const tx = margin + labelW + r.values.length * colW;
+          const tv = r.total;
+          doc.setTextColor(tv < 0 ? 200 : 20, tv < 0 ? 30 : 100, tv < 0 ? 30 : 50);
+          doc.setFont("helvetica", "bold");
+          doc.text(fmt(tv), tx + colW - 2, y + 4.5, { align: "right" });
+          doc.setTextColor(0, 0, 0);
+          y += 7;
+        }
+        if (y > pageH - 20) { doc.addPage(); y = 15; }
+      }
+
+      // Footer
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.text("* VAT is an estimate only. Generated by Yahav CRM.", margin, pageH - 5);
+
+      doc.save(`profitability-${year}.pdf`);
+    } finally {
+      setExporting(false);
+    }
+  }, [activeMonths, V, T, lastCum, year]);
 
   return (
     <AppLayout title="דוח רווחיות חודשי">
@@ -235,7 +350,7 @@ export default function ProfitabilityReport() {
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div>
           <h1 className="text-xl font-bold">דוח רווחיות — {year}</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">אומדן מע״מ 17% | שכר עבודה = ₪0 (אין עובדים)</p>
+          <p className="text-xs text-muted-foreground mt-0.5">אומדן מע״מ 18% | שכר עבודה = ₪0 (אין עובדים)</p>
         </div>
         <div className="mr-auto flex items-center gap-2">
           {loading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
@@ -245,6 +360,10 @@ export default function ProfitabilityReport() {
               {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Button variant="outline" onClick={exportPDF} disabled={exporting || loading} className="gap-1.5">
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+            ייצוא PDF
+          </Button>
         </div>
       </div>
 
