@@ -12,6 +12,7 @@ import {
   ChevronRight,
   CalendarDays,
   Wallet,
+  BarChart2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -29,6 +30,7 @@ const navItems: NavItem[] = [
   { icon: Wrench, label: "קריאות שירות", path: "/service-calls", roles: ["admin", "technician", "secretary", "contractor"] },
   { icon: FileText, label: "דוחות", path: "/reports", roles: ["admin", "technician", "secretary"] },
   { icon: Wallet, label: "כספים", path: "/finance", roles: ["admin", "secretary"] },
+  { icon: BarChart2, label: "שיווק", path: "/marketing", roles: ["admin"] },
 ];
 
 interface AppSidebarProps {
