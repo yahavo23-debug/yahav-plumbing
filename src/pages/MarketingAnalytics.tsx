@@ -34,12 +34,24 @@ import {
   Pie,
   LineChart,
   Line,
-  Dot,
 } from "recharts";
 import { useNavigate } from "react-router-dom";
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, Pencil, Trash2 } from "lucide-react";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import {
+  Users,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Plus,
+  Pencil,
+  Trash2,
+  Target,
+  Zap,
+  BarChart2,
+} from "lucide-react";
+import { format, subMonths } from "date-fns";
 import { he } from "date-fns/locale";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 const SOURCE_CONFIG: Record<string, { label: string; color: string }> = {
   facebook:      { label: "פייסבוק",    color: "#1877f2" },
@@ -306,6 +318,22 @@ export default function MarketingAnalytics() {
   const totalAdCost = filteredAdCosts.reduce((s, e) => s + e.cost, 0);
   const totalCustomers = filteredCustomers.length;
 
+  // ── KPI metrics per platform ────────────────────────────────────────────────
+  const platformKPIs = useMemo(() => {
+    return sourceData.map((row) => {
+      const cac = row.adCost > 0 && row.count > 0 ? row.adCost / row.count : null;
+      const ltv = row.count > 0 ? row.revenue / row.count : null;
+      const profitPerShekel = row.adCost > 0 ? row.profit / row.adCost : null;
+      return { ...row, cac, ltv, profitPerShekel };
+    }).filter((r) => r.count > 0 || r.adCost > 0);
+  }, [sourceData]);
+
+  // Global averages
+  const globalLTV = totalCustomers > 0 ? totalRevenue / totalCustomers : 0;
+  const globalCAC = totalAdCost > 0 && totalCustomers > 0 ? totalAdCost / totalCustomers : null;
+  const globalProfitPerShekel = totalAdCost > 0 ? (totalRevenue - totalAdCost) / totalAdCost : null;
+
+
   return (
     <AppLayout title="אנליטיקת שיווק">
       {/* Filters + Add Cost */}
@@ -375,7 +403,141 @@ export default function MarketingAnalytics() {
         </Card>
       </div>
 
+      {/* ── Marketing KPI Dashboard ─────────────────────────────────── */}
+      <Card className="mb-6 border-2 border-primary/20">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <BarChart2 className="w-5 h-5 text-primary" />
+            <CardTitle className="text-base">דשבורד מטריקות שיווק מתקדמות</CardTitle>
+          </div>
+          <p className="text-xs text-muted-foreground">CAC · LTV · רווח לשקל מושקע — לפי פלטפורמה</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Global summary row */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl bg-muted/50 p-3 text-center space-y-1">
+              <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                <Target className="w-3.5 h-3.5" />
+                <span>CAC ממוצע</span>
+              </div>
+              <p className="text-xl font-bold">
+                {loading ? "..." : globalCAC !== null ? formatILS(globalCAC) : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">עלות גיוס לקוח</p>
+            </div>
+            <div className="rounded-xl bg-muted/50 p-3 text-center space-y-1">
+              <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                <Users className="w-3.5 h-3.5" />
+                <span>LTV ממוצע</span>
+              </div>
+              <p className="text-xl font-bold text-success">
+                {loading ? "..." : formatILS(globalLTV)}
+              </p>
+              <p className="text-xs text-muted-foreground">הכנסה ממוצעת ללקוח</p>
+            </div>
+            <div className="rounded-xl bg-muted/50 p-3 text-center space-y-1">
+              <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                <Zap className="w-3.5 h-3.5" />
+                <span>רווח לשקל</span>
+              </div>
+              <p className={`text-xl font-bold ${globalProfitPerShekel !== null && globalProfitPerShekel >= 0 ? "text-success" : "text-destructive"}`}>
+                {loading ? "..." : globalProfitPerShekel !== null ? `₪${globalProfitPerShekel.toFixed(2)}` : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">על כל ₪1 שהושקע</p>
+            </div>
+          </div>
+
+          {/* Per-platform breakdown table */}
+          {platformKPIs.length > 0 && (
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-muted/40 text-xs text-muted-foreground border-b border-border">
+                    <th className="text-right px-3 py-2.5 font-medium">פלטפורמה</th>
+                    <th className="text-center px-3 py-2.5 font-medium">לקוחות</th>
+                    <th className="text-center px-3 py-2.5 font-medium">
+                      <TooltipProvider>
+                        <UITooltip>
+                          <TooltipTrigger className="underline decoration-dashed cursor-help">CAC</TooltipTrigger>
+                          <TooltipContent side="top">עלות גיוס לקוח = עלות פרסום ÷ מספר לקוחות</TooltipContent>
+                        </UITooltip>
+                      </TooltipProvider>
+                    </th>
+                    <th className="text-center px-3 py-2.5 font-medium">
+                      <TooltipProvider>
+                        <UITooltip>
+                          <TooltipTrigger className="underline decoration-dashed cursor-help">LTV</TooltipTrigger>
+                          <TooltipContent side="top">ערך לקוח = הכנסות ÷ מספר לקוחות</TooltipContent>
+                        </UITooltip>
+                      </TooltipProvider>
+                    </th>
+                    <th className="text-center px-3 py-2.5 font-medium">
+                      <TooltipProvider>
+                        <UITooltip>
+                          <TooltipTrigger className="underline decoration-dashed cursor-help">רווח לשקל</TooltipTrigger>
+                          <TooltipContent side="top">כמה ₪ מרוויחים על כל ₪1 שהושקע בפרסום</TooltipContent>
+                        </UITooltip>
+                      </TooltipProvider>
+                    </th>
+                    <th className="text-center px-3 py-2.5 font-medium">דירוג</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...platformKPIs]
+                    .sort((a, b) => (b.profitPerShekel ?? -Infinity) - (a.profitPerShekel ?? -Infinity))
+                    .map((row, idx) => {
+                      const rank = idx + 1;
+                      const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`;
+                      return (
+                        <tr
+                          key={row.source}
+                          className="border-b border-border/50 hover:bg-accent/30 cursor-pointer transition-colors"
+                          onClick={() => openDrilldown(row.source)}
+                        >
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: row.color }} />
+                              <span className="font-medium">{row.label}</span>
+                            </div>
+                          </td>
+                          <td className="text-center px-3 py-2.5 text-muted-foreground">{row.count}</td>
+                          <td className="text-center px-3 py-2.5">
+                            {row.cac !== null ? (
+                              <span className="text-destructive font-medium">{formatILS(row.cac)}</span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">אין פרסום</span>
+                            )}
+                          </td>
+                          <td className="text-center px-3 py-2.5">
+                            {row.ltv !== null ? (
+                              <span className="text-success font-medium">{formatILS(row.ltv)}</span>
+                            ) : "—"}
+                          </td>
+                          <td className="text-center px-3 py-2.5">
+                            {row.profitPerShekel !== null ? (
+                              <span className={`font-bold ${row.profitPerShekel >= 1 ? "text-success" : row.profitPerShekel >= 0 ? "text-yellow-600" : "text-destructive"}`}>
+                                ₪{row.profitPerShekel.toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="text-center px-3 py-2.5 text-base">{medal}</td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {platformKPIs.length === 0 && !loading && (
+            <p className="text-muted-foreground text-center py-4 text-sm">הזן עלויות פרסום כדי לראות את המטריקות</p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Monthly Customers Stacked Bar */}
+
       <Card className="mb-6">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">לקוחות חדשים לפי חודש ופלטפורמה</CardTitle>
