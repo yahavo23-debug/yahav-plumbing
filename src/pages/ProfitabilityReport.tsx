@@ -53,7 +53,8 @@ interface MonthData {
   ga: number;
   operatingProfit: number;
   finance: number;
-  vatProfit: number;      // אומדן 83% מרווח תפעולי
+  vatAmount: number;      // מע"מ לתשלום (18% מרווח חיובי)
+  vatProfit: number;      // רווח אחרי מע"מ (82% מרווח תפעולי)
   loans: number;
   receipts: number;
   payments: number;
@@ -192,7 +193,7 @@ export default function ProfitabilityReport() {
         key, label: MONTH_FULL[m - 1], shortLabel: MONTH_NAMES[m - 1],
         revenue: 0, directCosts: 0, labor: 0,
         grossProfit: 0, ga: 0, operatingProfit: 0,
-        finance: 0, vatProfit: 0, loans: 0,
+        finance: 0, vatAmount: 0, vatProfit: 0, loans: 0,
         receipts: 0, payments: 0, monthlyBalance: 0, cumulative: 0,
       };
     }
@@ -216,10 +217,11 @@ export default function ProfitabilityReport() {
     return Object.values(map).map(m => {
       const grossProfit = m.revenue - m.directCosts; // שכר עבודה = 0
       const operatingProfit = grossProfit - m.ga;
-      const vatProfit = operatingProfit > 0 ? operatingProfit * 0.82 : operatingProfit;
+      const vatAmount = operatingProfit > 0 ? operatingProfit * 0.18 : 0; // מע"מ לתשלום
+      const vatProfit = operatingProfit > 0 ? operatingProfit * 0.82 : operatingProfit; // אחרי מע"מ
       const monthlyBalance = m.receipts - m.payments;
       cum += monthlyBalance;
-      return { ...m, grossProfit, operatingProfit, vatProfit, monthlyBalance, cumulative: cum };
+      return { ...m, grossProfit, operatingProfit, vatAmount, vatProfit, monthlyBalance, cumulative: cum };
     });
   }, [txns, year]);
 
@@ -237,6 +239,7 @@ export default function ProfitabilityReport() {
     ga: a.ga + m.ga,
     operatingProfit: a.operatingProfit + m.operatingProfit,
     finance: a.finance + m.finance,
+    vatAmount: a.vatAmount + m.vatAmount,
     vatProfit: a.vatProfit + m.vatProfit,
     loans: a.loans + m.loans,
     receipts: a.receipts + m.receipts,
@@ -245,7 +248,7 @@ export default function ProfitabilityReport() {
     cumulative: activeMonths[activeMonths.length - 1]?.cumulative ?? 0,
   }), {
     revenue: 0, directCosts: 0, labor: 0, grossProfit: 0,
-    ga: 0, operatingProfit: 0, finance: 0, vatProfit: 0,
+    ga: 0, operatingProfit: 0, finance: 0, vatAmount: 0, vatProfit: 0,
     loans: 0, receipts: 0, payments: 0, monthlyBalance: 0, cumulative: 0,
   }), [activeMonths]);
 
@@ -583,27 +586,27 @@ export default function ProfitabilityReport() {
                   />
 
                   {/* ══ 4. מימון + מע"מ ══ */}
-                  <SectionRow label="④ מימון" cols={colCount} />
+                  <SectionRow label="④ מימון ומע״מ" cols={colCount} />
                   <DataRow
                     label="הוצאות מימון ואחר"
                     values={V("finance")} totVal={T.finance}
                     indent
                   />
-                  {showVat ? (
+                  {showVat && (
                     <DataRow
-                      label="רווח לאחר מע״מ (אומדן 18%)"
-                      values={V("vatProfit")} totVal={T.vatProfit}
-                      bold kind="subtotal" positive="auto"
-                      showPct revValues={revVals}
-                    />
-                  ) : (
-                    <DataRow
-                      label="רווח תפעולי נטו (ללא מע״מ)"
-                      values={V("operatingProfit")} totVal={T.operatingProfit}
-                      bold kind="subtotal" positive="auto"
-                      showPct revValues={revVals}
+                      label="מע״מ לתשלום (18% מרווח חיובי)"
+                      values={V("vatAmount").map(v => -v)}
+                      totVal={-T.vatAmount}
+                      indent positive="neg"
                     />
                   )}
+                  <DataRow
+                    label={showVat ? "רווח אחרי מע״מ" : "רווח תפעולי נטו (ללא מע״מ)"}
+                    values={showVat ? V("vatProfit") : V("operatingProfit")}
+                    totVal={showVat ? T.vatProfit : T.operatingProfit}
+                    bold kind="subtotal" positive="auto"
+                    showPct revValues={revVals}
+                  />
 
                   {/* ══ 5. מס הכנסה ══ */}
                   <SectionRow label="⑤ מס הכנסה" cols={colCount} />
