@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+
 import { AppLayout } from "@/components/layout/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,7 +37,7 @@ import {
   Dot,
 } from "recharts";
 import { useNavigate } from "react-router-dom";
-import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X } from "lucide-react";
+import { Users, TrendingUp, TrendingDown, DollarSign, Plus, Pencil, Trash2 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { he } from "date-fns/locale";
 
@@ -92,6 +93,17 @@ export default function MarketingAnalytics() {
   const [costMonth, setCostMonth] = useState(format(new Date(), "yyyy-MM"));
   const [costAmount, setCostAmount] = useState("");
   const [savingCost, setSavingCost] = useState(false);
+
+  // Edit cost
+  const [editingCost, setEditingCost] = useState<AdCostEntry | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editSource, setEditSource] = useState("");
+  const [editMonth, setEditMonth] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Manage costs panel
+  const [showCostsList, setShowCostsList] = useState(false);
 
   // Month filter
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
@@ -249,6 +261,40 @@ export default function MarketingAnalytics() {
       loadData();
     } finally {
       setSavingCost(false);
+    }
+  }
+
+  function openEditCost(entry: AdCostEntry) {
+    setEditingCost(entry);
+    setEditAmount(entry.cost.toString());
+    setEditSource(entry.source);
+    setEditMonth(entry.month);
+  }
+
+  async function saveEditCost() {
+    if (!editingCost || !editAmount) return;
+    setSavingEdit(true);
+    try {
+      await supabase.from("financial_transactions").update({
+        amount: parseFloat(editAmount),
+        counterparty_name: editSource,
+        txn_date: editMonth + "-01",
+        notes: `עלות פרסום - ${SOURCE_CONFIG[editSource]?.label || editSource}`,
+      }).eq("id", editingCost.id);
+      setEditingCost(null);
+      loadData();
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function deleteCost(id: string) {
+    setDeletingId(id);
+    try {
+      await supabase.from("financial_transactions").delete().eq("id", id);
+      loadData();
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -516,6 +562,76 @@ export default function MarketingAnalytics() {
         </CardContent>
       </Card>
 
+      {/* Ad Costs Management Card */}
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">עלויות פרסום שהוזנו</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground"
+              onClick={() => setShowCostsList((v) => !v)}
+            >
+              {showCostsList ? "הסתר" : "הצג רשימה"}
+            </Button>
+          </div>
+        </CardHeader>
+        {showCostsList && (
+          <CardContent>
+            {adCosts.length === 0 ? (
+              <p className="text-muted-foreground text-center py-6 text-sm">אין עלויות פרסום מוזנות עדיין</p>
+            ) : (
+              <div className="space-y-2">
+                {[...adCosts]
+                  .sort((a, b) => b.month.localeCompare(a.month))
+                  .map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: SOURCE_CONFIG[entry.source]?.color || "#6b7280" }}
+                        />
+                        <div>
+                          <p className="text-sm font-medium">
+                            {SOURCE_CONFIG[entry.source]?.label || entry.source}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(entry.month + "-01"), "MMMM yyyy", { locale: he })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-destructive">{formatILS(entry.cost)}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => openEditCost(entry)}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          disabled={deletingId === entry.id}
+                          onClick={() => deleteCost(entry.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
+
       {/* Add Cost Dialog */}
       <Dialog open={addingCost} onOpenChange={setAddingCost}>
         <DialogContent className="max-w-sm" dir="rtl">
@@ -558,6 +674,53 @@ export default function MarketingAnalytics() {
                 {savingCost ? "שומר..." : "שמור"}
               </Button>
               <Button variant="outline" onClick={() => setAddingCost(false)}>ביטול</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Cost Dialog */}
+      <Dialog open={!!editingCost} onOpenChange={(open) => !open && setEditingCost(null)}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>עריכת עלות פרסום</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label className="text-sm">פלטפורמה</Label>
+              <Select value={editSource} onValueChange={setEditSource}>
+                <SelectTrigger>
+                  <SelectValue placeholder="בחר פלטפורמה" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(SOURCE_CONFIG).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm">חודש</Label>
+              <Input
+                type="month"
+                value={editMonth}
+                onChange={(e) => setEditMonth(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm">סכום (₪)</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={saveEditCost} disabled={savingEdit || !editAmount}>
+                {savingEdit ? "שומר..." : "שמור שינויים"}
+              </Button>
+              <Button variant="outline" onClick={() => setEditingCost(null)}>ביטול</Button>
             </div>
           </div>
         </DialogContent>
