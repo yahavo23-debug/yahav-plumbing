@@ -118,6 +118,11 @@ export default function MarketingAnalytics() {
   // Manage costs panel
   const [showCostsList, setShowCostsList] = useState(false);
 
+  // Madrag commission
+  const [madragCommission, setMadragCommission] = useState<number>(10);
+  const [editingCommission, setEditingCommission] = useState(false);
+  const [tempCommission, setTempCommission] = useState<string>("10");
+
   // Month filter
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
 
@@ -210,17 +215,26 @@ export default function MarketingAnalytics() {
   }, [adCosts, selectedMonth]);
 
   // Aggregate per source — includes per-customer lead_cost in adCost
+  // Madrag: ad cost = commission % of revenue (auto-calculated)
   const sourceData = useMemo(() => {
-    const map: Record<string, { count: number; revenue: number; adCost: number }> = {};
+    const map: Record<string, { count: number; revenue: number; adCost: number; isMadrag?: boolean }> = {};
     filteredCustomers.forEach((c) => {
       const src = c.lead_source || "other";
       if (!map[src]) map[src] = { count: 0, revenue: 0, adCost: 0 };
       map[src].count++;
       map[src].revenue += c.revenue;
-      // Add per-customer lead_cost (cost of this specific lead)
-      if (c.lead_cost != null) map[src].adCost += c.lead_cost;
+      if (src === "madrag") {
+        map[src].isMadrag = true;
+        // For madrag: commission is a % of revenue per customer
+        map[src].adCost += c.revenue * (madragCommission / 100);
+      } else {
+        // Add per-customer lead_cost (cost of this specific lead)
+        if (c.lead_cost != null) map[src].adCost += c.lead_cost;
+      }
     });
+    // Add manual ad cost entries (for non-madrag platforms)
     filteredAdCosts.forEach((e) => {
+      if (e.source === "madrag") return; // Skip manual madrag costs — auto-calculated
       if (!map[e.source]) map[e.source] = { count: 0, revenue: 0, adCost: 0 };
       map[e.source].adCost += e.cost;
     });
@@ -235,7 +249,7 @@ export default function MarketingAnalytics() {
         roi: data.adCost > 0 ? ((data.revenue - data.adCost) / data.adCost) * 100 : null,
       }))
       .sort((a, b) => b.revenue - a.revenue);
-  }, [filteredCustomers, filteredAdCosts]);
+  }, [filteredCustomers, filteredAdCosts, madragCommission]);
 
   // Monthly customers by source (for stacked bar)
   const monthlyData = useMemo(() => {
@@ -322,7 +336,15 @@ export default function MarketingAnalytics() {
   }
 
   const totalRevenue = filteredCustomers.reduce((s, c) => s + c.revenue, 0);
-  const totalAdCost = filteredAdCosts.reduce((s, e) => s + e.cost, 0);
+  // totalAdCost: manual ad costs (excluding madrag) + madrag commission
+  const madragRevenue = filteredCustomers
+    .filter((c) => c.lead_source === "madrag")
+    .reduce((s, c) => s + c.revenue, 0);
+  const madragCommissionCost = madragRevenue * (madragCommission / 100);
+  const nonMadragAdCost = filteredAdCosts
+    .filter((e) => e.source !== "madrag")
+    .reduce((s, e) => s + e.cost, 0);
+  const totalAdCost = nonMadragAdCost + madragCommissionCost;
   const totalCustomers = filteredCustomers.length;
 
   // ── KPI metrics per platform ────────────────────────────────────────────────
@@ -367,6 +389,87 @@ export default function MarketingAnalytics() {
           <Plus className="w-4 h-4" /> הוסף עלות פרסום
         </Button>
       </div>
+
+      {/* Madrag Commission Settings */}
+      <Card className="mb-4 border border-[#7c3aed]/30 bg-[#7c3aed]/5">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#7c3aed]" />
+              <span className="text-sm font-medium">עמלת מדרג</span>
+              <span className="text-xs text-muted-foreground">
+                (מחושב אוטומטי — {madragCommission}% מהכנסות כל שיחה)
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mr-auto">
+              {editingCommission ? (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={tempCommission}
+                      onChange={(e) => setTempCommission(e.target.value)}
+                      className="w-20 h-8 text-sm text-center"
+                    />
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      const v = parseFloat(tempCommission);
+                      if (!isNaN(v) && v >= 0 && v <= 100) setMadragCommission(v);
+                      setEditingCommission(false);
+                    }}
+                  >
+                    שמור
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs"
+                    onClick={() => { setTempCommission(madragCommission.toString()); setEditingCommission(false); }}
+                  >
+                    ביטול
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="text-sm font-bold text-[#7c3aed]">{madragCommission}%</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs gap-1"
+                    onClick={() => { setTempCommission(madragCommission.toString()); setEditingCommission(true); }}
+                  >
+                    <Pencil className="w-3 h-3" /> עדכן אחוז
+                  </Button>
+                </>
+              )}
+            </div>
+            {madragRevenue > 0 && (
+              <div className="w-full flex gap-4 mt-1 pt-3 border-t border-[#7c3aed]/20 text-sm">
+                <div>
+                  <span className="text-muted-foreground">הכנסות מדרג: </span>
+                  <span className="font-medium text-success">{formatILS(madragRevenue)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">עמלה לתשלום: </span>
+                  <span className="font-medium text-destructive">{formatILS(madragCommissionCost)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">רווח אחרי עמלה: </span>
+                  <span className={`font-bold ${madragRevenue - madragCommissionCost >= 0 ? "text-success" : "text-destructive"}`}>
+                    {formatILS(madragRevenue - madragCommissionCost)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -509,7 +612,11 @@ export default function MarketingAnalytics() {
                           </td>
                           <td className="text-center px-3 py-2.5 text-muted-foreground">{row.count}</td>
                           <td className="text-center px-3 py-2.5">
-                            {row.cac !== null ? (
+                            {row.source === "madrag" ? (
+                              <span className="text-[#7c3aed] font-medium text-xs">
+                                {madragCommission}% עמלה
+                              </span>
+                            ) : row.cac !== null ? (
                               <span className="text-destructive font-medium">{formatILS(row.cac)}</span>
                             ) : (
                               <span className="text-muted-foreground text-xs">אין פרסום</span>
@@ -707,7 +814,11 @@ export default function MarketingAnalytics() {
                   </td>
                   <td className="text-center py-2.5">{row.count}</td>
                   <td className="text-center py-2.5 text-success font-medium">{formatILS(row.revenue)}</td>
-                  <td className="text-center py-2.5 text-destructive">{row.adCost > 0 ? formatILS(row.adCost) : "—"}</td>
+                  <td className="text-center py-2.5 text-destructive">
+                    {row.source === "madrag" && row.adCost > 0 ? (
+                      <span className="text-[#7c3aed]">{formatILS(row.adCost)} <span className="text-xs opacity-70">({madragCommission}%)</span></span>
+                    ) : row.adCost > 0 ? formatILS(row.adCost) : "—"}
+                  </td>
                   <td className={`text-center py-2.5 font-bold ${row.profit >= 0 ? "text-success" : "text-destructive"}`}>
                     {formatILS(row.profit)}
                   </td>
