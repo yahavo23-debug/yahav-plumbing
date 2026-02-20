@@ -55,7 +55,7 @@ const SOURCE_CONFIG: Record<string, { label: string; color: string }> = {
   other:         { label: "אחר",        color: "#6b7280" },
 };
 
-const MONTHS_BACK = 6;
+const MONTHS_BACK = 12;
 
 interface CustomerRow {
   id: string;
@@ -117,6 +117,12 @@ export default function MarketingAnalytics() {
     return arr;
   }, []);
 
+  // All unique sources from ALL customers (not filtered)
+  const allSourcesEver = useMemo(
+    () => [...new Set(customers.map((c) => c.lead_source || "other"))],
+    [customers]
+  );
+
   useEffect(() => {
     loadData();
   }, []);
@@ -124,13 +130,10 @@ export default function MarketingAnalytics() {
   async function loadData() {
     setLoading(true);
     try {
-      const since = format(subMonths(new Date(), MONTHS_BACK - 1), "yyyy-MM-01");
-
-      // Load customers with their revenue from customer_ledger
+      // Load ALL customers (no date filter) so all platforms appear
       const { data: custs } = await supabase
         .from("customers")
         .select("id, name, phone, lead_source, created_at")
-        .gte("created_at", since)
         .order("created_at", { ascending: false });
 
       const customerIds = (custs || []).map((c) => c.id);
@@ -158,13 +161,13 @@ export default function MarketingAnalytics() {
 
       setCustomers(enriched);
 
-      // Load ad costs from financial_transactions (category=marketing)
+      // Load ALL ad costs from financial_transactions (category=marketing)
       const { data: txns } = await supabase
         .from("financial_transactions")
         .select("id, txn_date, amount, counterparty_name, notes")
         .eq("category", "marketing")
         .eq("direction", "expense")
-        .gte("txn_date", since);
+        .order("txn_date", { ascending: false });
 
       const costs: AdCostEntry[] = (txns || []).map((t) => ({
         id: t.id,
@@ -236,6 +239,7 @@ export default function MarketingAnalytics() {
   const allSources = useMemo(
     () => [...new Set(customers.map((c) => c.lead_source || "other"))],
     [customers]
+
   );
 
   function openDrilldown(source: string) {
