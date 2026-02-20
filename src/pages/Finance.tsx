@@ -95,7 +95,15 @@ export default function Finance() {
     if (t.direction !== activeTab) return false;
     if (filterCategory !== "all" && t.category !== filterCategory) return false;
     if (filterStatus !== "all" && t.status !== filterStatus) return false;
-    if (searchName.trim() && !(t.counterparty_name || "").toLowerCase().includes(searchName.trim().toLowerCase())) return false;
+    if (searchName.trim()) {
+      const q = searchName.trim().toLowerCase();
+      const catLabel = (categoryLabels[t.category || ""] || t.category || "").toLowerCase();
+      const matches =
+        (t.counterparty_name || "").toLowerCase().includes(q) ||
+        (t.notes || "").toLowerCase().includes(q) ||
+        catLabel.includes(q);
+      if (!matches) return false;
+    }
     return true;
   });
 
@@ -357,8 +365,8 @@ export default function Finance() {
             <Input
               value={searchName}
               onChange={e => setSearchName(e.target.value)}
-              placeholder="חיפוש לפי שם..."
-              className="w-48 pr-8"
+              placeholder="חיפוש: שם, הערות, קטגוריה..."
+              className="w-56 pr-8"
             />
           </div>
 
