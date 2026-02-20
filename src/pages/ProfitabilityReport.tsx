@@ -2,61 +2,59 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, TrendingUp, TrendingDown, Minus, AlertTriangle } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, ReferenceLine, Legend,
 } from "recharts";
 
-// ─── Category classification ───────────────────────────────────────────────
-const DIRECT_COST_CATEGORIES = ["materials", "subcontractor"];
-const LABOR_CATEGORIES = ["tools"]; // כלים וציוד = עלות ישירה + שכר עבודה
-const GA_CATEGORIES = ["car", "phone", "insurance", "office", "professional", "marketing", "fuel"];
-const FINANCE_CATEGORIES: string[] = []; // לא בשימוש ברירת מחדל — ניתן לכלול "other"
-const LOAN_CATEGORIES = ["standing_order"]; // הוראות קבע → הלוואות
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-function getMonthDefault() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
-function getYearDefault() {
-  return String(new Date().getFullYear());
-}
-function fmt(n: number, sign = false): string {
-  const abs = Math.abs(n).toLocaleString("he-IL", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  if (sign && n !== 0) return `${n > 0 ? "+" : "-"}₪${abs}`;
-  return `₪${abs}`;
-}
-function pct(num: number, denom: number): string {
-  if (!denom) return "—";
-  return `${((num / denom) * 100).toFixed(1)}%`;
-}
+// ─── Category classification ─────────────────────────────────────────────────
+// הוצאות ישירות = חומרים + קבלן משנה + כלים וציוד
+const DIRECT_COST_CATS = ["materials", "subcontractor", "tools"];
+// הנהלה וכלליות
+const GA_CATS = ["car", "phone", "insurance", "office", "professional", "marketing", "fuel"];
+// הלוואות וקרנות
+const LOAN_CATS = ["standing_order"];
+// כל שאר → מימון/אחר
 
 const MONTH_NAMES = [
-  "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
-  "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר",
+  "ינו׳", "פב׳", "מרץ", "אפר׳", "מאי", "יוני",
+  "יולי", "אוג׳", "ספט׳", "אוק׳", "נוב׳", "דצמ׳",
+];
+const MONTH_FULL = [
+  "ינואר","פברואר","מרץ","אפריל","מאי","יוני",
+  "יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר",
 ];
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+function getYear() { return String(new Date().getFullYear()); }
+function fmt(n: number): string {
+  if (n === 0) return "₪0";
+  const abs = Math.abs(n).toLocaleString("he-IL", { maximumFractionDigits: 0 });
+  return n < 0 ? `-₪${abs}` : `₪${abs}`;
+}
+function pct(num: number, denom: number): string {
+  if (!denom) return "";
+  return `${((num / denom) * 100).toFixed(0)}%`;
+}
+
 interface MonthData {
-  monthKey: string; // "2025-01"
-  label: string;    // "ינואר 2025"
+  key: string;
+  label: string;
+  shortLabel: string;
   revenue: number;
-  directCosts: number;  // חומרים + קבלן משנה
-  labor: number;        // כלים וציוד
-  grossProfit: number;  // הכנסות - (ישירות + שכר)
-  ga: number;           // הנהלה וכלליות
-  operatingProfit: number; // גולמי - הנהלה
-  finance: number;      // מימון (other + unlabeled expenses)
-  vatProfit: number;    // רווח לאחר מע"מ (אומדן: operatingProfit * 0.83)
-  loans: number;        // הלוואות וקרנות (הוראות קבע)
-  receipts: number;     // תקבולים (הכנסות בפועל שנכנסו — income)
-  payments: number;     // תשלומים (הוצאות ששולמו — expense)
-  monthlyBalance: number; // תקבולים - תשלומים
-  cumulativeBalance: number; // יתרה מצטברת (מחושב מחוץ)
+  directCosts: number;
+  labor: number;          // שכר עבודה — תמיד 0 (אין עובדים)
+  grossProfit: number;
+  ga: number;
+  operatingProfit: number;
+  finance: number;
+  vatProfit: number;      // אומדן 83% מרווח תפעולי
+  loans: number;
+  receipts: number;
+  payments: number;
+  monthlyBalance: number;
+  cumulative: number;
 }
 
 interface TxnRow {
@@ -64,254 +62,257 @@ interface TxnRow {
   direction: string;
   amount: number;
   category: string | null;
-  status: string;
 }
 
-// ─── Row component ────────────────────────────────────────────────────────────
-function PLRow({
-  label, values, bold, indent, positive, sub,
-  showPct, pctBase, highlight,
-}: {
+// ─── Table helpers ────────────────────────────────────────────────────────────
+type RowKind = "section" | "data" | "subtotal" | "total";
+
+function ValueCell({ v, positive, showPct, base, bold }: {
+  v: number; positive?: "auto" | "neg"; showPct?: boolean; base?: number; bold?: boolean;
+}) {
+  let color = "text-foreground";
+  if (positive === "auto") color = v > 0 ? "text-green-600 dark:text-green-400" : v < 0 ? "text-red-500 dark:text-red-400" : "text-muted-foreground";
+  if (positive === "neg") color = v > 0 ? "text-red-500 dark:text-red-400" : v < 0 ? "text-green-600 dark:text-green-400" : "text-muted-foreground";
+  return (
+    <td className={`px-3 py-2 text-left tabular-nums text-sm ${bold ? "font-semibold" : ""} ${color}`}>
+      {fmt(v)}
+      {showPct && base ? <div className="text-[10px] text-muted-foreground leading-none mt-0.5">{pct(v, base)}</div> : null}
+    </td>
+  );
+}
+
+function SectionRow({ label, cols }: { label: string; cols: number }) {
+  return (
+    <tr className="bg-muted/70">
+      <td colSpan={cols} className="px-4 py-2 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+        {label}
+      </td>
+    </tr>
+  );
+}
+
+function DataRow({ label, values, totVal, indent, bold, kind, positive, showPct, revValues }: {
   label: string;
   values: number[];
-  bold?: boolean;
+  totVal: number;
   indent?: boolean;
-  positive?: boolean | "auto";
-  sub?: boolean;
+  bold?: boolean;
+  kind?: RowKind;
+  positive?: "auto" | "neg";
   showPct?: boolean;
-  pctBase?: number[];
-  highlight?: boolean;
+  revValues?: number[]; // for % of revenue
 }) {
+  const isSubtotal = kind === "subtotal";
+  const isTotal = kind === "total";
+  const bg = isTotal ? "bg-primary/10" : isSubtotal ? "bg-muted/40" : "";
   return (
-    <tr className={`border-b border-border/50 ${highlight ? "bg-primary/5" : sub ? "bg-muted/30" : ""}`}>
-      <td className={`px-4 py-2.5 text-sm sticky right-0 bg-inherit min-w-[160px] ${bold ? "font-semibold" : "font-normal"} ${indent ? "pr-7 text-muted-foreground" : ""}`}>
+    <tr className={`border-b border-border/40 ${bg} hover:bg-muted/20 transition-colors`}>
+      <td className={`px-4 py-2.5 text-sm sticky right-0 bg-inherit min-w-[200px] max-w-[240px]
+        ${bold || isSubtotal || isTotal ? "font-semibold" : "text-muted-foreground"}
+        ${indent ? "pr-8" : ""}`}>
         {label}
       </td>
-      {values.map((v, i) => {
-        const color =
-          positive === "auto"
-            ? v > 0 ? "text-green-600 dark:text-green-400" : v < 0 ? "text-red-500 dark:text-red-400" : "text-muted-foreground"
-            : positive === true
-            ? v >= 0 ? "text-foreground" : "text-red-500 dark:text-red-400"
-            : "text-foreground";
-        return (
-          <td key={i} className={`px-4 py-2.5 text-sm text-left tabular-nums ${bold ? "font-semibold" : ""} ${color}`}>
-            <div>{fmt(v)}</div>
-            {showPct && pctBase && (
-              <div className="text-xs text-muted-foreground">{pct(v, pctBase[i])}</div>
-            )}
-          </td>
-        );
-      })}
+      {values.map((v, i) => (
+        <ValueCell
+          key={i} v={v} bold={bold || isSubtotal || isTotal}
+          positive={positive}
+          showPct={showPct} base={revValues?.[i]}
+        />
+      ))}
+      <ValueCell
+        v={totVal} bold positive={positive}
+        showPct={showPct} base={revValues ? revValues.reduce((a, b) => a + b, 0) : undefined}
+      />
     </tr>
   );
 }
 
-function SectionHeader({ label, colCount }: { label: string; colCount: number }) {
-  return (
-    <tr className="bg-muted/60">
-      <td colSpan={colCount + 1} className="px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </td>
-    </tr>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ProfitabilityReport() {
-  const [year, setYear] = useState(getYearDefault);
+  const [year, setYear] = useState(getYear);
   const [loading, setLoading] = useState(true);
-  const [rawTxns, setRawTxns] = useState<TxnRow[]>([]);
+  const [txns, setTxns] = useState<TxnRow[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any)
+    const { data } = await (supabase as any)
       .from("financial_transactions")
-      .select("txn_date, direction, amount, category, status")
+      .select("txn_date, direction, amount, category")
       .gte("txn_date", `${year}-01-01`)
-      .lte("txn_date", `${year}-12-31`)
-      .in("status", ["paid", "debt"]);
-    if (!error && data) setRawTxns(data as TxnRow[]);
+      .lte("txn_date", `${year}-12-31`);
+    if (data) setTxns(data as TxnRow[]);
     setLoading(false);
   }, [year]);
 
   useEffect(() => { load(); }, [load]);
 
-  // ─── Aggregate by month ───────────────────────────────────────────────────
-  const months: MonthData[] = useMemo(() => {
-    const map: Record<string, Omit<MonthData, "label" | "cumulativeBalance">> = {};
-
+  const months = useMemo<MonthData[]>(() => {
+    const map: Record<string, MonthData> = {};
     for (let m = 1; m <= 12; m++) {
       const key = `${year}-${String(m).padStart(2, "0")}`;
       map[key] = {
-        monthKey: key,
+        key, label: MONTH_FULL[m - 1], shortLabel: MONTH_NAMES[m - 1],
         revenue: 0, directCosts: 0, labor: 0,
         grossProfit: 0, ga: 0, operatingProfit: 0,
         finance: 0, vatProfit: 0, loans: 0,
-        receipts: 0, payments: 0, monthlyBalance: 0,
+        receipts: 0, payments: 0, monthlyBalance: 0, cumulative: 0,
       };
     }
-
-    rawTxns.forEach(t => {
+    txns.forEach(t => {
       const key = t.txn_date.slice(0, 7);
       if (!map[key]) return;
       const amt = Number(t.amount);
       const cat = t.category || "other";
-
       if (t.direction === "income") {
         map[key].revenue += amt;
         map[key].receipts += amt;
       } else {
         map[key].payments += amt;
-        if (DIRECT_COST_CATEGORIES.includes(cat)) map[key].directCosts += amt;
-        else if (LABOR_CATEGORIES.includes(cat)) map[key].labor += amt;
-        else if (GA_CATEGORIES.includes(cat)) map[key].ga += amt;
-        else if (LOAN_CATEGORIES.includes(cat)) map[key].loans += amt;
-        else map[key].finance += amt; // other / unlabeled → מימון
+        if (DIRECT_COST_CATS.includes(cat)) map[key].directCosts += amt;
+        else if (GA_CATS.includes(cat)) map[key].ga += amt;
+        else if (LOAN_CATS.includes(cat)) map[key].loans += amt;
+        else map[key].finance += amt;
       }
     });
-
-    // Compute derived fields
-    let cumulative = 0;
+    let cum = 0;
     return Object.values(map).map(m => {
-      const grossProfit = m.revenue - m.directCosts - m.labor;
+      const grossProfit = m.revenue - m.directCosts; // שכר עבודה = 0
       const operatingProfit = grossProfit - m.ga;
-      const vatProfit = operatingProfit * 0.83; // מע"מ 17%
+      const vatProfit = operatingProfit > 0 ? operatingProfit * 0.83 : operatingProfit;
       const monthlyBalance = m.receipts - m.payments;
-      cumulative += monthlyBalance;
-      const [, monthNum] = m.monthKey.split("-").map(Number);
-      return {
-        ...m,
-        grossProfit,
-        operatingProfit,
-        vatProfit,
-        monthlyBalance,
-        cumulativeBalance: cumulative,
-        label: `${MONTH_NAMES[monthNum - 1]}`,
-      };
+      cum += monthlyBalance;
+      return { ...m, grossProfit, operatingProfit, vatProfit, monthlyBalance, cumulative: cum };
     });
-  }, [rawTxns, year]);
+  }, [txns, year]);
 
-  // Only show months with data OR current year partially
+  const now = new Date();
   const activeMonths = useMemo(() => {
-    const now = new Date();
-    const currentYearNum = now.getFullYear();
-    const maxMonth = Number(year) < currentYearNum ? 12 : now.getMonth() + 1;
-    return months.filter((_, i) => i < maxMonth);
-  }, [months, year]);
+    const maxM = Number(year) < now.getFullYear() ? 12 : now.getMonth() + 1;
+    return months.slice(0, maxM);
+  }, [months, year, now.getFullYear(), now.getMonth()]);
 
-  const totals = useMemo<Omit<MonthData, "monthKey" | "label" | "cumulativeBalance">>(() => {
-    return activeMonths.reduce((acc, m) => ({
-      revenue: acc.revenue + m.revenue,
-      directCosts: acc.directCosts + m.directCosts,
-      labor: acc.labor + m.labor,
-      grossProfit: acc.grossProfit + m.grossProfit,
-      ga: acc.ga + m.ga,
-      operatingProfit: acc.operatingProfit + m.operatingProfit,
-      finance: acc.finance + m.finance,
-      vatProfit: acc.vatProfit + m.vatProfit,
-      loans: acc.loans + m.loans,
-      receipts: acc.receipts + m.receipts,
-      payments: acc.payments + m.payments,
-      monthlyBalance: acc.monthlyBalance + m.monthlyBalance,
-    }), {
-      revenue: 0, directCosts: 0, labor: 0, grossProfit: 0,
-      ga: 0, operatingProfit: 0, finance: 0, vatProfit: 0,
-      loans: 0, receipts: 0, payments: 0, monthlyBalance: 0,
-    });
-  }, [activeMonths]);
+  const T = useMemo(() => activeMonths.reduce((a, m) => ({
+    revenue: a.revenue + m.revenue,
+    directCosts: a.directCosts + m.directCosts,
+    labor: 0,
+    grossProfit: a.grossProfit + m.grossProfit,
+    ga: a.ga + m.ga,
+    operatingProfit: a.operatingProfit + m.operatingProfit,
+    finance: a.finance + m.finance,
+    vatProfit: a.vatProfit + m.vatProfit,
+    loans: a.loans + m.loans,
+    receipts: a.receipts + m.receipts,
+    payments: a.payments + m.payments,
+    monthlyBalance: a.monthlyBalance + m.monthlyBalance,
+    cumulative: activeMonths[activeMonths.length - 1]?.cumulative ?? 0,
+  }), {
+    revenue: 0, directCosts: 0, labor: 0, grossProfit: 0,
+    ga: 0, operatingProfit: 0, finance: 0, vatProfit: 0,
+    loans: 0, receipts: 0, payments: 0, monthlyBalance: 0, cumulative: 0,
+  }), [activeMonths]);
+
+  const V = (f: keyof MonthData) => activeMonths.map(m => Number(m[f]));
+  const revVals = V("revenue");
+  const colCount = activeMonths.length + 2; // months + total col + label
 
   const chartData = activeMonths.map(m => ({
-    name: m.label,
-    הכנסות: m.revenue,
-    הוצאות: -(m.directCosts + m.labor + m.ga + m.finance + m.loans),
+    name: m.shortLabel,
+    "הכנסות": m.revenue,
+    "הוצאות ישירות": m.directCosts,
+    "הנהלה": m.ga,
     "רווח תפעולי": m.operatingProfit,
-    "יתרה מצטברת": m.cumulativeBalance,
+    "יתרה מצטברת": m.cumulative,
   }));
-
-  const colCount = activeMonths.length;
-
-  // helper to get row of values
-  const row = (field: keyof MonthData) => activeMonths.map(m => Number(m[field]));
-  const totalVal = (field: keyof typeof totals) => [totals[field as keyof typeof totals] as number];
 
   const years = Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - i));
 
+  const lastCum = activeMonths[activeMonths.length - 1]?.cumulative ?? 0;
+
   return (
     <AppLayout title="דוח רווחיות חודשי">
-      {/* Header */}
+
+      {/* ── Header ── */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
-        <h2 className="text-xl font-bold">דוח רווחיות {year}</h2>
-        <Select value={year} onValueChange={setYear}>
-          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {loading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-        <Badge variant="outline" className="mr-auto text-xs">
-          * מע"מ מחושב אומדן 17% • הוראות קבע = הלוואות
-        </Badge>
+        <div>
+          <h1 className="text-xl font-bold">דוח רווחיות — {year}</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">אומדן מע״מ 17% | שכר עבודה = ₪0 (אין עובדים)</p>
+        </div>
+        <div className="mr-auto flex items-center gap-2">
+          {loading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+          <Select value={year} onValueChange={setYear}>
+            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* KPI Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: "סה״כ הכנסות", value: totals.revenue, icon: TrendingUp, color: "text-green-600 dark:text-green-400", bg: "bg-green-100 dark:bg-green-900/30" },
-          { label: "סה״כ הוצאות", value: totals.payments, icon: TrendingDown, color: "text-red-500 dark:text-red-400", bg: "bg-red-100 dark:bg-red-900/30" },
-          { label: "רווח תפעולי", value: totals.operatingProfit, icon: totals.operatingProfit >= 0 ? TrendingUp : TrendingDown, color: totals.operatingProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500", bg: totals.operatingProfit >= 0 ? "bg-green-100 dark:bg-green-900/30" : "bg-red-100 dark:bg-red-900/30" },
-          { label: "יתרה מצטברת", value: activeMonths[activeMonths.length - 1]?.cumulativeBalance ?? 0, icon: activeMonths[activeMonths.length - 1]?.cumulativeBalance ?? 0 >= 0 ? TrendingUp : AlertTriangle, color: (activeMonths[activeMonths.length - 1]?.cumulativeBalance ?? 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500", bg: (activeMonths[activeMonths.length - 1]?.cumulativeBalance ?? 0) >= 0 ? "bg-green-100 dark:bg-green-900/30" : "bg-red-100 dark:bg-red-900/30" },
-        ].map(kpi => (
-          <Card key={kpi.label}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg ${kpi.bg} flex items-center justify-center shrink-0`}>
-                <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground truncate">{kpi.label}</p>
-                <p className={`text-base font-bold tabular-nums ${kpi.color}`}>{fmt(kpi.value)}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* ── KPIs ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        {([
+          { label: "הכנסות", val: T.revenue, green: true },
+          { label: "הוצאות", val: T.payments, green: false },
+          { label: "רווח תפעולי", val: T.operatingProfit, auto: true },
+          { label: "יתרה מצטברת", val: lastCum, auto: true },
+        ] as const).map(k => {
+          const pos = "auto" in k && k.auto ? k.val >= 0 : "green" in k && k.green;
+          const bg = pos ? "bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-800"
+                        : "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800";
+          const icon = pos ? <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                           : <TrendingDown className="w-4 h-4 text-red-500" />;
+          const valColor = pos ? "text-green-700 dark:text-green-300" : "text-red-600 dark:text-red-400";
+          return (
+            <Card key={k.label} className={`border ${bg}`}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground font-medium">{k.label}</span>
+                  {icon}
+                </div>
+                <p className={`text-xl font-bold tabular-nums ${valColor}`}>{fmt(k.val)}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Charts */}
+      {/* ── Charts ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">הכנסות מול הוצאות חודשי</CardTitle>
+          <CardHeader className="pb-1 pt-4 px-4">
+            <CardTitle className="text-sm">הכנסות מול הוצאות לפי חודש</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData} margin={{ right: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `₪${(v / 1000).toFixed(0)}K`} />
+          <CardContent className="px-2 pb-4">
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={chartData} barGap={2}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 9 }} tickFormatter={v => v === 0 ? "0" : `${(v / 1000).toFixed(0)}K`} axisLine={false} tickLine={false} />
                 <Tooltip formatter={(v: number) => fmt(v)} />
-                <Legend />
+                <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="הכנסות" fill="#22c55e" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="הוצאות" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="הוצאות ישירות" fill="#f97316" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="הנהלה" fill="#94a3b8" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">יתרה מצטברת לאורך השנה</CardTitle>
+          <CardHeader className="pb-1 pt-4 px-4">
+            <CardTitle className="text-sm">יתרה מצטברת לאורך השנה</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData} margin={{ right: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `₪${(v / 1000).toFixed(0)}K`} />
-                <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={2} />
+          <CardContent className="px-2 pb-4">
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 9 }} tickFormatter={v => v === 0 ? "0" : `${(v / 1000).toFixed(0)}K`} axisLine={false} tickLine={false} />
+                <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
                 <Tooltip formatter={(v: number) => fmt(v)} />
                 <Bar dataKey="יתרה מצטברת" radius={[3, 3, 0, 0]}>
-                  {chartData.map((entry, i) => (
-                    <Cell key={i} fill={entry["יתרה מצטברת"] >= 0 ? "#22c55e" : "#ef4444"} />
+                  {chartData.map((e, i) => (
+                    <Cell key={i} fill={e["יתרה מצטברת"] >= 0 ? "#22c55e" : "#ef4444"} />
                   ))}
                 </Bar>
               </BarChart>
@@ -320,10 +321,10 @@ export default function ProfitabilityReport() {
         </Card>
       </div>
 
-      {/* P&L Table */}
-      <Card className="mb-4">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">דוח רווח והפסד + תזרים מזומנים</CardTitle>
+      {/* ── P&L Table ── */}
+      <Card>
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-sm">דוח רווח והפסד + תזרים מזומנים</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
@@ -334,72 +335,105 @@ export default function ProfitabilityReport() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="bg-muted border-b border-border">
-                    <th className="text-right px-4 py-3 font-semibold sticky right-0 bg-muted min-w-[160px]">
-                      שורה \ חודש
+                  <tr className="border-b-2 border-border bg-muted/60">
+                    <th className="text-right px-4 py-3 font-semibold sticky right-0 bg-muted/60 min-w-[200px] text-sm">
+                      שורה
                     </th>
                     {activeMonths.map(m => (
-                      <th key={m.monthKey} className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap min-w-[110px]">
-                        {m.label}
+                      <th key={m.key} className="text-left px-3 py-3 font-medium text-muted-foreground text-xs whitespace-nowrap min-w-[95px]">
+                        {m.shortLabel}
                       </th>
                     ))}
-                    <th className="text-left px-4 py-3 font-semibold text-primary whitespace-nowrap min-w-[110px] border-r border-border">
-                      סה״כ
+                    <th className="text-left px-3 py-3 font-bold text-primary text-xs whitespace-nowrap min-w-[95px] border-r-2 border-primary/30 bg-primary/5">
+                      סה״כ שנתי
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* ═══ הכנסות ═══ */}
-                  <SectionHeader label="📈 הכנסות" colCount={colCount + 1} />
-                  <PLRow label="הכנסות ברוטו" values={[...row("revenue"), totals.revenue]} bold />
 
-                  {/* ═══ עלות המכר ═══ */}
-                  <SectionHeader label="🔧 עלות המכר" colCount={colCount + 1} />
-                  <PLRow label="הוצאות ישירות (חומרים + קבלן)" values={[...row("directCosts"), totals.directCosts]} indent />
-                  <PLRow label="שכר עבודה (כלים וציוד)" values={[...row("labor"), totals.labor]} indent />
-                  <PLRow
+                  {/* ══ 1. הכנסות ══ */}
+                  <SectionRow label="① הכנסות" cols={colCount} />
+                  <DataRow
+                    label="הכנסות ממכירות / שירות"
+                    values={V("revenue")} totVal={T.revenue}
+                    bold kind="subtotal"
+                  />
+
+                  {/* ══ 2. עלות המכר ══ */}
+                  <SectionRow label="② עלות המכר" cols={colCount} />
+                  <DataRow
+                    label="הוצאות ישירות (חומרים, קבלן, כלים)"
+                    values={V("directCosts")} totVal={T.directCosts}
+                    indent
+                  />
+                  <DataRow
+                    label="שכר עבודה"
+                    values={activeMonths.map(() => 0)} totVal={0}
+                    indent
+                  />
+                  <DataRow
                     label="רווח גולמי"
-                    values={[...row("grossProfit"), totals.grossProfit]}
-                    bold highlight positive="auto"
-                    showPct pctBase={[...row("revenue"), totals.revenue]}
+                    values={V("grossProfit")} totVal={T.grossProfit}
+                    bold kind="subtotal" positive="auto"
+                    showPct revValues={revVals}
                   />
 
-                  {/* ═══ הנהלה וכלליות ═══ */}
-                  <SectionHeader label="🏢 הנהלה וכלליות" colCount={colCount + 1} />
-                  <PLRow label="הנהלה וכלליות (רכב, טל׳, ביטוח...)" values={[...row("ga"), totals.ga]} indent />
-                  <PLRow
-                    label="רווח תפעולי (EBIT)"
-                    values={[...row("operatingProfit"), totals.operatingProfit]}
-                    bold highlight positive="auto"
-                    showPct pctBase={[...row("revenue"), totals.revenue]}
+                  {/* ══ 3. הנהלה וכלליות ══ */}
+                  <SectionRow label="③ הנהלה וכלליות" cols={colCount} />
+                  <DataRow
+                    label="רכב, טלפון, ביטוח, משרד, שיווק, דלק..."
+                    values={V("ga")} totVal={T.ga}
+                    indent
+                  />
+                  <DataRow
+                    label="רווח תפעולי"
+                    values={V("operatingProfit")} totVal={T.operatingProfit}
+                    bold kind="subtotal" positive="auto"
+                    showPct revValues={revVals}
                   />
 
-                  {/* ═══ מימון ═══ */}
-                  <SectionHeader label="💳 מימון ואחר" colCount={colCount + 1} />
-                  <PLRow label="הוצאות מימון ואחר" values={[...row("finance"), totals.finance]} indent />
-                  <PLRow
+                  {/* ══ 4. מימון ══ */}
+                  <SectionRow label="④ מימון" cols={colCount} />
+                  <DataRow
+                    label="הוצאות מימון ואחר"
+                    values={V("finance")} totVal={T.finance}
+                    indent
+                  />
+                  <DataRow
                     label="רווח לאחר מע״מ (אומדן 17%)"
-                    values={[...row("vatProfit"), totals.vatProfit]}
-                    bold positive="auto"
-                    showPct pctBase={[...row("revenue"), totals.revenue]}
+                    values={V("vatProfit")} totVal={T.vatProfit}
+                    bold kind="subtotal" positive="auto"
+                    showPct revValues={revVals}
                   />
 
-                  {/* ═══ תזרים ═══ */}
-                  <SectionHeader label="💰 תזרים מזומנים" colCount={colCount + 1} />
-                  <PLRow label="הלוואות וקרנות (הוראות קבע)" values={[...row("loans"), totals.loans]} indent />
-                  <PLRow label="תקבולים (כסף שנכנס)" values={[...row("receipts"), totals.receipts]} indent />
-                  <PLRow label="תשלומים (כסף שיצא)" values={[...row("payments"), totals.payments]} indent />
-                  <PLRow
+                  {/* ══ 5. תזרים מזומנים ══ */}
+                  <SectionRow label="⑤ תזרים מזומנים" cols={colCount} />
+                  <DataRow
+                    label="הלוואות וקרנות (הוראות קבע)"
+                    values={V("loans")} totVal={T.loans}
+                    indent
+                  />
+                  <DataRow
+                    label="תקבולים (כסף שנכנס)"
+                    values={V("receipts")} totVal={T.receipts}
+                    indent
+                  />
+                  <DataRow
+                    label="תשלומים (כסף שיצא)"
+                    values={V("payments")} totVal={T.payments}
+                    indent
+                  />
+                  <DataRow
                     label="עודף / גרעון חודשי"
-                    values={[...row("monthlyBalance"), totals.monthlyBalance]}
-                    bold highlight positive="auto"
+                    values={V("monthlyBalance")} totVal={T.monthlyBalance}
+                    bold kind="subtotal" positive="auto"
                   />
-                  <PLRow
+                  <DataRow
                     label="יתרה מצטברת"
-                    values={[...activeMonths.map(m => m.cumulativeBalance), activeMonths[activeMonths.length - 1]?.cumulativeBalance ?? 0]}
-                    bold positive="auto"
-                    highlight
+                    values={V("cumulative")} totVal={lastCum}
+                    bold kind="total" positive="auto"
                   />
+
                 </tbody>
               </table>
             </div>
@@ -407,20 +441,6 @@ export default function ProfitabilityReport() {
         </CardContent>
       </Card>
 
-      {/* Legend */}
-      <Card className="border-dashed">
-        <CardContent className="p-4 text-xs text-muted-foreground space-y-1">
-          <p className="font-medium text-foreground mb-2">📝 מקרא קטגוריות</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-            <p>• <strong>הוצאות ישירות:</strong> חומרים, קבלן משנה</p>
-            <p>• <strong>שכר עבודה:</strong> כלים וציוד</p>
-            <p>• <strong>הנהלה וכלליות:</strong> רכב, טלפון, ביטוח, משרד, שירותים מקצועיים, שיווק, דלק</p>
-            <p>• <strong>הלוואות וקרנות:</strong> הוראות קבע</p>
-            <p>• <strong>מימון ואחר:</strong> כל שאר ההוצאות שאינן מסווגות</p>
-            <p>• <strong>מע״מ:</strong> אומדן 17% בלבד — לא חישוב מס מדויק</p>
-          </div>
-        </CardContent>
-      </Card>
     </AppLayout>
   );
 }
