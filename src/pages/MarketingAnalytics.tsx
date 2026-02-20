@@ -31,6 +31,9 @@ import {
   Legend,
   PieChart,
   Pie,
+  LineChart,
+  Line,
+  Dot,
 } from "recharts";
 import { useNavigate } from "react-router-dom";
 import { Users, TrendingUp, TrendingDown, DollarSign, Plus, X } from "lucide-react";
@@ -349,7 +352,46 @@ export default function MarketingAnalytics() {
         </CardContent>
       </Card>
 
-      {/* Per-Source ROI Table + Bar */}
+      {/* Trend Line Chart */}
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">מגמת לקוחות לאורך זמן לפי פלטפורמה</CardTitle>
+          <p className="text-xs text-muted-foreground">זיהוי פלטפורמות צומחות ומתכווצות</p>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: 5, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="monthLabel" tick={{ fontSize: 12 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+              <Tooltip
+                formatter={(value: number, name: string) => [value + " לקוחות", SOURCE_CONFIG[name]?.label || name]}
+                contentStyle={{ direction: "rtl", fontSize: 12 }}
+              />
+              <Legend
+                formatter={(v) => SOURCE_CONFIG[v]?.label || v}
+                wrapperStyle={{ fontSize: 12 }}
+              />
+              {allSources.map((src) => (
+                <Line
+                  key={src}
+                  type="monotone"
+                  dataKey={src}
+                  name={src}
+                  stroke={SOURCE_CONFIG[src]?.color || "#6b7280"}
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: SOURCE_CONFIG[src]?.color || "#6b7280" }}
+                  activeDot={{ r: 6, cursor: "pointer", onClick: (_: any, payload: any) => openDrilldown(src) }}
+                  connectNulls
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+          <p className="text-xs text-muted-foreground text-center mt-1">לחץ על נקודה לצפות בלקוחות של אותה פלטפורמה</p>
+        </CardContent>
+      </Card>
+
+
       <div className="grid md:grid-cols-2 gap-6 mb-6">
         {/* Revenue vs Ad Cost Bar */}
         <Card>
