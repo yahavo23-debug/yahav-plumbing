@@ -11,8 +11,9 @@ import { useAuditLog } from "@/hooks/useAuditLog";
 import { toast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
 import {
-  ArrowRight, Edit, Phone, Mail, MapPin, Plus, Calendar, Trash2,
+  ArrowRight, Edit, Phone, Mail, MapPin, Plus, Calendar, Trash2, DollarSign, Check, X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { BillingTab } from "@/components/billing/BillingTab";
 import { CustomerBillingBadge } from "@/components/billing/CustomerBillingBadge";
 import { CustomerExpensesTab } from "@/components/expenses/CustomerExpensesTab";
@@ -68,6 +69,9 @@ const CustomerDetail = () => {
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editingLeadCost, setEditingLeadCost] = useState(false);
+  const [leadCostInput, setLeadCostInput] = useState("");
+  const [savingLeadCost, setSavingLeadCost] = useState(false);
   const billing = useCustomerBilling(id);
 
   useEffect(() => {
@@ -89,15 +93,28 @@ const CustomerDetail = () => {
 
     setCustomer(custRes.data);
     setCalls(callsRes.data || []);
+    setLeadCostInput((custRes.data as any).lead_cost != null ? String((custRes.data as any).lead_cost) : "");
     setLoading(false);
 
-    // Audit log for contractor views
     logAction({
       action: "view_customer",
       resource_type: "customer",
       resource_id: id!,
       resource_label: custRes.data.name,
     });
+  };
+
+  const saveLeadCost = async () => {
+    if (!customer) return;
+    setSavingLeadCost(true);
+    const val = leadCostInput !== "" ? parseFloat(leadCostInput) : null;
+    const { error } = await supabase.from("customers").update({ lead_cost: val } as any).eq("id", id!);
+    if (!error) {
+      setCustomer({ ...customer, ...({ lead_cost: val } as any) });
+      toast({ title: "נשמר", description: "עלות הליד עודכנה בהצלחה" });
+    }
+    setEditingLeadCost(false);
+    setSavingLeadCost(false);
   };
 
   if (loading) {
@@ -265,6 +282,46 @@ const CustomerDetail = () => {
                       )}
                     </div>
                   )}
+                  {/* Lead Cost - editable inline */}
+                  {isAdmin && (customer as any).lead_source && (
+                    <div className="pt-2 border-t border-border">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm text-muted-foreground">עלות ליד:</span>
+                        {editingLeadCost ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="h-7 w-28 text-sm"
+                              value={leadCostInput}
+                              onChange={(e) => setLeadCostInput(e.target.value)}
+                              autoFocus
+                              onKeyDown={(e) => { if (e.key === "Enter") saveLeadCost(); if (e.key === "Escape") setEditingLeadCost(false); }}
+                            />
+                            <button onClick={saveLeadCost} disabled={savingLeadCost} className="text-success hover:opacity-70">
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setEditingLeadCost(false)} className="text-muted-foreground hover:opacity-70">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setEditingLeadCost(true)}
+                            className="text-sm font-medium hover:underline text-foreground flex items-center gap-1"
+                          >
+                            {(customer as any).lead_cost != null
+                              ? `₪${Number((customer as any).lead_cost).toLocaleString("he-IL")}`
+                              : <span className="text-muted-foreground italic">לא הוזן — לחץ לעריכה</span>}
+                            <Edit className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                 </>
               )}
             </CardContent>

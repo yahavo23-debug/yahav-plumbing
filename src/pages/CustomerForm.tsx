@@ -23,6 +23,7 @@ const CustomerForm = () => {
   const [form, setForm] = useState({
     name: "", phone: "", email: "", address: "", city: "", notes: "",
     lead_source: "" as string, lead_source_note: "", source_contractor_id: "",
+    lead_cost: "" as string,
   });
 
   useEffect(() => {
@@ -57,6 +58,7 @@ const CustomerForm = () => {
         lead_source: (data as any).lead_source || "",
         lead_source_note: (data as any).lead_source_note || "",
         source_contractor_id: (data as any).source_contractor_id || "",
+        lead_cost: (data as any).lead_cost != null ? String((data as any).lead_cost) : "",
       });
     }
   };
@@ -73,6 +75,7 @@ const CustomerForm = () => {
         lead_source: form.lead_source || null,
         lead_source_note: form.lead_source_note || null,
         source_contractor_id: form.source_contractor_id || null,
+        lead_cost: form.lead_cost ? parseFloat(form.lead_cost) : null,
       };
 
       if (isEdit) {
@@ -139,6 +142,21 @@ const CustomerForm = () => {
               <Label>הערות</Label>
               <Textarea value={form.notes} onChange={(e) => updateField("notes", e.target.value)} rows={3} />
             </div>
+
+            {/* Lead Cost */}
+            {form.lead_source && (
+              <div className="space-y-2">
+                <Label>עלות ליד (₪) — כמה עלה לך לגייס לקוח זה</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={form.lead_cost}
+                  onChange={(e) => updateField("lead_cost", e.target.value)}
+                />
+              </div>
+            )}
 
             {/* Lead Source */}
             <div className="grid gap-4 sm:grid-cols-2">

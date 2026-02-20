@@ -74,6 +74,7 @@ interface CustomerRow {
   name: string;
   phone: string | null;
   lead_source: string | null;
+  lead_cost: number | null;
   created_at: string;
   revenue: number;
 }
@@ -145,29 +146,33 @@ export default function MarketingAnalytics() {
       // Load ALL customers (no date filter) so all platforms appear
       const { data: custs } = await supabase
         .from("customers")
-        .select("id, name, phone, lead_source, created_at")
+        .select("id, name, phone, lead_source, lead_cost, created_at")
         .order("created_at", { ascending: false });
 
       const customerIds = (custs || []).map((c) => c.id);
 
-      // Load payments for these customers
+      // Load payments + settled for these customers
       const { data: ledger } = customerIds.length
         ? await supabase
             .from("customer_ledger")
             .select("customer_id, amount, entry_type")
             .in("customer_id", customerIds)
-            .in("entry_type", ["charge", "payment"])
+            .in("entry_type", ["payment", "settled"])
         : { data: [] };
 
       const revenueMap: Record<string, number> = {};
       (ledger || []).forEach((row) => {
-        if (row.entry_type === "payment") {
-          revenueMap[row.customer_id] = (revenueMap[row.customer_id] || 0) + Number(row.amount);
-        }
+        // Count both 'payment' and 'settled' as revenue
+        revenueMap[row.customer_id] = (revenueMap[row.customer_id] || 0) + Number(row.amount);
       });
 
       const enriched: CustomerRow[] = (custs || []).map((c) => ({
-        ...c,
+        id: c.id,
+        name: c.name,
+        phone: c.phone ?? null,
+        lead_source: (c as any).lead_source ?? null,
+        lead_cost: (c as any).lead_cost != null ? Number((c as any).lead_cost) : null,
+        created_at: c.created_at,
         revenue: revenueMap[c.id] || 0,
       }));
 
@@ -204,7 +209,7 @@ export default function MarketingAnalytics() {
     return adCosts.filter((c) => c.month === selectedMonth);
   }, [adCosts, selectedMonth]);
 
-  // Aggregate per source
+  // Aggregate per source — includes per-customer lead_cost in adCost
   const sourceData = useMemo(() => {
     const map: Record<string, { count: number; revenue: number; adCost: number }> = {};
     filteredCustomers.forEach((c) => {
@@ -212,6 +217,8 @@ export default function MarketingAnalytics() {
       if (!map[src]) map[src] = { count: 0, revenue: 0, adCost: 0 };
       map[src].count++;
       map[src].revenue += c.revenue;
+      // Add per-customer lead_cost (cost of this specific lead)
+      if (c.lead_cost != null) map[src].adCost += c.lead_cost;
     });
     filteredAdCosts.forEach((e) => {
       if (!map[e.source]) map[e.source] = { count: 0, revenue: 0, adCost: 0 };
