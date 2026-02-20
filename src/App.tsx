@@ -23,6 +23,7 @@ import PublicShare from "./pages/PublicShare";
 import Settings from "./pages/Settings";
 import DispatchBoard from "./pages/DispatchBoard";
 import Finance from "./pages/Finance";
+import MarketingAnalytics from "./pages/MarketingAnalytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -78,6 +79,7 @@ function AppRoutes() {
       <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ReportEditor /></ProtectedRoute>} />
       <Route path="/dispatch" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><DispatchBoard /></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><Finance /></ProtectedRoute>} />
+      <Route path="/marketing" element={<ProtectedRoute allowedRoles={["admin"]}><MarketingAnalytics /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute allowedRoles={["admin"]}><Settings /></ProtectedRoute>} />
 
       <Route path="*" element={<NotFound />} />
