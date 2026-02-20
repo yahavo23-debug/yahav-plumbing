@@ -140,19 +140,49 @@ export default function ProfitabilityReport() {
   const [txns, setTxns] = useState<TxnRow[]>([]);
   const [incomeTax, setIncomeTax] = useState<string>("");   // מס הכנסה ידני
   const [showVat, setShowVat] = useState(true);             // הצג/הסתר שורת מע"מ
+  const [taxSaving, setTaxSaving] = useState(false);        // שמירה בתהליך
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await (supabase as any)
-      .from("financial_transactions")
-      .select("txn_date, direction, amount, category")
-      .gte("txn_date", `${year}-01-01`)
-      .lte("txn_date", `${year}-12-31`);
-    if (data) setTxns(data as TxnRow[]);
+    const [txnRes, settingsRes] = await Promise.all([
+      (supabase as any)
+        .from("financial_transactions")
+        .select("txn_date, direction, amount, category")
+        .gte("txn_date", `${year}-01-01`)
+        .lte("txn_date", `${year}-12-31`),
+      (supabase as any)
+        .from("annual_settings")
+        .select("income_tax")
+        .eq("year", Number(year))
+        .maybeSingle(),
+    ]);
+    if (txnRes.data) setTxns(txnRes.data as TxnRow[]);
+    if (settingsRes.data) {
+      setIncomeTax(String(settingsRes.data.income_tax || ""));
+    } else {
+      setIncomeTax("");
+    }
     setLoading(false);
   }, [year]);
 
   useEffect(() => { load(); }, [load]);
+
+  // שמירה אוטומטית של מס הכנסה לאחר עצירת הקלדה
+  const saveTax = useCallback(async (value: string) => {
+    const num = Math.max(0, Number(value.replace(/[^\d.]/g, "")) || 0);
+    setTaxSaving(true);
+    await (supabase as any)
+      .from("annual_settings")
+      .upsert({ year: Number(year), income_tax: num }, { onConflict: "year" });
+    setTaxSaving(false);
+  }, [year]);
+
+  // Debounce: שמור 1.5 שניות אחרי עצירת ההקלדה
+  useEffect(() => {
+    if (incomeTax === "") return;
+    const t = setTimeout(() => saveTax(incomeTax), 1500);
+    return () => clearTimeout(t);
+  }, [incomeTax, saveTax]);
 
   const months = useMemo<MonthData[]>(() => {
     const map: Record<string, MonthData> = {};
@@ -453,7 +483,38 @@ export default function ProfitabilityReport() {
       {/* ── P&L Table ── */}
       <Card>
         <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="text-sm">דוח רווח והפסד + תזרים מזומנים</CardTitle>
+          <div className="flex flex-wrap items-center gap-3">
+            <CardTitle className="text-sm">דוח רווח והפסד + תזרים מזומנים</CardTitle>
+            <div className="mr-auto flex flex-wrap items-center gap-3">
+              {/* מס הכנסה שנתי */}
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs text-muted-foreground whitespace-nowrap">מס הכנסה שנתי (₪):</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="0"
+                    value={incomeTax}
+                    onChange={e => setIncomeTax(e.target.value)}
+                    className="w-28 h-7 text-xs pl-6"
+                  />
+                  {taxSaving && (
+                    <Loader2 className="w-3 h-3 animate-spin text-muted-foreground absolute left-1.5 top-1/2 -translate-y-1/2" />
+                  )}
+                </div>
+              </div>
+              {/* כפתור מע"מ */}
+              <Button
+                variant={showVat ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => setShowVat(v => !v)}
+              >
+                {showVat ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                {showVat ? "עם מע״מ 18%" : "ללא מע״מ"}
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (

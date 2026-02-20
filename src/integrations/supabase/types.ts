@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      annual_settings: {
+        Row: {
+          id: string
+          income_tax: number
+          updated_at: string
+          updated_by: string | null
+          year: number
+        }
+        Insert: {
+          id?: string
+          income_tax?: number
+          updated_at?: string
+          updated_by?: string | null
+          year: number
+        }
+        Update: {
+          id?: string
+          income_tax?: number
+          updated_at?: string
+          updated_by?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
