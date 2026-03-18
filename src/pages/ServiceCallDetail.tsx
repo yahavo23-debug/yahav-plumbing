@@ -348,6 +348,7 @@ const ServiceCallDetail = () => {
           </TabsTrigger>
           <TabsTrigger value="quotes" className="text-base px-5 h-10">הצעות מחיר</TabsTrigger>
           <TabsTrigger value="reports" className="text-base px-5 h-10">דוחות</TabsTrigger>
+          <TabsTrigger value="insurance" className="text-base px-5 h-10">דו״ח ביטוח</TabsTrigger>
         </TabsList>
 
         {/* 1. Call Details */}
