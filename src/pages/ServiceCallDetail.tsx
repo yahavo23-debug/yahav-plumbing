@@ -25,6 +25,7 @@ import {
 import { QuotesList } from "@/components/quotes/QuotesList";
 import { DiagnosisTab } from "@/components/diagnosis/DiagnosisTab";
 import { ShareButton } from "@/components/sharing/ShareButton";
+import { InsuranceReportTab } from "@/components/insurance/InsuranceReportTab";
 
 type Photo = Tables<"service_call_photos">;
 type Video = Tables<"service_call_videos">;
