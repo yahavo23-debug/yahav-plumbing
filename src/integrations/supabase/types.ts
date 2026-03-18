@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      annual_settings: {
+        Row: {
+          id: string
+          income_tax: number
+          updated_at: string
+          updated_by: string | null
+          year: number
+        }
+        Insert: {
+          id?: string
+          income_tax?: number
+          updated_at?: string
+          updated_by?: string | null
+          year: number
+        }
+        Update: {
+          id?: string
+          income_tax?: number
+          updated_at?: string
+          updated_by?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -377,6 +401,59 @@ export type Database = {
           },
           {
             foreignKeyName: "financial_transactions_service_call_id_fkey"
+            columns: ["service_call_id"]
+            isOneToOne: false
+            referencedRelation: "service_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insurance_reports: {
+        Row: {
+          cost_summary: Json | null
+          created_at: string
+          created_by: string
+          damage_type: string | null
+          event_description: string | null
+          id: string
+          is_emergency: boolean
+          professional_statement: string | null
+          report_mode: string
+          service_call_id: string
+          technical_details: string | null
+          updated_at: string
+        }
+        Insert: {
+          cost_summary?: Json | null
+          created_at?: string
+          created_by?: string
+          damage_type?: string | null
+          event_description?: string | null
+          id?: string
+          is_emergency?: boolean
+          professional_statement?: string | null
+          report_mode?: string
+          service_call_id: string
+          technical_details?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cost_summary?: Json | null
+          created_at?: string
+          created_by?: string
+          damage_type?: string | null
+          event_description?: string | null
+          id?: string
+          is_emergency?: boolean
+          professional_statement?: string | null
+          report_mode?: string
+          service_call_id?: string
+          technical_details?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insurance_reports_service_call_id_fkey"
             columns: ["service_call_id"]
             isOneToOne: false
             referencedRelation: "service_calls"

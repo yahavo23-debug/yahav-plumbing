@@ -397,7 +397,7 @@ function buildReportHtml(data: {
       );
       const discount = Number(quote.discount_percent) || 0;
       const afterDiscount = subtotal * (1 - discount / 100);
-      const total = afterDiscount * 1.18;
+      const total = afterDiscount;
 
       html += `<div style="margin-bottom:12px;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;">`;
       html += `<div style="background:#f0f4ff;padding:8px 12px;font-weight:600;font-size:13px;">${escapeHtml(quote.title) || "הצעת מחיר"}</div>`;
@@ -408,7 +408,7 @@ function buildReportHtml(data: {
         html += `<tr><td style="padding:6px;border-bottom:1px solid #f0f0f0;">${escapeHtml(item.description)}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">${item.quantity}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">₪${Number(item.unit_price).toFixed(2)}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">₪${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}</td></tr>`;
       }
       html += `</tbody></table>`;
-      html += `<div style="padding:8px 12px;text-align:left;font-weight:700;font-size:14px;border-top:1px solid #e0e0e0;">סה"כ כולל מע"מ: ₪${total.toFixed(2)}</div>`;
+      html += `<div style="padding:8px 12px;text-align:left;font-weight:700;font-size:14px;border-top:1px solid #e0e0e0;">סה"כ: ₪${total.toFixed(2)}</div>`;
       html += `</div>`;
     }
   }
