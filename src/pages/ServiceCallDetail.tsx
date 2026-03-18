@@ -25,7 +25,6 @@ import {
 import { QuotesList } from "@/components/quotes/QuotesList";
 import { DiagnosisTab } from "@/components/diagnosis/DiagnosisTab";
 import { ShareButton } from "@/components/sharing/ShareButton";
-import { InsuranceReportTab } from "@/components/insurance/InsuranceReportTab";
 
 type Photo = Tables<"service_call_photos">;
 type Video = Tables<"service_call_videos">;
@@ -348,7 +347,6 @@ const ServiceCallDetail = () => {
           </TabsTrigger>
           <TabsTrigger value="quotes" className="text-base px-5 h-10">הצעות מחיר</TabsTrigger>
           <TabsTrigger value="reports" className="text-base px-5 h-10">דוחות</TabsTrigger>
-          <TabsTrigger value="insurance" className="text-base px-5 h-10">דו״ח ביטוח</TabsTrigger>
         </TabsList>
 
         {/* 1. Call Details */}
@@ -483,15 +481,6 @@ const ServiceCallDetail = () => {
           ) : (
             <p className="text-center text-muted-foreground py-4">אין לך הרשאה ליצור דוחות</p>
           )}
-        </TabsContent>
-
-        {/* 6. Insurance Report */}
-        <TabsContent value="insurance">
-          <InsuranceReportTab
-            serviceCallId={id!}
-            callData={call}
-            readOnly={isContractor}
-          />
         </TabsContent>
       </Tabs>
 

@@ -3,9 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2, TrendingUp, TrendingDown, FileDown, Eye, EyeOff } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, FileDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import jsPDF from "jspdf";
 import {
@@ -53,8 +51,7 @@ interface MonthData {
   ga: number;
   operatingProfit: number;
   finance: number;
-  vatAmount: number;      // מע"מ לתשלום (18% מרווח חיובי)
-  vatProfit: number;      // רווח אחרי מע"מ (82% מרווח תפעולי)
+  vatProfit: number;      // אומדן 83% מרווח תפעולי
   loans: number;
   receipts: number;
   payments: number;
@@ -139,51 +136,19 @@ export default function ProfitabilityReport() {
   const tableRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [txns, setTxns] = useState<TxnRow[]>([]);
-  const [incomeTax, setIncomeTax] = useState<string>("");   // מס הכנסה ידני
-  const [showVat, setShowVat] = useState(true);             // הצג/הסתר שורת מע"מ
-  const [taxSaving, setTaxSaving] = useState(false);        // שמירה בתהליך
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [txnRes, settingsRes] = await Promise.all([
-      (supabase as any)
-        .from("financial_transactions")
-        .select("txn_date, direction, amount, category")
-        .gte("txn_date", `${year}-01-01`)
-        .lte("txn_date", `${year}-12-31`),
-      (supabase as any)
-        .from("annual_settings")
-        .select("income_tax")
-        .eq("year", Number(year))
-        .maybeSingle(),
-    ]);
-    if (txnRes.data) setTxns(txnRes.data as TxnRow[]);
-    if (settingsRes.data) {
-      setIncomeTax(String(settingsRes.data.income_tax || ""));
-    } else {
-      setIncomeTax("");
-    }
+    const { data } = await (supabase as any)
+      .from("financial_transactions")
+      .select("txn_date, direction, amount, category")
+      .gte("txn_date", `${year}-01-01`)
+      .lte("txn_date", `${year}-12-31`);
+    if (data) setTxns(data as TxnRow[]);
     setLoading(false);
   }, [year]);
 
   useEffect(() => { load(); }, [load]);
-
-  // שמירה אוטומטית של מס הכנסה לאחר עצירת הקלדה
-  const saveTax = useCallback(async (value: string) => {
-    const num = Math.max(0, Number(value.replace(/[^\d.]/g, "")) || 0);
-    setTaxSaving(true);
-    await (supabase as any)
-      .from("annual_settings")
-      .upsert({ year: Number(year), income_tax: num }, { onConflict: "year" });
-    setTaxSaving(false);
-  }, [year]);
-
-  // Debounce: שמור 1.5 שניות אחרי עצירת ההקלדה
-  useEffect(() => {
-    if (incomeTax === "") return;
-    const t = setTimeout(() => saveTax(incomeTax), 1500);
-    return () => clearTimeout(t);
-  }, [incomeTax, saveTax]);
 
   const months = useMemo<MonthData[]>(() => {
     const map: Record<string, MonthData> = {};
@@ -193,7 +158,7 @@ export default function ProfitabilityReport() {
         key, label: MONTH_FULL[m - 1], shortLabel: MONTH_NAMES[m - 1],
         revenue: 0, directCosts: 0, labor: 0,
         grossProfit: 0, ga: 0, operatingProfit: 0,
-        finance: 0, vatAmount: 0, vatProfit: 0, loans: 0,
+        finance: 0, vatProfit: 0, loans: 0,
         receipts: 0, payments: 0, monthlyBalance: 0, cumulative: 0,
       };
     }
@@ -217,11 +182,10 @@ export default function ProfitabilityReport() {
     return Object.values(map).map(m => {
       const grossProfit = m.revenue - m.directCosts; // שכר עבודה = 0
       const operatingProfit = grossProfit - m.ga;
-      const vatAmount = operatingProfit > 0 ? operatingProfit * 0.18 : 0; // מע"מ לתשלום
-      const vatProfit = operatingProfit > 0 ? operatingProfit * 0.82 : operatingProfit; // אחרי מע"מ
+      const vatProfit = operatingProfit > 0 ? operatingProfit * 0.82 : operatingProfit;
       const monthlyBalance = m.receipts - m.payments;
       cum += monthlyBalance;
-      return { ...m, grossProfit, operatingProfit, vatAmount, vatProfit, monthlyBalance, cumulative: cum };
+      return { ...m, grossProfit, operatingProfit, vatProfit, monthlyBalance, cumulative: cum };
     });
   }, [txns, year]);
 
@@ -239,7 +203,6 @@ export default function ProfitabilityReport() {
     ga: a.ga + m.ga,
     operatingProfit: a.operatingProfit + m.operatingProfit,
     finance: a.finance + m.finance,
-    vatAmount: a.vatAmount + m.vatAmount,
     vatProfit: a.vatProfit + m.vatProfit,
     loans: a.loans + m.loans,
     receipts: a.receipts + m.receipts,
@@ -248,7 +211,7 @@ export default function ProfitabilityReport() {
     cumulative: activeMonths[activeMonths.length - 1]?.cumulative ?? 0,
   }), {
     revenue: 0, directCosts: 0, labor: 0, grossProfit: 0,
-    ga: 0, operatingProfit: 0, finance: 0, vatAmount: 0, vatProfit: 0,
+    ga: 0, operatingProfit: 0, finance: 0, vatProfit: 0,
     loans: 0, receipts: 0, payments: 0, monthlyBalance: 0, cumulative: 0,
   }), [activeMonths]);
 
@@ -267,12 +230,6 @@ export default function ProfitabilityReport() {
 
   const years = Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - i));
   const lastCum = activeMonths[activeMonths.length - 1]?.cumulative ?? 0;
-
-  // מס הכנסה שנתי — מחולק שווה לכל חודש פעיל
-  const incomeTaxNum = Math.max(0, Number(incomeTax.replace(/[^\d.]/g, "")) || 0);
-  const taxPerMonth = activeMonths.length ? incomeTaxNum / activeMonths.length : 0;
-  const netProfitMonths = activeMonths.map(m => (showVat ? m.vatProfit : m.operatingProfit) - taxPerMonth);
-  const netProfitTotal = netProfitMonths.reduce((a, b) => a + b, 0);
 
   // ── PDF Export ────────────────────────────────────────────────────────────
   const exportPDF = useCallback(async () => {
@@ -486,38 +443,7 @@ export default function ProfitabilityReport() {
       {/* ── P&L Table ── */}
       <Card>
         <CardHeader className="pb-2 pt-4 px-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <CardTitle className="text-sm">דוח רווח והפסד + תזרים מזומנים</CardTitle>
-            <div className="mr-auto flex flex-wrap items-center gap-3">
-              {/* מס הכנסה שנתי */}
-              <div className="flex items-center gap-1.5">
-                <Label className="text-xs text-muted-foreground whitespace-nowrap">מס הכנסה שנתי (₪):</Label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="0"
-                    value={incomeTax}
-                    onChange={e => setIncomeTax(e.target.value)}
-                    className="w-28 h-7 text-xs pl-6"
-                  />
-                  {taxSaving && (
-                    <Loader2 className="w-3 h-3 animate-spin text-muted-foreground absolute left-1.5 top-1/2 -translate-y-1/2" />
-                  )}
-                </div>
-              </div>
-              {/* כפתור מע"מ */}
-              <Button
-                variant={showVat ? "default" : "outline"}
-                size="sm"
-                className="h-7 text-xs gap-1"
-                onClick={() => setShowVat(v => !v)}
-              >
-                {showVat ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                {showVat ? "עם מע״מ 18%" : "ללא מע״מ"}
-              </Button>
-            </div>
-          </div>
+          <CardTitle className="text-sm">דוח רווח והפסד + תזרים מזומנים</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
@@ -585,47 +511,22 @@ export default function ProfitabilityReport() {
                     showPct revValues={revVals}
                   />
 
-                  {/* ══ 4. מימון + מע"מ ══ */}
-                  <SectionRow label="④ מימון ומע״מ" cols={colCount} />
+                  {/* ══ 4. מימון ══ */}
+                  <SectionRow label="④ מימון" cols={colCount} />
                   <DataRow
                     label="הוצאות מימון ואחר"
                     values={V("finance")} totVal={T.finance}
                     indent
                   />
-                  {showVat && (
-                    <DataRow
-                      label="מע״מ לתשלום (18% מרווח חיובי)"
-                      values={V("vatAmount").map(v => -v)}
-                      totVal={-T.vatAmount}
-                      indent positive="neg"
-                    />
-                  )}
                   <DataRow
-                    label={showVat ? "רווח אחרי מע״מ" : "רווח תפעולי נטו (ללא מע״מ)"}
-                    values={showVat ? V("vatProfit") : V("operatingProfit")}
-                    totVal={showVat ? T.vatProfit : T.operatingProfit}
+                    label="רווח לאחר מע״מ (אומדן 17%)"
+                    values={V("vatProfit")} totVal={T.vatProfit}
                     bold kind="subtotal" positive="auto"
                     showPct revValues={revVals}
                   />
 
-                  {/* ══ 5. מס הכנסה ══ */}
-                  <SectionRow label="⑤ מס הכנסה" cols={colCount} />
-                  <DataRow
-                    label="מס הכנסה שנתי (הזנה ידנית)"
-                    values={activeMonths.map(() => taxPerMonth)}
-                    totVal={incomeTaxNum}
-                    indent
-                  />
-                  <DataRow
-                    label="רווח נקי (אחרי מס)"
-                    values={netProfitMonths}
-                    totVal={netProfitTotal}
-                    bold kind="subtotal" positive="auto"
-                    showPct revValues={revVals}
-                  />
-
-                  {/* ══ 6. תזרים מזומנים ══ */}
-                  <SectionRow label="⑥ תזרים מזומנים" cols={colCount} />
+                  {/* ══ 5. תזרים מזומנים ══ */}
+                  <SectionRow label="⑤ תזרים מזומנים" cols={colCount} />
                   <DataRow
                     label="הלוואות וקרנות (הוראות קבע)"
                     values={V("loans")} totVal={T.loans}
