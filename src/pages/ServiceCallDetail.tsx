@@ -484,6 +484,15 @@ const ServiceCallDetail = () => {
             <p className="text-center text-muted-foreground py-4">אין לך הרשאה ליצור דוחות</p>
           )}
         </TabsContent>
+
+        {/* 6. Insurance Report */}
+        <TabsContent value="insurance">
+          <InsuranceReportTab
+            serviceCallId={id!}
+            callData={call}
+            readOnly={isContractor}
+          />
+        </TabsContent>
       </Tabs>
 
       {/* Delete confirmation dialog */}
