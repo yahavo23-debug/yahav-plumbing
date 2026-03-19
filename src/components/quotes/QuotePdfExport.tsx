@@ -54,9 +54,9 @@ export function QuotePdfExport({ quoteId, serviceCallId }: QuotePdfExportProps) 
       const discountPercent = Number(quote.discount_percent) || 0;
       const discountAmount = subtotal * (discountPercent / 100);
       const afterDiscount = subtotal - discountAmount;
-      const includeVat = quote.include_vat !== false;
-      const vatAmount = includeVat ? afterDiscount * (VAT_RATE / 100) : 0;
-      const total = afterDiscount + vatAmount;
+      const vatAmount = 0;
+      const includeVat = false;
+      const total = afterDiscount;
 
       const now = new Date();
       const dateStr = now.toLocaleDateString("he-IL");
