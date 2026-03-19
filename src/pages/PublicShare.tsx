@@ -708,7 +708,7 @@ const QuotesSection = ({ quotes, shareToken, onQuoteSigned }: { quotes: any[]; s
             )}
 
             <div className="flex justify-between items-center pt-2 border-t border-border text-sm">
-              <span>סה״כ כולל מע״מ</span>
+              <span>סה״כ לתשלום</span>
               <span className="font-bold text-lg">₪{Number(quote.total_with_vat).toFixed(2)}</span>
             </div>
 

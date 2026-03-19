@@ -173,8 +173,6 @@ Deno.serve(async (req) => {
           );
           const discount = Number(q.discount_percent) || 0;
           const afterDiscount = subtotal * (1 - discount / 100);
-          const includeVat = q.include_vat !== false;
-          const totalWithVat = includeVat ? afterDiscount * 1.18 : afterDiscount;
 
           let signature_url = null;
           if (q.signature_path) {
@@ -184,7 +182,7 @@ Deno.serve(async (req) => {
             signature_url = sigUrl?.signedUrl;
           }
 
-          return { ...q, items: qItems, subtotal, total_with_vat: totalWithVat, signature_url };
+          return { ...q, items: qItems, subtotal, total_with_vat: afterDiscount, signature_url };
         }));
 
         responseData.quotes = quotesWithData;
