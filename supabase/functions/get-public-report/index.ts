@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
 
     // Load related data
     const { data: service_call } = await supabase.from("service_calls").select("*").eq("id", report.service_call_id).single();
-    const { data: customer } = service_call ? await supabase.from("customers").select("*").eq("id", service_call.customer_id).single() : { data: null };
+    const { data: customer } = service_call ? await supabase.from("customers").select("name, phone, city, address").eq("id", service_call.customer_id).single() : { data: null };
     const { data: photos } = await supabase.from("service_call_photos").select("*").eq("service_call_id", report.service_call_id).order("created_at");
     const { data: videos } = await supabase.from("service_call_videos").select("*").eq("service_call_id", report.service_call_id).order("created_at");
 
