@@ -193,7 +193,19 @@ const PublicReport = () => {
           </Card>
         )}
 
-        {/* Signature */}
+        {/* Quote/Invoice */}
+        {(report?.quote_summary || report?.invoice_number) && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">פרטי תשלום</CardTitle></CardHeader>
+            <CardContent className="text-sm space-y-1">
+              {report.quote_summary && <p><strong>סיכום הצעת מחיר:</strong> {report.quote_summary}</p>}
+              {report.invoice_number && <p><strong>מספר חשבונית:</strong> {report.invoice_number}</p>}
+              {report.invoice_status && <p><strong>סטטוס:</strong> {report.invoice_status}</p>}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Signature — always last */}
         {report?.signature_url ? (
           <Card>
             <CardHeader>
@@ -216,18 +228,6 @@ const PublicReport = () => {
               setReport((prev: any) => ({ ...prev, signature_date: signatureDate, signature_url: "signed" }));
             }}
           />
-        )}
-
-        {/* Quote/Invoice */}
-        {(report?.quote_summary || report?.invoice_number) && (
-          <Card>
-            <CardHeader><CardTitle className="text-base">פרטי תשלום</CardTitle></CardHeader>
-            <CardContent className="text-sm space-y-1">
-              {report.quote_summary && <p><strong>סיכום הצעת מחיר:</strong> {report.quote_summary}</p>}
-              {report.invoice_number && <p><strong>מספר חשבונית:</strong> {report.invoice_number}</p>}
-              {report.invoice_status && <p><strong>סטטוס:</strong> {report.invoice_status}</p>}
-            </CardContent>
-          </Card>
         )}
       </main>
 
