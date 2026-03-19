@@ -99,8 +99,8 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
   );
   const discountAmount = subtotal * (discountPercent / 100);
   const afterDiscount = subtotal - discountAmount;
-  const vatAmount = includeVat ? afterDiscount * VAT_RATE : 0;
-  const totalWithVat = afterDiscount + vatAmount;
+  const vatAmount = 0;
+  const totalWithVat = afterDiscount;
 
   const handleSave = async () => {
     if (!user) return;
