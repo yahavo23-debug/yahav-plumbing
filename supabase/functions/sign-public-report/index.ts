@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
       .update({
         signature_path: filePath,
         signature_date: now,
-        signed_by: signedBy,
+        signed_by: signedBy ? `${signedBy} (ת.ז. ${signerIdNumber})` : signerIdNumber,
         ip_address: ipAddress,
         device_info: deviceInfo,
         status: "signed",
