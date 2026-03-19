@@ -22,7 +22,7 @@ const serviceTypeLabels: Record<string, string> = {
   other: "אחר",
 };
 
-const VAT_RATE = 18;
+
 
 export function QuotePdfExport({ quoteId, serviceCallId }: QuotePdfExportProps) {
   const { logoUrl } = useLogo();
@@ -54,9 +54,9 @@ export function QuotePdfExport({ quoteId, serviceCallId }: QuotePdfExportProps) 
       const discountPercent = Number(quote.discount_percent) || 0;
       const discountAmount = subtotal * (discountPercent / 100);
       const afterDiscount = subtotal - discountAmount;
-      const includeVat = quote.include_vat !== false;
-      const vatAmount = includeVat ? afterDiscount * (VAT_RATE / 100) : 0;
-      const total = afterDiscount + vatAmount;
+      const vatAmount = 0;
+      const includeVat = false;
+      const total = afterDiscount;
 
       const now = new Date();
       const dateStr = now.toLocaleDateString("he-IL");
@@ -298,7 +298,7 @@ function buildQuoteHtml(data: {
   html += `
     <div style="margin-top:8px;border:1px solid #ddd;border-radius:6px;overflow:hidden;">
       <div style="display:flex;justify-content:space-between;padding:8px 14px;font-size:13px;border-bottom:1px solid #eee;">
-        <span>סה״כ${includeVat ? ' לפני מע״מ' : ''}</span>
+        <span>סה״כ ביניים</span>
         <span style="font-weight:600;">₪${subtotal.toFixed(2)}</span>
       </div>
   `;
@@ -314,17 +314,9 @@ function buildQuoteHtml(data: {
       </div>
     `;
   }
-  if (includeVat) {
-    html += `
-      <div style="display:flex;justify-content:space-between;padding:8px 14px;font-size:13px;border-bottom:1px solid #eee;">
-        <span>מע״מ (${VAT_RATE}%)</span>
-        <span style="font-weight:600;">₪${vatAmount.toFixed(2)}</span>
-      </div>
-    `;
-  }
   html += `
       <div style="display:flex;justify-content:space-between;padding:10px 14px;font-size:15px;font-weight:800;background:#eef2ff;">
-        <span>${includeVat ? 'סה״כ כולל מע״מ' : 'סה״כ לתשלום'}</span>
+        <span>סה״כ לתשלום</span>
         <span>₪${total.toFixed(2)}</span>
       </div>
     </div>
