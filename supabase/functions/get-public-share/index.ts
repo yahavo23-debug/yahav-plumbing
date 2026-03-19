@@ -173,8 +173,6 @@ Deno.serve(async (req) => {
           );
           const discount = Number(q.discount_percent) || 0;
           const afterDiscount = subtotal * (1 - discount / 100);
-          const includeVat = q.include_vat !== false;
-          const totalWithVat = includeVat ? afterDiscount * 1.18 : afterDiscount;
 
           let signature_url = null;
           if (q.signature_path) {
