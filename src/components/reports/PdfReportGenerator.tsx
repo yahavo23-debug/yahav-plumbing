@@ -18,7 +18,13 @@ import {
 } from "@/components/ui/dialog";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { buildPdfHeader, buildPdfFooter, renderCanvasToPdf, escapeHtml } from "@/lib/pdf-utils";
+import {
+  buildPdfHeader,
+  buildPdfFooter,
+  renderCanvasToPdf,
+  escapeHtml,
+  BUSINESS_INFO,
+} from "@/lib/pdf-utils";
 
 interface PdfReportGeneratorProps {
   report: any;
@@ -35,6 +41,8 @@ const statusLabels: Record<string, string> = {
   completed: "הושלם",
   cancelled: "בוטל",
 };
+
+const LEGAL_DISCLAIMER = `אני מאשר/ת בחתימתי כי קיבלתי את דוח העבודה לעיל, כולל ממצאים והמלצות, כפי שהוצגו בפניי על ידי ${BUSINESS_INFO.name}. קראתי והבנתי את תוכן הדוח במלואו. ידוע לי כי אחריות הביצוע של ההמלצות חלה עליי ו/או על מי מטעמי. ${BUSINESS_INFO.name} לא יישא באחריות לנזקים שייגרמו כתוצאה מאי ביצוע ההמלצות המפורטות בדוח זה.`;
 
 export function PdfReportGenerator({
   report,
