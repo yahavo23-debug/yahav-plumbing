@@ -117,7 +117,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
             notes: notes.trim() || null,
             valid_until: validUntil || null,
             discount_percent: discountPercent,
-            include_vat: includeVat,
+            include_vat: false,
             scope_of_work: scopeOfWork,
           } as any)
           .eq("id", quoteId);
