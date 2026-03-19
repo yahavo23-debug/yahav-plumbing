@@ -4,14 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Trash2, Save, X } from "lucide-react";
 import { ScopeOfWorkSection, ScopeOfWorkData, DEFAULT_SCOPE } from "./ScopeOfWorkSection";
-
-const VAT_RATE = 0.18;
 
 interface QuoteItem {
   id?: string;

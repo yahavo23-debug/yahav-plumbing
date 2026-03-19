@@ -22,7 +22,7 @@ const serviceTypeLabels: Record<string, string> = {
   other: "אחר",
 };
 
-const VAT_RATE = 18;
+
 
 export function QuotePdfExport({ quoteId, serviceCallId }: QuotePdfExportProps) {
   const { logoUrl } = useLogo();
