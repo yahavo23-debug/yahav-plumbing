@@ -55,7 +55,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
       setNotes(q.notes || "");
       setValidUntil(q.valid_until || "");
       setDiscountPercent(Number(q.discount_percent) || 0);
-      setIncludeVat(q.include_vat !== false);
+      
       if (q.scope_of_work) {
         setScopeOfWork({ ...DEFAULT_SCOPE, ...q.scope_of_work });
       }
