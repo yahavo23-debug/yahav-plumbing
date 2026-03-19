@@ -125,13 +125,13 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
       } else {
         const { data, error } = await supabase
           .from("quotes")
-          .insert({
-            service_call_id: serviceCallId,
-            title: title.trim() || "הצעת מחיר",
-            notes: notes.trim() || null,
-            valid_until: validUntil || null,
-            discount_percent: discountPercent,
-            include_vat: includeVat,
+            .insert({
+              service_call_id: serviceCallId,
+              title: title.trim() || "הצעת מחיר",
+              notes: notes.trim() || null,
+              valid_until: validUntil || null,
+              discount_percent: discountPercent,
+              include_vat: false,
             scope_of_work: scopeOfWork,
             created_by: user.id,
           } as any)
