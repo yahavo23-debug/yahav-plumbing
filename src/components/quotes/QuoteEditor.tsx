@@ -31,7 +31,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
   const [notes, setNotes] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [discountPercent, setDiscountPercent] = useState(0);
-  const [includeVat, setIncludeVat] = useState(true);
+  const includeVat = false;
   const [scopeOfWork, setScopeOfWork] = useState<ScopeOfWorkData>({ ...DEFAULT_SCOPE });
   const [items, setItems] = useState<QuoteItem[]>([
     { description: "", quantity: 1, unit_price: 0, sort_order: 0 },
