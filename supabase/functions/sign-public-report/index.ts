@@ -15,6 +15,15 @@ Deno.serve(async (req) => {
     const shareToken = formData.get("share_token") as string;
     const signatureFile = formData.get("signature") as File;
     const signedBy = formData.get("signed_by") as string || null;
+    const signerIdNumber = formData.get("signer_id_number") as string || null;
+
+    // Validate ID number - must be exactly 9 digits
+    if (!signerIdNumber || !/^\d{9}$/.test(signerIdNumber)) {
+      return new Response(JSON.stringify({ error: "תעודת זהות חייבת להכיל 9 ספרות בדיוק" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!shareToken || !signatureFile) {
       return new Response(JSON.stringify({ error: "Missing share_token or signature" }), {
@@ -125,7 +134,7 @@ Deno.serve(async (req) => {
       .update({
         signature_path: filePath,
         signature_date: now,
-        signed_by: signedBy,
+        signed_by: signedBy ? `${signedBy} (ת.ז. ${signerIdNumber})` : signerIdNumber,
         ip_address: ipAddress,
         device_info: deviceInfo,
         status: "signed",
