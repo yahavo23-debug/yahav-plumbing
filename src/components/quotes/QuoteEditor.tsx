@@ -266,7 +266,7 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
         <div className="rounded-md border bg-muted/20 divide-y">
           {/* Subtotal */}
           <div className="flex justify-between items-center px-4 py-2.5">
-            <span className="text-sm text-muted-foreground">סה"כ לפני מע"מ</span>
+            <span className="text-sm text-muted-foreground">סה"כ</span>
             <span className="text-sm font-medium">₪{subtotal.toFixed(2)}</span>
           </div>
 
@@ -300,26 +300,15 @@ export const QuoteEditor = ({ serviceCallId, quoteId, onSaved, onCancel }: Quote
             </div>
           )}
 
-          {/* VAT toggle */}
+          {/* VAT note */}
           <div className="flex justify-between items-center px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={includeVat}
-                onCheckedChange={setIncludeVat}
-                id="include-vat"
-              />
-              <Label htmlFor="include-vat" className="text-sm text-muted-foreground cursor-pointer">
-                {includeVat ? "מע\"מ (18%)" : "ללא מע\"מ"}
-              </Label>
-            </div>
-            <span className="text-sm font-medium">₪{vatAmount.toFixed(2)}</span>
+            <span className="text-sm text-muted-foreground">מע"מ</span>
+            <span className="text-sm font-medium">ללא מע"מ</span>
           </div>
 
           {/* Total */}
           <div className="flex justify-between items-center px-4 py-3 bg-muted/40">
-            <span className="font-semibold">
-              {includeVat ? "סה\"כ כולל מע\"מ" : "סה\"כ"}
-            </span>
+            <span className="font-semibold">סה"כ לתשלום</span>
             <span className="text-lg font-bold">₪{totalWithVat.toFixed(2)}</span>
           </div>
         </div>
