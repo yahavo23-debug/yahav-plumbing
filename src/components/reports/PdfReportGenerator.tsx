@@ -421,6 +421,11 @@ function buildReportHtml(data: {
     }
   }
 
+  html += sectionTitle("אישור והגנה משפטית");
+  html += `<div style="border:1px solid #e0e0e0;border-radius:8px;padding:16px;background:#fafafa;margin-bottom:16px;">`;
+  html += `<p style="font-size:12px;line-height:1.9;margin:0;">${escapeHtml(LEGAL_DISCLAIMER)}</p>`;
+  html += `</div>`;
+
   // Signature block
   if (signatureUrl) {
     html += sectionTitle("חתימת לקוח");
@@ -438,7 +443,7 @@ function buildReportHtml(data: {
       html += `<p style="margin:0;"><strong>תאריך ושעה:</strong> ${new Date(signatureDate).toLocaleString("he-IL")}</p>`;
     }
     if (report.ip_address) {
-      html += `<p style="margin:0;"><strong>כתובת IP:</strong> ${report.ip_address}</p>`;
+      html += `<p style="margin:0;"><strong>כתובת IP:</strong> ${escapeHtml(report.ip_address)}</p>`;
     }
     html += `</div>`;
     html += `</div>`;
