@@ -174,17 +174,36 @@ export function PdfReportGenerator({
       );
       await new Promise((r) => setTimeout(r, 300));
 
-      // Capture
-      const canvas = await html2canvas(container, {
+      const canvasOptions = {
         scale: 2,
         useCORS: true,
         allowTaint: false,
         backgroundColor: "#ffffff",
-      });
+      };
+
+      const annexElement = container.querySelector(
+        "[data-pdf-annex='true']"
+      ) as HTMLElement | null;
+
+      if (annexElement) {
+        annexElement.style.display = "none";
+      }
+
+      const mainCanvas = await html2canvas(container, canvasOptions);
+
+      if (annexElement) {
+        annexElement.style.display = "";
+      }
 
       // Generate PDF
       const pdf = new jsPDF("p", "mm", "a4");
-      renderCanvasToPdf(canvas, pdf);
+      renderCanvasToPdf(mainCanvas, pdf);
+
+      if (annexElement) {
+        const annexCanvas = await html2canvas(annexElement, canvasOptions);
+        pdf.addPage();
+        renderSinglePageCanvasToPdf(annexCanvas, pdf);
+      }
 
       // Download directly to device
       const now2 = new Date();
