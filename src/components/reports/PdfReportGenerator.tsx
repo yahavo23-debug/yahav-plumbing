@@ -482,14 +482,14 @@ function buildReportHtml(data: {
     }
   }
 
-  html += `<div style="page-break-before:always;break-before:page;padding-top:20px;">`;
-  html += `<h2 style="font-size:15px;font-weight:700;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid #e0e0e0;">נספח תנאים, הגבלת אחריות והצהרת ביצוע</h2>`;
-  html += `<div style="border:1px solid #e0e0e0;border-radius:8px;padding:16px;background:#fafafa;margin-bottom:16px;">`;
+  html += `<div data-pdf-annex="true" style="padding-top:8px;">`;
+  html += `<h2 style="font-size:13px;font-weight:700;margin:0 0 8px;padding-bottom:4px;border-bottom:1px solid #e0e0e0;">נספח תנאים, הגבלת אחריות והצהרת ביצוע</h2>`;
+  html += `<div style="border:1px solid #e0e0e0;border-radius:8px;padding:12px;background:#fafafa;margin-bottom:10px;">`;
   for (const section of LEGAL_SECTIONS_PDF) {
-    html += `<p style="font-size:11px;font-weight:700;color:#2c3e50;margin:6px 0 2px;">${escapeHtml(section.title)}</p>`;
-    html += `<p style="font-size:10px;line-height:1.3;margin:0 0 4px;color:#444;">${escapeHtml(section.text)}</p>`;
+    html += `<p style="font-size:10px;font-weight:700;color:#2c3e50;margin:5px 0 2px;">${escapeHtml(section.title)}</p>`;
+    html += `<p style="font-size:9px;line-height:1.25;margin:0 0 3px;color:#444;">${escapeHtml(section.text)}</p>`;
     if (section.bullets) {
-      html += `<ul style="font-size:10px;line-height:1.3;margin:2px 0 6px;padding-right:18px;color:#444;">`;
+      html += `<ul style="font-size:9px;line-height:1.25;margin:2px 0 5px;padding-right:16px;color:#444;">`;
       for (const b of section.bullets) {
         html += `<li style="margin-bottom:2px;">${escapeHtml(b)}</li>`;
       }
@@ -497,18 +497,16 @@ function buildReportHtml(data: {
     }
   }
   html += `</div>`;
-  html += `</div>`;
 
-  // Signature block
   if (signatureUrl) {
-    html += sectionTitle("חתימת לקוח");
-    html += `<div style="border:1px solid #e0e0e0;border-radius:8px;padding:16px;background:#fafafa;">`;
-    html += `<div style="display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;">`;
+    html += `<h2 style="font-size:13px;font-weight:700;margin:0 0 8px;padding-bottom:4px;border-bottom:1px solid #e0e0e0;">חתימת לקוח</h2>`;
+    html += `<div style="border:1px solid #e0e0e0;border-radius:8px;padding:12px;background:#fafafa;">`;
+    html += `<div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">`;
     html += `<div>`;
-    html += `<p style="font-size:11px;color:#888;margin:0 0 4px;">חתימה:</p>`;
-    html += `<img src="${signatureUrl}" style="max-width:280px;max-height:100px;border-bottom:2px solid #333;" crossorigin="anonymous" />`;
+    html += `<p style="font-size:10px;color:#888;margin:0 0 4px;">חתימה:</p>`;
+    html += `<img src="${signatureUrl}" style="max-width:220px;max-height:72px;border-bottom:2px solid #333;" crossorigin="anonymous" />`;
     html += `</div>`;
-    html += `<div style="font-size:12px;line-height:1.8;">`;
+    html += `<div style="font-size:11px;line-height:1.55;">`;
     if (report.signed_by) {
       html += `<p style="margin:0;"><strong>שם החותם:</strong> ${escapeHtml(report.signed_by)}</p>`;
     }
@@ -524,6 +522,7 @@ function buildReportHtml(data: {
   }
 
   html += buildPdfFooter(dateStr, timeStr);
+  html += `</div>`;
 
   return html;
 }
