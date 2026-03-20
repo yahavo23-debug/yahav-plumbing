@@ -320,6 +320,27 @@ export function PdfReportGenerator({
   );
 }
 
+function renderSinglePageCanvasToPdf(canvas: HTMLCanvasElement, pdf: jsPDF) {
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 10;
+  const maxWidth = pageWidth - margin * 2;
+  const maxHeight = pageHeight - margin * 2;
+
+  let renderWidth = maxWidth;
+  let renderHeight = (canvas.height * renderWidth) / canvas.width;
+
+  if (renderHeight > maxHeight) {
+    renderHeight = maxHeight;
+    renderWidth = (canvas.width * renderHeight) / canvas.height;
+  }
+
+  const x = (pageWidth - renderWidth) / 2;
+  const imgData = canvas.toDataURL("image/png");
+
+  pdf.addImage(imgData, "PNG", x, margin, renderWidth, renderHeight, undefined, "FAST");
+}
+
 function buildReportHtml(data: {
   report: any;
   serviceCall: any;
