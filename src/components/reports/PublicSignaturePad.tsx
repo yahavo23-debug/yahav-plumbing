@@ -148,10 +148,21 @@ export const PublicSignaturePad = ({ shareToken, onSigned }: PublicSignaturePadP
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Legal disclaimer */}
-        <div className="bg-muted/60 border border-border rounded-lg p-4">
-          <p className="text-sm leading-relaxed font-medium text-foreground">
-            {LEGAL_DISCLAIMER}
-          </p>
+        <div className="bg-muted/60 border border-border rounded-lg p-4 space-y-3">
+          <h3 className="text-sm font-bold text-foreground text-center border-b border-border pb-2">
+            נספח תנאים, הגבלת אחריות והצהרת ביצוע — {BUSINESS_INFO.name}
+          </h3>
+          {LEGAL_SECTIONS.map((section, i) => (
+            <div key={i}>
+              <p className="text-xs font-bold text-foreground mb-0.5">{section.title}</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">{section.text}</p>
+              {section.bullets && (
+                <ul className="text-xs leading-relaxed text-muted-foreground list-disc pr-4 mt-1 space-y-0.5">
+                  {section.bullets.map((b, j) => <li key={j}>{b}</li>)}
+                </ul>
+              )}
+            </div>
+          ))}
         </div>
 
         {/* Signer name */}
