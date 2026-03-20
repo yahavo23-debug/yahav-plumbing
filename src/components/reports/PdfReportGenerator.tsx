@@ -449,9 +449,9 @@ function buildReportHtml(data: {
     html += `<p style="font-size:11px;font-weight:700;color:#2c3e50;margin:6px 0 2px;">${escapeHtml(section.title)}</p>`;
     html += `<p style="font-size:10px;line-height:1.3;margin:0 0 4px;color:#444;">${escapeHtml(section.text)}</p>`;
     if (section.bullets) {
-      html += `<ul style="font-size:11px;line-height:1.7;margin:2px 0 8px;padding-right:18px;color:#444;">`;
+      html += `<ul style="font-size:10px;line-height:1.3;margin:2px 0 6px;padding-right:18px;color:#444;">`;
       for (const b of section.bullets) {
-        html += `<li style="margin-bottom:3px;">${escapeHtml(b)}</li>`;
+        html += `<li style="margin-bottom:2px;">${escapeHtml(b)}</li>`;
       }
       html += `</ul>`;
     }
