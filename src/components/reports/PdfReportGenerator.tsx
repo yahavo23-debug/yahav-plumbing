@@ -457,6 +457,7 @@ function buildReportHtml(data: {
     }
   }
   html += `</div>`;
+  html += `</div>`;
 
   // Signature block
   if (signatureUrl) {
