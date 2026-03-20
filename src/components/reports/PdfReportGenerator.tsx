@@ -446,8 +446,8 @@ function buildReportHtml(data: {
   html += `<h2 style="font-size:15px;font-weight:700;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid #e0e0e0;">נספח תנאים, הגבלת אחריות והצהרת ביצוע</h2>`;
   html += `<div style="border:1px solid #e0e0e0;border-radius:8px;padding:16px;background:#fafafa;margin-bottom:16px;">`;
   for (const section of LEGAL_SECTIONS_PDF) {
-    html += `<p style="font-size:12px;font-weight:700;color:#2c3e50;margin:10px 0 2px;">${escapeHtml(section.title)}</p>`;
-    html += `<p style="font-size:11px;line-height:1.7;margin:0 0 4px;color:#444;">${escapeHtml(section.text)}</p>`;
+    html += `<p style="font-size:11px;font-weight:700;color:#2c3e50;margin:6px 0 2px;">${escapeHtml(section.title)}</p>`;
+    html += `<p style="font-size:10px;line-height:1.3;margin:0 0 4px;color:#444;">${escapeHtml(section.text)}</p>`;
     if (section.bullets) {
       html += `<ul style="font-size:11px;line-height:1.7;margin:2px 0 8px;padding-right:18px;color:#444;">`;
       for (const b of section.bullets) {
