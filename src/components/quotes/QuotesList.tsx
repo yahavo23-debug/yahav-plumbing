@@ -63,18 +63,8 @@ interface QuotesListProps {
   readOnly?: boolean;
 }
 
-// Get the public-facing base URL for share links
-const getPublicBaseUrl = (): string => {
-  const origin = window.location.origin;
-  if (
-    origin.includes("preview--") ||
-    origin.includes("lovableproject.com") ||
-    origin.includes("localhost")
-  ) {
-    return "https://yahav-plumbing.lovable.app";
-  }
-  return origin;
-};
+// Always use the current app origin so preview links open the current build.
+const getPublicBaseUrl = (): string => window.location.origin;
 
 export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps) => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -167,10 +157,12 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
       .eq("id", quoteId);
     if (error) {
       toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      return false;
     } else {
       setQuotes((prev) =>
         prev.map((q) => (q.id === quoteId ? { ...q, status: newStatus } : q))
       );
+      return true;
     }
   };
 
@@ -208,13 +200,19 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
 
   const handleSendToCustomer = async (quoteId: string, quoteNumber: number, mode: "view" | "sign") => {
     if (!user) return;
+
+    const popup = window.open("", "_blank", "noopener,noreferrer");
+
     setSendingQuoteId(quoteId);
     setShareQuoteNumber(quoteNumber);
     setShareMode(mode);
     try {
       const quote = quotes.find(q => q.id === quoteId);
       if (mode === "sign" && quote && quote.status === "draft") {
-        await handleStatusChange(quoteId, "sent");
+        const updated = await handleStatusChange(quoteId, "sent");
+        if (!updated) {
+          throw new Error("Could not update quote status");
+        }
       }
 
       // Use quote_shares table with access_mode
@@ -248,9 +246,27 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
       const url = `${baseUrl}/q/${token}`;
       setShareUrl(url);
       setShareDialogOpen(true);
+
+      const actionText = mode === "sign" ? "לצפייה ולחתימה" : "לצפייה";
+      const text = encodeURIComponent(`הצעת מחיר #${quoteNumber} ${actionText}:\n${url}`);
+      const whatsappUrl = `https://wa.me/?text=${text}`;
+
+      if (popup && !popup.closed) {
+        popup.location.href = whatsappUrl;
+      }
+
+      toast({
+        title: mode === "sign" ? "קישור חתימה נוצר" : "קישור צפייה נוצר",
+        description: "נפתח חלון WhatsApp עם הקישור הציבורי",
+      });
     } catch (err: any) {
+      if (popup && !popup.closed) popup.close();
       console.error("Send to customer error:", err);
-      toast({ title: "שגיאה", description: "לא ניתן ליצור קישור שיתוף", variant: "destructive" });
+      toast({
+        title: "שגיאה",
+        description: err?.message || "לא ניתן ליצור קישור שיתוף",
+        variant: "destructive"
+      });
     } finally {
       setSendingQuoteId(null);
     }
