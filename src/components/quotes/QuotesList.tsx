@@ -209,6 +209,8 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
   const handleSendToCustomer = async (quoteId: string, quoteNumber: number, mode: "view" | "sign") => {
     if (!user) return;
     setSendingQuoteId(quoteId);
+    setShareQuoteNumber(quoteNumber);
+    setShareMode(mode);
     try {
       const quote = quotes.find(q => q.id === quoteId);
       if (mode === "sign" && quote && quote.status === "draft") {
@@ -244,15 +246,29 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
 
       const baseUrl = getPublicBaseUrl();
       const url = `${baseUrl}/q/${token}`;
-      const actionText = mode === "sign" ? "לצפייה ולחתימה" : "לצפייה";
-      const text = encodeURIComponent(`הצעת מחיר #${quoteNumber} ${actionText}:\n${url}`);
-      window.open(`https://wa.me/?text=${text}`, "_blank");
+      setShareUrl(url);
+      setShareDialogOpen(true);
     } catch (err: any) {
       console.error("Send to customer error:", err);
       toast({ title: "שגיאה", description: "לא ניתן ליצור קישור שיתוף", variant: "destructive" });
     } finally {
       setSendingQuoteId(null);
     }
+  };
+
+  const handleCopyShareUrl = async () => {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    toast({ title: "הועתק!", description: "הקישור הועתק ללוח" });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleWhatsApp = () => {
+    if (!shareUrl) return;
+    const actionText = shareMode === "sign" ? "לצפייה ולחתימה" : "לצפייה";
+    const text = encodeURIComponent(`הצעת מחיר #${shareQuoteNumber} ${actionText}:\n${shareUrl}`);
+    window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
   if (!readOnly && (creating || editingId)) {
