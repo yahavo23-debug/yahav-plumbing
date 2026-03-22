@@ -195,22 +195,21 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
     }
   };
 
-  const handleSendToCustomer = async (quoteId: string, quoteNumber: number) => {
+  const handleSendToCustomer = async (quoteId: string, quoteNumber: number, mode: "view" | "sign") => {
     if (!user) return;
     setSendingQuoteId(quoteId);
     try {
-      // Make sure quote is in "sent" status
       const quote = quotes.find(q => q.id === quoteId);
-      if (quote && quote.status === "draft") {
+      if (mode === "sign" && quote && quote.status === "draft") {
         await handleStatusChange(quoteId, "sent");
       }
 
-      // Check for existing share link
+      // Use quote_shares table with access_mode
       const { data: existing } = await supabase
-        .from("service_call_shares")
+        .from("quote_shares")
         .select("share_token")
-        .eq("service_call_id", serviceCallId)
-        .eq("share_type", "quotes")
+        .eq("quote_id", quoteId)
+        .eq("access_mode", mode)
         .eq("is_active", true)
         .is("revoked_at", null)
         .limit(1) as any;
@@ -220,10 +219,10 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
         token = existing[0].share_token;
       } else {
         const { data, error } = await supabase
-          .from("service_call_shares")
+          .from("quote_shares")
           .insert({
-            service_call_id: serviceCallId,
-            share_type: "quotes",
+            quote_id: quoteId,
+            access_mode: mode,
             created_by: user.id,
           } as any)
           .select("share_token")
@@ -233,8 +232,9 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
       }
 
       const baseUrl = getPublicBaseUrl();
-      const url = `${baseUrl}/s/${token}`;
-      const text = encodeURIComponent(`הצעת מחיר #${quoteNumber} לצפייה ולחתימה:\n${url}`);
+      const url = `${baseUrl}/q/${token}`;
+      const actionText = mode === "sign" ? "לצפייה ולחתימה" : "לצפייה";
+      const text = encodeURIComponent(`הצעת מחיר #${quoteNumber} ${actionText}:\n${url}`);
       window.open(`https://wa.me/?text=${text}`, "_blank");
     } catch (err: any) {
       console.error("Send to customer error:", err);
