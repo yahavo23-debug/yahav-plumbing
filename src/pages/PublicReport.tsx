@@ -26,6 +26,7 @@ const PublicReport = () => {
   const [error, setError] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
   const [playingVideo, setPlayingVideo] = useState<any>(null);
+  const [accessMode, setAccessMode] = useState<string>("sign");
 
   useEffect(() => {
     if (!token) return;
