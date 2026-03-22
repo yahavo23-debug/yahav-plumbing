@@ -223,13 +223,19 @@ const PublicReport = () => {
               )}
             </CardContent>
           </Card>
-        ) : (
+        ) : accessMode === "sign" ? (
           <PublicSignaturePad
             shareToken={token!}
             onSigned={(signatureDate) => {
               setReport((prev: any) => ({ ...prev, signature_date: signatureDate, signature_url: "signed" }));
             }}
           />
+        ) : (
+          <Card>
+            <CardContent className="p-4 text-center text-sm text-muted-foreground">
+              דוח לצפייה בלבד
+            </CardContent>
+          </Card>
         )}
       </main>
 
