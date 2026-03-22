@@ -83,6 +83,11 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
   const [creating, setCreating] = useState(false);
   const [signingQuoteId, setSigningQuoteId] = useState<string | null>(null);
   const [sendingQuoteId, setSendingQuoteId] = useState<string | null>(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareMode, setShareMode] = useState<"view" | "sign">("sign");
+  const [shareQuoteNumber, setShareQuoteNumber] = useState<number>(0);
+  const [copied, setCopied] = useState(false);
   const { user, isAdmin } = useAuth();
 
   const loadQuotes = useCallback(async () => {
