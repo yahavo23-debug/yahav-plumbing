@@ -25,6 +25,7 @@ import {
   escapeHtml,
   BUSINESS_INFO,
 } from "@/lib/pdf-utils";
+import { LEGAL_SECTIONS, buildLegalAnnexHtml } from "@/lib/legal-constants";
 
 interface PdfReportGeneratorProps {
   report: any;
