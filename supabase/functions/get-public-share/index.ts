@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
     if (shareType === "report") {
       const { data: reports } = await supabase
         .from("reports")
-        .select("*")
+        .select("id, service_call_id, title, findings, recommendations, quote_summary, invoice_number, invoice_status, status, created_at, updated_at, signature_path, signed_by, signature_date, pdf_path")
         .eq("service_call_id", scId)
         .order("created_at", { ascending: false });
 
