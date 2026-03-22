@@ -64,6 +64,7 @@ function AppRoutes() {
       {/* Public routes */}
       <Route path="/auth" element={<Auth />} />
       <Route path="/r/:token" element={<PublicReport />} />
+      <Route path="/q/:token" element={<PublicQuote />} />
       <Route path="/s/:token" element={<PublicShare />} />
 
       {/* Protected routes */}
