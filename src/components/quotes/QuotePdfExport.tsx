@@ -142,7 +142,7 @@ export function QuotePdfExport({ quoteId, serviceCallId }: QuotePdfExportProps) 
       if (annexElement) {
         const annexCanvas = await html2canvas(annexElement, canvasOptions);
         pdf.addPage();
-        renderSinglePageCanvasToPdf(annexCanvas, pdf);
+        renderCanvasToPdf(annexCanvas, pdf);
       }
 
       // Download
