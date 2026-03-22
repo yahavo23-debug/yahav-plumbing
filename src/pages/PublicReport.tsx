@@ -58,6 +58,7 @@ const PublicReport = () => {
       setCustomer(data.customer);
       setPhotos(data.photos || []);
       setVideos(data.videos || []);
+      setAccessMode(data.access_mode || "sign");
     } catch (err: any) {
       console.error("Public report load error:", err);
       setError("לא ניתן לטעון את הדוח");
