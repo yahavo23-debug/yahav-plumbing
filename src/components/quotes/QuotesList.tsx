@@ -366,16 +366,28 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                   )}
                   {!readOnly && !isSigned && (
                     <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                      {/* Send to customer for signing */}
+                      {/* Send to customer for viewing */}
                       <Button
                         variant="outline"
                         size="sm"
                         className="gap-1.5"
                         disabled={sendingQuoteId === quote.id}
-                        onClick={() => handleSendToCustomer(quote.id, quote.quote_number)}
+                        onClick={() => handleSendToCustomer(quote.id, quote.quote_number, "view")}
                       >
                         {sendingQuoteId === quote.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                        שלח ללקוח לחתימה
+                        שלח ללקוח
+                      </Button>
+
+                      {/* Send to customer for signing */}
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={sendingQuoteId === quote.id}
+                        onClick={() => handleSendToCustomer(quote.id, quote.quote_number, "sign")}
+                      >
+                        {sendingQuoteId === quote.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pen className="w-3.5 h-3.5" />}
+                        שלח לחתימה
                       </Button>
 
                       {/* Convert to job — for approved or sent quotes */}
