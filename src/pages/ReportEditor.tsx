@@ -246,9 +246,14 @@ const ReportEditor = () => {
           )}
           {/* Send to sign — for draft or sent status */}
           {(report.status === "draft" || report.status === "sent") && (
-            <Button onClick={handleSendToSign} disabled={saving} className="gap-2" variant="default">
-              <Send className="w-4 h-4" /> שלח לחתימה
-            </Button>
+            <>
+              <Button onClick={() => handleSendLink("view")} disabled={saving} className="gap-2" variant="outline">
+                <Send className="w-4 h-4" /> שלח ללקוח
+              </Button>
+              <Button onClick={() => handleSendLink("sign")} disabled={saving} className="gap-2" variant="default">
+                <Send className="w-4 h-4" /> שלח לחתימה
+              </Button>
+            </>
           )}
           {/* Finalize — for signed reports */}
           {report.status === "signed" && (
