@@ -541,6 +541,50 @@ export type Database = {
           },
         ]
       }
+      quote_shares: {
+        Row: {
+          access_mode: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          quote_id: string
+          revoked_at: string | null
+          share_token: string
+        }
+        Insert: {
+          access_mode?: string
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          quote_id: string
+          revoked_at?: string | null
+          share_token?: string
+        }
+        Update: {
+          access_mode?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          quote_id?: string
+          revoked_at?: string | null
+          share_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_shares_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           created_at: string
@@ -551,12 +595,15 @@ export type Database = {
           include_vat: boolean
           ip_address: string | null
           notes: string | null
+          pdf_hash: string | null
+          pdf_path: string | null
           quote_number: number
           scope_of_work: Json | null
           service_call_id: string
           signature_path: string | null
           signed_at: string | null
           signed_by: string | null
+          signer_id_number: string | null
           status: string
           title: string
           updated_at: string
@@ -571,12 +618,15 @@ export type Database = {
           include_vat?: boolean
           ip_address?: string | null
           notes?: string | null
+          pdf_hash?: string | null
+          pdf_path?: string | null
           quote_number?: number
           scope_of_work?: Json | null
           service_call_id: string
           signature_path?: string | null
           signed_at?: string | null
           signed_by?: string | null
+          signer_id_number?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -591,12 +641,15 @@ export type Database = {
           include_vat?: boolean
           ip_address?: string | null
           notes?: string | null
+          pdf_hash?: string | null
+          pdf_path?: string | null
           quote_number?: number
           scope_of_work?: Json | null
           service_call_id?: string
           signature_path?: string | null
           signed_at?: string | null
           signed_by?: string | null
+          signer_id_number?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -614,6 +667,7 @@ export type Database = {
       }
       report_shares: {
         Row: {
+          access_mode: string
           created_at: string
           created_by: string
           expires_at: string | null
@@ -624,6 +678,7 @@ export type Database = {
           share_token: string
         }
         Insert: {
+          access_mode?: string
           created_at?: string
           created_by: string
           expires_at?: string | null
@@ -634,6 +689,7 @@ export type Database = {
           share_token?: string
         }
         Update: {
+          access_mode?: string
           created_at?: string
           created_by?: string
           expires_at?: string | null
@@ -663,6 +719,7 @@ export type Database = {
           invoice_number: string | null
           invoice_status: string | null
           ip_address: string | null
+          pdf_hash: string | null
           pdf_path: string | null
           quote_summary: string | null
           recommendations: string | null
@@ -670,6 +727,7 @@ export type Database = {
           signature_date: string | null
           signature_path: string | null
           signed_by: string | null
+          signer_id_number: string | null
           status: string
           title: string
           updated_at: string
@@ -683,6 +741,7 @@ export type Database = {
           invoice_number?: string | null
           invoice_status?: string | null
           ip_address?: string | null
+          pdf_hash?: string | null
           pdf_path?: string | null
           quote_summary?: string | null
           recommendations?: string | null
@@ -690,6 +749,7 @@ export type Database = {
           signature_date?: string | null
           signature_path?: string | null
           signed_by?: string | null
+          signer_id_number?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -703,6 +763,7 @@ export type Database = {
           invoice_number?: string | null
           invoice_status?: string | null
           ip_address?: string | null
+          pdf_hash?: string | null
           pdf_path?: string | null
           quote_summary?: string | null
           recommendations?: string | null
@@ -710,6 +771,7 @@ export type Database = {
           signature_date?: string | null
           signature_path?: string | null
           signed_by?: string | null
+          signer_id_number?: string | null
           status?: string
           title?: string
           updated_at?: string
