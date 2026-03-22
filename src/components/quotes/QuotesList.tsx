@@ -333,7 +333,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                         size="sm"
                         className="gap-1.5"
                         disabled={sendingQuoteId === quote.id}
-                        onClick={() => handleSendToCustomer(quote.id, quote.quote_number)}
+                        onClick={() => handleSendToCustomer(quote.id, quote.quote_number, "view")}
                       >
                         {sendingQuoteId === quote.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                         שלח ללקוח
