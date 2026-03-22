@@ -26,6 +26,7 @@ const PublicReport = () => {
   const [error, setError] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
   const [playingVideo, setPlayingVideo] = useState<any>(null);
+  const [accessMode, setAccessMode] = useState<string>("sign");
 
   useEffect(() => {
     if (!token) return;
@@ -57,6 +58,7 @@ const PublicReport = () => {
       setCustomer(data.customer);
       setPhotos(data.photos || []);
       setVideos(data.videos || []);
+      setAccessMode(data.access_mode || "sign");
     } catch (err: any) {
       console.error("Public report load error:", err);
       setError("לא ניתן לטעון את הדוח");
@@ -221,13 +223,19 @@ const PublicReport = () => {
               )}
             </CardContent>
           </Card>
-        ) : (
+        ) : accessMode === "sign" ? (
           <PublicSignaturePad
             shareToken={token!}
             onSigned={(signatureDate) => {
               setReport((prev: any) => ({ ...prev, signature_date: signatureDate, signature_url: "signed" }));
             }}
           />
+        ) : (
+          <Card>
+            <CardContent className="p-4 text-center text-sm text-muted-foreground">
+              דוח לצפייה בלבד
+            </CardContent>
+          </Card>
         )}
       </main>
 

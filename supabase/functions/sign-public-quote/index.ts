@@ -16,9 +16,18 @@ Deno.serve(async (req) => {
     const quoteId = formData.get("quote_id") as string;
     const signatureFile = formData.get("signature") as File;
     const signedBy = formData.get("signed_by") as string || null;
+    const signerIdNumber = formData.get("signer_id_number") as string || null;
 
     if (!shareToken || !quoteId || !signatureFile) {
       return new Response(JSON.stringify({ error: "Missing share_token, quote_id or signature" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate ID number - must be exactly 9 digits
+    if (!signerIdNumber || !/^\d{9}$/.test(signerIdNumber)) {
+      return new Response(JSON.stringify({ error: "תעודת זהות חייבת להכיל 9 ספרות בדיוק" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -52,12 +61,11 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify share token
+    // Verify share token — now from quote_shares table
     const { data: share, error: shareErr } = await supabase
-      .from("service_call_shares")
-      .select("service_call_id, share_type, is_active, revoked_at, expires_at")
+      .from("quote_shares")
+      .select("quote_id, access_mode, is_active, revoked_at, expires_at")
       .eq("share_token", shareToken)
-      .eq("share_type", "quotes")
       .single();
 
     if (shareErr || !share) {
@@ -81,12 +89,26 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify quote belongs to this service call
+    if (share.access_mode !== "sign") {
+      return new Response(JSON.stringify({ error: "This link is view-only" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify quote belongs to this share and matches quoteId
+    if (share.quote_id !== quoteId) {
+      return new Response(JSON.stringify({ error: "Quote mismatch" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Check quote exists and isn't already signed
     const { data: quote } = await supabase
       .from("quotes")
-      .select("id, signature_path, service_call_id")
+      .select("id, signature_path")
       .eq("id", quoteId)
-      .eq("service_call_id", share.service_call_id)
       .single();
 
     if (!quote) {
@@ -121,7 +143,7 @@ Deno.serve(async (req) => {
 
     if (uploadError) throw uploadError;
 
-    // Update quote with signature + metadata
+    // Update quote with signature + metadata — ID stored separately
     const now = new Date().toISOString();
     const { error: updateError } = await supabase
       .from("quotes")
@@ -130,6 +152,7 @@ Deno.serve(async (req) => {
         signed_at: now,
         status: "approved",
         signed_by: signedBy,
+        signer_id_number: signerIdNumber,
         ip_address: ipAddress,
         device_info: deviceInfo,
       })
@@ -137,7 +160,7 @@ Deno.serve(async (req) => {
 
     if (updateError) throw updateError;
 
-    console.log(`Quote ${quoteId} signed via public link by ${signedBy || "unknown"} from ${ipAddress}`);
+    console.log(`Quote ${quoteId} signed via public link by ${signedBy || "unknown"} (ID: ${signerIdNumber}) from ${ipAddress}`);
 
     return new Response(JSON.stringify({ success: true, signed_at: now }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

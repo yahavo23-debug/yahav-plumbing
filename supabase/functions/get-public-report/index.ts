@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     // Verify token
     const { data: share, error: shareErr } = await supabase
       .from("report_shares")
-      .select("report_id, is_active, revoked_at, expires_at")
+      .select("report_id, access_mode, is_active, revoked_at, expires_at")
       .eq("share_token", share_token)
       .single();
 
@@ -81,6 +81,7 @@ Deno.serve(async (req) => {
       },
       service_call, customer,
       photos: photosWithUrls, videos: videosWithUrls,
+      access_mode: share.access_mode || "sign",
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Error:", err);

@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     // Verify token
     const { data: share, error: shareErr } = await supabase
       .from("report_shares")
-      .select("report_id, is_active, revoked_at, expires_at")
+      .select("report_id, access_mode, is_active, revoked_at, expires_at")
       .eq("share_token", shareToken)
       .single();
 
@@ -83,6 +83,13 @@ Deno.serve(async (req) => {
 
     if (share.expires_at && new Date(share.expires_at) < new Date()) {
       return new Response(JSON.stringify({ error: "Token expired" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (share.access_mode === "view") {
+      return new Response(JSON.stringify({ error: "This link is view-only" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -127,14 +134,15 @@ Deno.serve(async (req) => {
 
     if (uploadError) throw uploadError;
 
-    // Update report with signature + metadata + status → signed
+    // Update report with signature + metadata — ID stored separately
     const now = new Date().toISOString();
     const { error: updateError } = await supabase
       .from("reports")
       .update({
         signature_path: filePath,
         signature_date: now,
-        signed_by: signedBy ? `${signedBy} (ת.ז. ${signerIdNumber})` : signerIdNumber,
+        signed_by: signedBy,
+        signer_id_number: signerIdNumber,
         ip_address: ipAddress,
         device_info: deviceInfo,
         status: "signed",
@@ -143,7 +151,7 @@ Deno.serve(async (req) => {
 
     if (updateError) throw updateError;
 
-    console.log(`Report ${share.report_id} signed via public link by ${signedBy || "unknown"} from ${ipAddress}`);
+    console.log(`Report ${share.report_id} signed via public link by ${signedBy || "unknown"} (ID: ${signerIdNumber}) from ${ipAddress}`);
 
     return new Response(JSON.stringify({ success: true, signature_date: now }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

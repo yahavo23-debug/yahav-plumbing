@@ -7,6 +7,7 @@ import { FileDown, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { buildPdfHeader, buildPdfFooter, BUSINESS_INFO, renderCanvasToPdf, escapeHtml, escapeHtmlWithBreaks } from "@/lib/pdf-utils";
+import { LEGAL_SECTIONS } from "@/lib/legal-constants";
 
 interface QuotePdfExportProps {
   quoteId: string;
@@ -118,17 +119,31 @@ export function QuotePdfExport({ quoteId, serviceCallId }: QuotePdfExportProps) 
       );
       await new Promise((r) => setTimeout(r, 300));
 
-      // Capture to canvas
-      const canvas = await html2canvas(container, {
+      const canvasOptions = {
         scale: 2,
         useCORS: true,
         allowTaint: false,
         backgroundColor: "#ffffff",
-      });
+      };
+
+      // Hide annex for main canvas capture
+      const annexElement = container.querySelector("[data-pdf-annex='true']") as HTMLElement | null;
+      if (annexElement) annexElement.style.display = "none";
+
+      const mainCanvas = await html2canvas(container, canvasOptions);
+
+      if (annexElement) annexElement.style.display = "";
 
       // Generate PDF with multi-page support
       const pdf = new jsPDF("p", "mm", "a4");
-      renderCanvasToPdf(canvas, pdf);
+      renderCanvasToPdf(mainCanvas, pdf);
+
+      // Render annex on separate page
+      if (annexElement) {
+        const annexCanvas = await html2canvas(annexElement, canvasOptions);
+        pdf.addPage();
+        renderSinglePageCanvasToPdf(annexCanvas, pdf);
+      }
 
       // Download
       const fileName = `הצעת_מחיר_${customer?.name || "לקוח"}_${dateStr.replace(/\//g, "-")}.pdf`;
