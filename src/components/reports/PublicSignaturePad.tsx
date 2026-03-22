@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, RotateCcw, Pen, AlertCircle } from "lucide-react";
 import { BUSINESS_INFO } from "@/lib/pdf-utils";
+import { LEGAL_SECTIONS } from "@/lib/legal-constants";
 
 interface PublicSignaturePadProps {
   shareToken: string;
