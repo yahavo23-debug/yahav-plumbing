@@ -7,6 +7,7 @@ import { FileDown, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { buildPdfHeader, buildPdfFooter, BUSINESS_INFO, renderCanvasToPdf, escapeHtml, escapeHtmlWithBreaks } from "@/lib/pdf-utils";
+import { LEGAL_SECTIONS } from "@/lib/legal-constants";
 
 interface QuotePdfExportProps {
   quoteId: string;
