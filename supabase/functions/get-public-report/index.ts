@@ -81,6 +81,7 @@ Deno.serve(async (req) => {
       },
       service_call, customer,
       photos: photosWithUrls, videos: videosWithUrls,
+      access_mode: share.access_mode || "sign",
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Error:", err);
