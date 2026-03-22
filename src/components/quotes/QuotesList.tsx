@@ -8,8 +8,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { QuoteEditor } from "./QuoteEditor";
 import { QuoteSignaturePad } from "./QuoteSignaturePad";
 import { ConvertQuoteToJob } from "./ConvertQuoteToJob";
-import { Plus, Edit, Trash2, FileText, Pen, Unlock, Send, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, Pen, Unlock, Send, Loader2, Copy, Check as CheckIcon } from "lucide-react";
 import { QuotePdfExport } from "./QuotePdfExport";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
