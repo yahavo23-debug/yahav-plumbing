@@ -124,21 +124,23 @@ const ReportEditor = () => {
 
   // Unlock removed — signed/final reports are permanently locked
 
-  const handleSendToSign = async () => {
+  const handleSendLink = async (mode: "view" | "sign") => {
     if (!user) return;
     setSaving(true);
     try {
-      // Save form first
-      await supabase.from("reports").update({ ...form, status: "sent" } as any).eq("id", id!);
-      setReport((r: any) => ({ ...r, status: "sent" }));
+      if (mode === "sign") {
+        await supabase.from("reports").update({ ...form, status: "sent" } as any).eq("id", id!);
+        setReport((r: any) => ({ ...r, status: "sent" }));
+      }
 
-      // Create share link if doesn't exist
+      // Create share link with access_mode
       let token = shareToken;
       if (!token) {
         const { data, error } = await supabase.from("report_shares").insert({
           report_id: id!,
           created_by: user.id,
-        }).select("share_token").single();
+          access_mode: mode,
+        } as any).select("share_token").single();
 
         if (error) throw error;
         token = data.share_token;
@@ -146,7 +148,11 @@ const ReportEditor = () => {
       }
 
       setShareDialogOpen(true);
-      toast({ title: "הדוח נשלח לחתימה", description: "סטטוס עודכן ל'נשלח'" });
+      if (mode === "sign") {
+        toast({ title: "הדוח נשלח לחתימה", description: "סטטוס עודכן ל'נשלח'" });
+      } else {
+        toast({ title: "קישור צפייה נוצר" });
+      }
     } catch (err: any) {
       toast({ title: "שגיאה", description: err.message, variant: "destructive" });
     } finally {
