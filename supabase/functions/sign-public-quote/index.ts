@@ -50,10 +50,13 @@ Deno.serve(async (req) => {
     }
 
     // Capture IP and device info
-    const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    const rawIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       || req.headers.get("cf-connecting-ip")
       || req.headers.get("x-real-ip")
       || "unknown";
+    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    const ipv6Regex = /^[0-9a-fA-F:]+$/;
+    const ipAddress = (ipv4Regex.test(rawIp) || ipv6Regex.test(rawIp)) ? rawIp : "unknown";
     const deviceInfo = req.headers.get("user-agent") || "unknown";
 
     const supabase = createClient(

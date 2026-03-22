@@ -368,7 +368,7 @@ function buildQuoteHtml(data: {
           <div style="font-size:12px;line-height:1.8;">
             ${quote.signed_by ? `<p style="margin:0;"><strong>שם החותם:</strong> ${escapeHtml(quote.signed_by)}</p>` : ""}
             <p style="margin:0;"><strong>תאריך ושעה:</strong> ${signedDate}</p>
-            ${quote.ip_address ? `<p style="margin:0;"><strong>כתובת IP:</strong> ${quote.ip_address}</p>` : ""}
+            ${quote.ip_address ? `<p style="margin:0;"><strong>כתובת IP:</strong> ${escapeHtml(quote.ip_address)}</p>` : ""}
           </div>
         </div>
       </div>
