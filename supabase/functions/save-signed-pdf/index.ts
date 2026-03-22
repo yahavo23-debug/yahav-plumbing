@@ -83,6 +83,16 @@ Deno.serve(async (req) => {
     // Read PDF bytes
     const arrayBuffer = await pdfFile.arrayBuffer();
 
+    // Validate PDF magic bytes (%PDF)
+    const bytes = new Uint8Array(arrayBuffer);
+    const isPDF = bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+    if (!isPDF) {
+      return new Response(JSON.stringify({ error: "Only PDF files are allowed" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Compute SHA-256 hash
     const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));

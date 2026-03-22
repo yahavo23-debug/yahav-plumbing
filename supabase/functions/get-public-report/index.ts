@@ -76,8 +76,22 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       report: {
-        ...report,
+        id: report.id,
+        service_call_id: report.service_call_id,
+        title: report.title,
+        findings: report.findings,
+        recommendations: report.recommendations,
+        quote_summary: report.quote_summary,
+        invoice_number: report.invoice_number,
+        invoice_status: report.invoice_status,
+        status: report.status,
+        created_at: report.created_at,
+        updated_at: report.updated_at,
+        signature_path: report.signature_path,
         signature_url: signatureUrl,
+        signed_by: report.signed_by,
+        signature_date: report.signature_date,
+        pdf_path: report.pdf_path,
       },
       service_call, customer,
       photos: photosWithUrls, videos: videosWithUrls,

@@ -116,8 +116,6 @@ Deno.serve(async (req) => {
         signature_url: signatureUrl,
         signed_at: quote.signed_at,
         signed_by: quote.signed_by,
-        signer_id_number: quote.signer_id_number,
-        ip_address: quote.ip_address,
         created_at: quote.created_at,
       },
       items: items || [],
