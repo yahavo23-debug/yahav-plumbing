@@ -25,6 +25,7 @@ import DispatchBoard from "./pages/DispatchBoard";
 import Finance from "./pages/Finance";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
 import ProfitabilityReport from "./pages/ProfitabilityReport";
+import PublicQuote from "./pages/PublicQuote";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
