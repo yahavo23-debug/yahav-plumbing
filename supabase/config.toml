@@ -23,3 +23,9 @@ verify_jwt = false
 
 [functions.get-manifest]
 verify_jwt = false
+
+[functions.get-public-quote]
+verify_jwt = false
+
+[functions.save-signed-pdf]
+verify_jwt = false
