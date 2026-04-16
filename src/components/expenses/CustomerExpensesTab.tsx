@@ -140,7 +140,27 @@ export function CustomerExpensesTab({ customerId, customerName }: Props) {
     if (error) {
       toast({ title: "שגיאה", description: "לא ניתן לשמור את ההוצאה", variant: "destructive" });
     } else {
-      toast({ title: "נשמר", description: "ההוצאה נוספה בהצלחה" });
+      // Auto-sync expense to financial_transactions
+      const supplierLabel = formSupplier.trim() || categoryLabels[formCategory] || "";
+      const descLabel = formDescription.trim() || `הוצאה - ${categoryLabels[formCategory]}`;
+      try {
+        await (supabase as any).from("financial_transactions").insert({
+          direction: "expense",
+          amount,
+          txn_date: formDate,
+          category: formCategory === "contractor" ? "subcontractor" : formCategory === "materials" ? "materials" : "other_expense",
+          counterparty_name: supplierLabel || customerName || null,
+          customer_id: customerId,
+          notes: descLabel,
+          status: "paid",
+          doc_path: formReceiptPath || null,
+          doc_type: formReceiptPath ? "receipt" : null,
+        });
+      } catch (finErr) {
+        console.error("Auto finance expense sync error:", finErr);
+      }
+
+      toast({ title: "נשמר", description: "ההוצאה נוספה בהצלחה (+ הוצאה בכספים)" });
       setShowForm(false);
       resetForm();
       loadExpenses();
