@@ -21,11 +21,21 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
   useEffect(() => {
     if (currentPath && !previewUrl) {
       setIsPdf(currentPath.endsWith(".pdf"));
+      // Try finance-docs first, fallback to receipts (for auto-created entries from billing)
       supabase.storage
         .from("finance-docs")
         .createSignedUrl(currentPath, 300)
-        .then(({ data }) => {
-          if (data?.signedUrl) setPreviewUrl(data.signedUrl);
+        .then(({ data, error }) => {
+          if (data?.signedUrl && !error) {
+            setPreviewUrl(data.signedUrl);
+          } else {
+            supabase.storage
+              .from("receipts")
+              .createSignedUrl(currentPath, 300)
+              .then(({ data: rData }) => {
+                if (rData?.signedUrl) setPreviewUrl(rData.signedUrl);
+              });
+          }
         });
     }
   }, [currentPath]);
