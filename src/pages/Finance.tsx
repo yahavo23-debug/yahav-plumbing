@@ -99,10 +99,16 @@ export default function Finance() {
   const openDoc = async (docPath: string) => {
     setPreviewLoading(true);
     try {
+      // Try finance-docs bucket first, fallback to receipts bucket (for auto-created entries from billing)
       const { data, error } = await supabase.storage.from("finance-docs").createSignedUrl(docPath, 3600);
-      if (error) throw error;
-      if (data?.signedUrl) {
+      if (!error && data?.signedUrl) {
         setPreviewUrl(data.signedUrl);
+      } else {
+        const { data: receiptData, error: receiptError } = await supabase.storage.from("receipts").createSignedUrl(docPath, 3600);
+        if (receiptError) throw receiptError;
+        if (receiptData?.signedUrl) {
+          setPreviewUrl(receiptData.signedUrl);
+        }
       }
     } catch (err: any) {
       toast({ title: "שגיאה", description: "לא ניתן לפתוח את המסמך", variant: "destructive" });
@@ -114,7 +120,11 @@ export default function Finance() {
   const handleDelete = async (id: string) => {
     const txn = transactions.find(t => t.id === id);
     if (txn?.doc_path) {
-      await supabase.storage.from("finance-docs").remove([txn.doc_path]);
+      // Try removing from both buckets (file could be in either)
+      await Promise.all([
+        supabase.storage.from("finance-docs").remove([txn.doc_path]),
+        supabase.storage.from("receipts").remove([txn.doc_path]),
+      ]);
     }
     const { error } = await (supabase as any).from("financial_transactions").delete().eq("id", id);
     if (error) {
