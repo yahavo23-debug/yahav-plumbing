@@ -120,7 +120,11 @@ export default function Finance() {
   const handleDelete = async (id: string) => {
     const txn = transactions.find(t => t.id === id);
     if (txn?.doc_path) {
-      await supabase.storage.from("finance-docs").remove([txn.doc_path]);
+      // Try removing from both buckets (file could be in either)
+      await Promise.all([
+        supabase.storage.from("finance-docs").remove([txn.doc_path]),
+        supabase.storage.from("receipts").remove([txn.doc_path]),
+      ]);
     }
     const { error } = await (supabase as any).from("financial_transactions").delete().eq("id", id);
     if (error) {
