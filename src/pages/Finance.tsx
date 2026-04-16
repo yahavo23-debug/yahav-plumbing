@@ -99,10 +99,16 @@ export default function Finance() {
   const openDoc = async (docPath: string) => {
     setPreviewLoading(true);
     try {
+      // Try finance-docs bucket first, fallback to receipts bucket (for auto-created entries from billing)
       const { data, error } = await supabase.storage.from("finance-docs").createSignedUrl(docPath, 3600);
-      if (error) throw error;
-      if (data?.signedUrl) {
+      if (!error && data?.signedUrl) {
         setPreviewUrl(data.signedUrl);
+      } else {
+        const { data: receiptData, error: receiptError } = await supabase.storage.from("receipts").createSignedUrl(docPath, 3600);
+        if (receiptError) throw receiptError;
+        if (receiptData?.signedUrl) {
+          setPreviewUrl(receiptData.signedUrl);
+        }
       }
     } catch (err: any) {
       toast({ title: "שגיאה", description: "לא ניתן לפתוח את המסמך", variant: "destructive" });
