@@ -162,10 +162,7 @@ const CustomerDetail = () => {
             פרטים
           </TabsTrigger>
           <TabsTrigger value="billing" className="text-base px-6 h-10">
-            חשבון
-          </TabsTrigger>
-          <TabsTrigger value="expenses" className="text-base px-6 h-10">
-            עלות עבודה
+            חשבון ועלויות
           </TabsTrigger>
         </TabsList>
 
@@ -328,21 +325,22 @@ const CustomerDetail = () => {
           </Card>
         </TabsContent>
 
-        {/* Billing Tab */}
+        {/* Combined Billing & Expenses Tab */}
         <TabsContent value="billing">
-          <BillingTab
-            customerId={id!}
-            customerName={customer.name}
-            customerPhone={customer.phone}
-            customerCity={customer.city}
-            customerAddress={customer.address}
-            onBillingChange={billing.refresh}
-          />
-        </TabsContent>
-
-        {/* Expenses Tab */}
-        <TabsContent value="expenses">
-          <CustomerExpensesTab customerId={id!} customerName={customer.name} />
+          <div className="space-y-8">
+            <BillingTab
+              customerId={id!}
+              customerName={customer.name}
+              customerPhone={customer.phone}
+              customerCity={customer.city}
+              customerAddress={customer.address}
+              onBillingChange={billing.refresh}
+            />
+            <div className="border-t border-border pt-6">
+              <h3 className="text-lg font-semibold mb-4">עלות עבודה בפועל</h3>
+              <CustomerExpensesTab customerId={id!} customerName={customer.name} />
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
