@@ -1,69 +1,38 @@
 
+המשתמש מבקש דוח טכני סקירתי על האפליקציה - לא משימת בנייה אלא בקשת מידע/אנליזה. אני יכול לייצר מסמך PDF/DOCX קריא ומסודר.
 
-## תוכנית סופית מאושרת — הפרדת מסמכים, חתימה דיגיטלית, והגנה משפטית
+## מה אכלול בדוח:
+1. **תשתית ענן** - Lovable Cloud (מבוסס Supabase, רץ על AWS)
+2. **בסיס נתונים** - PostgreSQL עם RLS
+3. **אוטנטיקציה** - Supabase Auth (Email+Password), טבלת user_roles נפרדת
+4. **שפות וטכנולוגיות** - React 18, TypeScript, Vite, Tailwind, shadcn/ui, Edge Functions ב-Deno
+5. **מסכים** - מהקוד: Dashboard, Customers, ServiceCalls, Reports, DispatchBoard, Finance, MarketingAnalytics, ProfitabilityReport, Settings, Auth, PublicQuote/Report/Share
+6. **תפקידים (RBAC)** - admin, technician, secretary, contractor + מה כל אחד רואה
+7. **אחסון קבצים** - 8 buckets
+8. **אבטחה** - RLS, Magic Bytes, PDF hashes, audit logs
+9. **פונקציות צד-שרת** - 11 Edge Functions
 
-כל הנקודות שהעלית כלולות. סיכום מהיר של שתי הנקודות האחרונות:
-- תאריך + שעה יופיעו **בתוך ה-PDF** בבלוק החתימה (לא רק במסד).
-- IP + Device נשמרים בטבלה וניתנים לשליפה. ה-IP מופיע גם בבלוק החתימה ב-PDF.
+## פורמט מועדף:
+מסמך PDF בעברית RTL, נקי ומסודר עם כותרות, טבלאות לתפקידים ומסכים.
 
----
+## תוכנית ביצוע:
+1. ייצור PDF בעברית עם reportlab או דרך HTML+playwright/weasyprint
+2. שמירה ב-`/mnt/documents/system-overview.pdf`
+3. QA חזותי - המרה לתמונות ובדיקה
+4. הצגה ב-presentation-artifact
 
-### שלב 1: מיגרציית מסד נתונים
-- `quotes`: הוספת `signer_id_number TEXT`, `pdf_path TEXT`, `pdf_hash TEXT`
-- `reports`: הוספת `signer_id_number TEXT`, `pdf_hash TEXT`
-- `report_shares`: הוספת `access_mode TEXT DEFAULT 'sign'`
-- טבלת `quote_shares` חדשה: `id`, `quote_id`, `access_mode`, `share_token`, `is_active`, `revoked_at`, `expires_at`, `created_by`, `created_at` + RLS
-- Storage bucket: `quotes-pdf`
+אשתמש ב-Python + reportlab (תומך RTL) או עדיף - HTML מעוצב + המרה ל-PDF דרך chromium headless. HTML יהיה הכי קל לעיצוב נקי בעברית.
 
-### שלב 2: נספח משפטי מרכזי
-- קובץ חדש `src/lib/legal-constants.ts` — מקור אחד ל-`LEGAL_SECTIONS`
-- עדכון כל הקומפוננטות לייבא משם
+## הדוח יכלול את הסעיפים:
+- סקירה כללית
+- תשתית ענן ואחסון
+- בסיס נתונים
+- אוטנטיקציה ואבטחה
+- שפות פיתוח וטכנולוגיות
+- מסכים ראשיים (טבלה)
+- תפקידי משתמשים והרשאות (טבלה)
+- מודולים עיקריים
+- פונקציות צד-שרת
+- סיכום
 
-### שלב 3: Edge Functions
-- חדש: `get-public-quote` — מחזיר הצעה + פריטים + לקוח + `access_mode`
-- חדש: `save-signed-pdf` — מעלה PDF, מחשב SHA-256, שומר `pdf_path` + `pdf_hash`
-- עדכון: `sign-public-quote` — ת"ז בשדה נפרד, ולידציה 9 ספרות
-- עדכון: `sign-public-report` — ת"ז בשדה נפרד
-- עדכון: `get-public-report` — החזרת `access_mode`
-
-### שלב 4: דף ציבורי להצעת מחיר
-- חדש: `src/pages/PublicQuote.tsx` (route `/q/:token`)
-- מציג הצעה, נספח משפטי, טופס חתימה (שם + ת"ז + canvas)
-- אחרי חתימה → PDF חתום אוטומטי + העלאה + hash
-
-### שלב 5: UI — שני כפתורים נפרדים
-- `QuotesList.tsx`: "שלח ללקוח" (view) + "שלח לחתימה" (sign) + כפתור PDF בולט
-- `ReportEditor.tsx`: "שלח ללקוח" (view) + "שלח לחתימה" (sign)
-
-### שלב 6: PDF הצעת מחיר
-- `QuotePdfExport.tsx`: תבנית עצמאית ללא שדות דוח עבודה
-- נספח משפטי בעמוד A4 נפרד (multi-canvas)
-- בלוק חתימה: שם, ת"ז, חתימה, תאריך+שעה, IP
-
-### שלב 7: PublicReport + access_mode
-- `PublicReport.tsx`: view = ללא חתימה, sign = חתימה + PDF אוטומטי
-- נספח משפטי מוצג לפני חתימה
-
-### שלב 8: נעילת מסמך חתום
-- מסמך חתום ננעל לעריכה
-- שינוי דורש יצירת גרסה חדשה
-
-### קבצים (15 קבצים)
-| קובץ | פעולה |
-|---|---|
-| מיגרציה | quote_shares + עמודות + bucket |
-| `src/lib/legal-constants.ts` | חדש |
-| `src/pages/PublicQuote.tsx` | חדש |
-| `src/App.tsx` | route `/q/:token` |
-| `supabase/functions/get-public-quote/index.ts` | חדש |
-| `supabase/functions/save-signed-pdf/index.ts` | חדש |
-| `supabase/functions/sign-public-quote/index.ts` | עדכון |
-| `supabase/functions/sign-public-report/index.ts` | עדכון |
-| `supabase/functions/get-public-report/index.ts` | עדכון |
-| `src/components/quotes/QuotesList.tsx` | שני כפתורים |
-| `src/components/quotes/QuotePdfExport.tsx` | נספח + חתימה |
-| `src/components/reports/PdfReportGenerator.tsx` | import legal-constants |
-| `src/components/reports/PublicSignaturePad.tsx` | import legal-constants |
-| `src/pages/PublicReport.tsx` | access_mode + PDF אוטומטי |
-| `src/pages/ReportEditor.tsx` | שני כפתורים |
-
+אחרי אישור, אעבור למצב default ואייצר את המסמך.
