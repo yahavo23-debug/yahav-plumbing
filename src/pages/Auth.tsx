@@ -178,31 +178,54 @@ const Auth = () => {
                 dir="ltr"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">סיסמה</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-                dir="ltr"
-              />
-            </div>
+            {!forgotMode && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">סיסמה</Label>
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={() => setForgotMode(true)}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      שכחתי סיסמה
+                    </button>
+                  )}
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  dir="ltr"
+                />
+              </div>
+            )}
             <Button type="submit" className="w-full h-12 text-base" disabled={loading}>
-              {loading ? "טוען..." : isLogin ? "התחברות" : "הרשמה"}
+              {loading ? "טוען..." : forgotMode ? "שלח קישור איפוס" : isLogin ? "התחברות" : "הרשמה"}
             </Button>
           </form>
           <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-primary hover:underline"
-            >
-              {isLogin ? "אין לך חשבון? הירשם כאן" : "יש לך חשבון? התחבר כאן"}
-            </button>
+            {forgotMode ? (
+              <button
+                type="button"
+                onClick={() => setForgotMode(false)}
+                className="text-sm text-primary hover:underline"
+              >
+                חזרה למסך הכניסה
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
+                className="text-sm text-primary hover:underline"
+              >
+                {isLogin ? "אין לך חשבון? הירשם כאן" : "יש לך חשבון? התחבר כאן"}
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
