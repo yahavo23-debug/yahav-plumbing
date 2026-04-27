@@ -8,6 +8,7 @@ import { NoAccessScreen } from "@/components/layout/NoAccessScreen";
 
 // Pages
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import CustomerForm from "./pages/CustomerForm";
@@ -63,6 +64,7 @@ function AppRoutes() {
     <Routes>
       {/* Public routes */}
       <Route path="/auth" element={<Auth />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/r/:token" element={<PublicReport />} />
       <Route path="/q/:token" element={<PublicQuote />} />
       <Route path="/s/:token" element={<PublicShare />} />

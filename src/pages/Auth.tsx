@@ -8,9 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/hooks/use-toast";
 import { Wrench } from "lucide-react";
 import { useLogo } from "@/hooks/useLogo";
+import { supabase } from "@/integrations/supabase/client";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [forgotMode, setForgotMode] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -31,6 +33,28 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      if (forgotMode) {
+        if (!email.trim()) {
+          toast({ title: "שגיאה", description: "יש להזין כתובת אימייל", variant: "destructive" });
+          setLoading(false);
+          return;
+        }
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) {
+          toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+        } else {
+          toast({
+            title: "נשלח קישור איפוס",
+            description: "אם הכתובת רשומה במערכת, תקבל אימייל עם קישור לאיפוס הסיסמה",
+          });
+          setForgotMode(false);
+        }
+        setLoading(false);
+        return;
+      }
+
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) {
@@ -91,15 +115,20 @@ const Auth = () => {
             </div>
           )}
           <CardTitle className="text-2xl font-bold">
-            {isLogin ? "כניסה למערכת" : "הרשמה"}
+            {forgotMode ? "שחזור סיסמה" : isLogin ? "כניסה למערכת" : "הרשמה"}
           </CardTitle>
           <CardDescription>
-            {isLogin ? "הזן את הפרטים שלך כדי להתחבר" : "צור חשבון חדש"}
+            {forgotMode
+              ? "הזן את כתובת האימייל שלך ונשלח לך קישור לאיפוס הסיסמה"
+              : isLogin
+              ? "הזן את הפרטים שלך כדי להתחבר"
+              : "צור חשבון חדש"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {!isLogin && !forgotMode && (
+
               <>
                 <div className="space-y-2">
                   <Label htmlFor="fullName">שם מלא</Label>
@@ -149,31 +178,54 @@ const Auth = () => {
                 dir="ltr"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">סיסמה</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-                dir="ltr"
-              />
-            </div>
+            {!forgotMode && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">סיסמה</Label>
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={() => setForgotMode(true)}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      שכחתי סיסמה
+                    </button>
+                  )}
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  dir="ltr"
+                />
+              </div>
+            )}
             <Button type="submit" className="w-full h-12 text-base" disabled={loading}>
-              {loading ? "טוען..." : isLogin ? "התחברות" : "הרשמה"}
+              {loading ? "טוען..." : forgotMode ? "שלח קישור איפוס" : isLogin ? "התחברות" : "הרשמה"}
             </Button>
           </form>
           <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-primary hover:underline"
-            >
-              {isLogin ? "אין לך חשבון? הירשם כאן" : "יש לך חשבון? התחבר כאן"}
-            </button>
+            {forgotMode ? (
+              <button
+                type="button"
+                onClick={() => setForgotMode(false)}
+                className="text-sm text-primary hover:underline"
+              >
+                חזרה למסך הכניסה
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
+                className="text-sm text-primary hover:underline"
+              >
+                {isLogin ? "אין לך חשבון? הירשם כאן" : "יש לך חשבון? התחבר כאן"}
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
