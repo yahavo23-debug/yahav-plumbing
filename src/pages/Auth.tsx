@@ -33,6 +33,28 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      if (forgotMode) {
+        if (!email.trim()) {
+          toast({ title: "שגיאה", description: "יש להזין כתובת אימייל", variant: "destructive" });
+          setLoading(false);
+          return;
+        }
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) {
+          toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+        } else {
+          toast({
+            title: "נשלח קישור איפוס",
+            description: "אם הכתובת רשומה במערכת, תקבל אימייל עם קישור לאיפוס הסיסמה",
+          });
+          setForgotMode(false);
+        }
+        setLoading(false);
+        return;
+      }
+
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) {
