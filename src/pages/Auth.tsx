@@ -115,15 +115,20 @@ const Auth = () => {
             </div>
           )}
           <CardTitle className="text-2xl font-bold">
-            {isLogin ? "כניסה למערכת" : "הרשמה"}
+            {forgotMode ? "שחזור סיסמה" : isLogin ? "כניסה למערכת" : "הרשמה"}
           </CardTitle>
           <CardDescription>
-            {isLogin ? "הזן את הפרטים שלך כדי להתחבר" : "צור חשבון חדש"}
+            {forgotMode
+              ? "הזן את כתובת האימייל שלך ונשלח לך קישור לאיפוס הסיסמה"
+              : isLogin
+              ? "הזן את הפרטים שלך כדי להתחבר"
+              : "צור חשבון חדש"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {!isLogin && !forgotMode && (
+
               <>
                 <div className="space-y-2">
                   <Label htmlFor="fullName">שם מלא</Label>
