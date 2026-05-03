@@ -3,36 +3,45 @@ import { useAuth, AppRole } from "@/hooks/useAuth";
 import { useLogo } from "@/hooks/useLogo";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
-  Users,
-  Wrench,
-  FileText,
-  LogOut,
-  Settings,
-  ChevronRight,
-  CalendarDays,
-  Wallet,
-  BarChart2,
-  LineChart,
+  LayoutDashboard, Users, Wrench, FileText, LogOut, Settings,
+  ChevronRight, CalendarDays, Wallet, BarChart2, LineChart,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface NavItem {
   icon: typeof LayoutDashboard;
   label: string;
   path: string;
-  roles: AppRole[] | "all"; // which roles can see this item
+  roles: AppRole[] | "all";
 }
 
-const navItems: NavItem[] = [
-  { icon: LayoutDashboard, label: "לוח בקרה", path: "/", roles: "all" },
-  { icon: CalendarDays, label: "לוח שיבוץ", path: "/dispatch", roles: ["admin", "technician", "secretary"] },
-  { icon: Users, label: "לקוחות", path: "/customers", roles: "all" },
-  { icon: Wrench, label: "קריאות שירות", path: "/service-calls", roles: ["admin", "technician", "secretary", "contractor"] },
-  { icon: FileText, label: "דוחות", path: "/reports", roles: ["admin", "technician", "secretary"] },
-  { icon: Wallet, label: "כספים", path: "/finance", roles: ["admin", "secretary"] },
-  { icon: LineChart, label: "רווחיות", path: "/profitability", roles: ["admin", "secretary"] },
-  { icon: BarChart2, label: "שיווק", path: "/marketing", roles: ["admin"] },
+interface NavGroup {
+  label?: string;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
+  {
+    items: [
+      { icon: LayoutDashboard, label: "לוח בקרה",    path: "/",             roles: "all" },
+      { icon: CalendarDays,    label: "לוח שיבוץ",   path: "/dispatch",     roles: ["admin", "technician", "secretary"] },
+    ],
+  },
+  {
+    label: "עבודה",
+    items: [
+      { icon: Users,    label: "לקוחות",       path: "/customers",     roles: "all" },
+      { icon: Wrench,   label: "קריאות שירות", path: "/service-calls", roles: ["admin", "technician", "secretary", "contractor"] },
+      { icon: FileText, label: "דוחות",        path: "/reports",       roles: ["admin", "technician", "secretary"] },
+    ],
+  },
+  {
+    label: "כספים",
+    items: [
+      { icon: Wallet,    label: "הכנסות והוצאות", path: "/finance",        roles: ["admin", "secretary"] },
+      { icon: LineChart, label: "רווחיות",         path: "/profitability",  roles: ["admin", "secretary"] },
+      { icon: BarChart2, label: "שיווק",            path: "/marketing",     roles: ["admin"] },
+    ],
+  },
 ];
 
 interface AppSidebarProps {
@@ -46,9 +55,8 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
   const { signOut, role } = useAuth();
   const { logoUrl } = useLogo();
 
-  const visibleItems = navItems.filter(
-    (item) => item.roles === "all" || (role && item.roles.includes(role))
-  );
+  const isVisible = (item: NavItem) =>
+    item.roles === "all" || (role && item.roles.includes(role));
 
   return (
     <aside
@@ -75,34 +83,55 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-2 space-y-1 mt-2">
-        {visibleItems.map((item) => {
-          const isActive = location.pathname === item.path ||
-            (item.path !== "/" && location.pathname.startsWith(item.path));
+      <nav className="flex-1 p-2 space-y-4 mt-2 overflow-y-auto">
+        {navGroups.map((group, gi) => {
+          const visibleItems = group.items.filter(isVisible);
+          if (visibleItems.length === 0) return null;
           return (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-sm font-medium",
-                isActive
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            <div key={gi}>
+              {group.label && !collapsed && (
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+                  {group.label}
+                </p>
               )}
-            >
-              <item.icon className="w-5 h-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </button>
+              {group.label && collapsed && gi > 0 && (
+                <div className="border-t border-sidebar-border mx-2 mb-2" />
+              )}
+              <div className="space-y-0.5">
+                {visibleItems.map((item) => {
+                  const isActive =
+                    location.pathname === item.path ||
+                    (item.path !== "/" && location.pathname.startsWith(item.path));
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => navigate(item.path)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium",
+                        isActive
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      )}
+                      title={collapsed ? item.label : undefined}
+                    >
+                      <item.icon className="w-5 h-5 shrink-0" />
+                      {!collapsed && <span>{item.label}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>
 
       {/* Footer */}
-      <div className="p-2 border-t border-sidebar-border space-y-1">
+      <div className="p-2 border-t border-sidebar-border space-y-0.5">
         {role === "admin" && (
           <button
             onClick={() => navigate("/settings")}
-            className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-sm"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-sm"
+            title={collapsed ? "הגדרות" : undefined}
           >
             <Settings className="w-5 h-5 shrink-0" />
             {!collapsed && <span>הגדרות</span>}
@@ -110,7 +139,8 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
         )}
         <button
           onClick={signOut}
-          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-destructive hover:bg-sidebar-accent transition-colors text-sm"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-destructive hover:bg-sidebar-accent transition-colors text-sm"
+          title={collapsed ? "התנתק" : undefined}
         >
           <LogOut className="w-5 h-5 shrink-0" />
           {!collapsed && <span>התנתק</span>}

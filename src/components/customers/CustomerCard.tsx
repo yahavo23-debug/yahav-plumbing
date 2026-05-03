@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Phone, MapPin, Mail, MoreVertical, Edit, Trash2, Crown } from "lucide-react";
+import { Phone, MapPin, Mail, MoreVertical, Edit, Trash2, Crown, MessageCircle } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { CustomerBillingBadgeInline } from "@/components/billing/CustomerBillingBadgeInline";
 import { useCustomerBilling } from "@/hooks/useCustomerBilling";
@@ -21,6 +21,12 @@ interface CustomerCardProps {
   isReturning?: boolean;
   onEdit: (id: string) => void;
   onDelete: (customer: Customer) => void;
+}
+
+function toWhatsApp(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const intl = digits.startsWith("0") ? "972" + digits.slice(1) : digits;
+  return `https://wa.me/${intl}`;
 }
 
 export function CustomerCard({ customer, isAdmin, isContractor, hasPendingCall, isReturning, onEdit, onDelete }: CustomerCardProps) {
@@ -43,7 +49,6 @@ export function CustomerCard({ customer, isAdmin, isContractor, hasPendingCall, 
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            {/* Lead source dot */}
             {(customer as any).lead_source && leadSourceColors[(customer as any).lead_source] && (
               <span
                 className={`w-2.5 h-2.5 rounded-full shrink-0 ${leadSourceColors[(customer as any).lead_source]}`}
@@ -93,7 +98,26 @@ export function CustomerCard({ customer, isAdmin, isContractor, hasPendingCall, 
           <div className="space-y-1 text-sm text-muted-foreground">
             {customer.phone && (
               <div className="flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5" /> {customer.phone}
+                <Phone className="w-3.5 h-3.5 shrink-0" />
+                <span className="flex-1">{customer.phone}</span>
+                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                  <a
+                    href={`tel:${customer.phone}`}
+                    className="p-1 rounded hover:bg-primary/10 text-primary transition-colors"
+                    title="התקשר"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                  </a>
+                  <a
+                    href={toWhatsApp(customer.phone)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1 rounded hover:bg-green-100 text-green-600 transition-colors"
+                    title="WhatsApp"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                  </a>
+                </div>
               </div>
             )}
             {customer.email && (

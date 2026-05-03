@@ -1,5 +1,6 @@
 import { useState, ReactNode } from "react";
 import { AppSidebar } from "./AppSidebar";
+import { GlobalSearch } from "./GlobalSearch";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -32,7 +33,6 @@ export function AppLayout({ children, title }: AppLayoutProps) {
     return (
       <div className={cn("min-h-screen bg-background", isContractor && "contractor-lockdown")}>
         {isContractor && <ContractorBanner />}
-        {/* Mobile header */}
         <header className="sticky top-0 z-30 h-14 bg-card border-b border-border flex items-center px-4 gap-3">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
@@ -45,7 +45,10 @@ export function AppLayout({ children, title }: AppLayoutProps) {
               <AppSidebar collapsed={false} onToggle={() => setMobileOpen(false)} />
             </SheetContent>
           </Sheet>
-          {title && <h1 className="font-semibold text-lg">{title}</h1>}
+          {title && <h1 className="font-semibold text-base flex-1">{title}</h1>}
+          <div className="flex-1">
+            <GlobalSearch />
+          </div>
         </header>
         <main className="p-4">{children}</main>
       </div>
@@ -62,11 +65,12 @@ export function AppLayout({ children, title }: AppLayoutProps) {
         )}
       >
         {isContractor && <ContractorBanner />}
-        {title && (
-          <header className="sticky top-0 z-20 h-16 bg-background/80 backdrop-blur-sm border-b border-border flex items-center px-6">
-            <h1 className="text-xl font-bold">{title}</h1>
-          </header>
-        )}
+        <header className="sticky top-0 z-20 h-16 bg-background/80 backdrop-blur-sm border-b border-border flex items-center px-6 gap-4">
+          {title && <h1 className="text-xl font-bold shrink-0">{title}</h1>}
+          <div className="flex-1 max-w-sm">
+            <GlobalSearch />
+          </div>
+        </header>
         <div className="p-6">{children}</div>
       </main>
     </div>
