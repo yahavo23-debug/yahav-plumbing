@@ -7,7 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const YESH_USER_KEY = "JWVyZuY5TF6qkCMHaBpo";
 const YESH_SECRET   = "2767c6cf-d633-464c-bb34-000bb173d342";
-const YESH_API_BASE = "https://api.yeshinvoice.co.il/api/v1.1";
+const YESH_API_BASE = "https://api.yeshinvoice.co.il/api/v1.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +24,7 @@ async function fetchYeshDocuments(fromDate?: string): Promise<any[]> {
   };
   if (fromDate) body.fromDate = fromDate;
 
-  const res = await fetch(`${YESH_API_BASE}/getAllDocuments`, {
+  const res = await fetch(`${YESH_API_BASE}/getDocuments`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
