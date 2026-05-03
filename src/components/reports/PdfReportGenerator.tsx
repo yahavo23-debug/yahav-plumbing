@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useLogo } from "@/hooks/useLogo";
@@ -27,11 +27,16 @@ import {
 } from "@/lib/pdf-utils";
 import { LEGAL_SECTIONS, buildLegalAnnexHtml } from "@/lib/legal-constants";
 
+export interface PdfReportGeneratorHandle {
+  generate: () => Promise<void>;
+}
+
 interface PdfReportGeneratorProps {
   report: any;
   serviceCall: any;
   customer: any;
   photos: any[];
+  onPdfReady?: (url: string) => void;
 }
 
 import { getJobTypeLabel } from "@/lib/constants";
@@ -45,16 +50,20 @@ const statusLabels: Record<string, string> = {
 
 // LEGAL_SECTIONS imported from @/lib/legal-constants
 
-export function PdfReportGenerator({
+export const PdfReportGenerator = forwardRef<PdfReportGeneratorHandle, PdfReportGeneratorProps>(
+function PdfReportGenerator({
   report,
   serviceCall,
   customer,
   photos,
-}: PdfReportGeneratorProps) {
+  onPdfReady,
+}: PdfReportGeneratorProps, ref) {
   const { logoUrl } = useLogo();
   const [generating, setGenerating] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+
+  useImperativeHandle(ref, () => ({ generate: generatePdf }));
 
   useEffect(() => {
     if (report?.pdf_path) loadExistingPdf();
@@ -209,10 +218,13 @@ export function PdfReportGenerator({
       const { data: pdfSigned } = await supabase.storage
         .from("reports-pdf")
         .createSignedUrl(path, 3600);
-      if (pdfSigned) setPdfUrl(pdfSigned.signedUrl);
+      if (pdfSigned) {
+        setPdfUrl(pdfSigned.signedUrl);
+        onPdfReady?.(pdfSigned.signedUrl);
+      }
 
       document.body.removeChild(container);
-      toast({ title: "PDF הורד", description: "הדוח הורד ונשמר בהצלחה" });
+      toast({ title: "✅ PDF נשמר", description: "הדוח נשמר ומוכן לשליחה" });
     } catch (err: any) {
       console.error("PDF generation error:", err);
       toast({
@@ -232,45 +244,64 @@ export function PdfReportGenerator({
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <Button
-        onClick={generatePdf}
-        disabled={generating}
-        variant="outline"
-        className="gap-2"
-      >
-        {generating ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" /> מפיק PDF...
-          </>
-        ) : (
-          <>
-            <FileDown className="w-4 h-4" /> הפק PDF
-          </>
-        )}
-      </Button>
-
-      {pdfUrl && (
-        <>
-          <Button variant="outline" size="icon" asChild>
+    <div className="space-y-3">
+      {/* PDF status card */}
+      {pdfUrl ? (
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
+          <div className="w-9 h-9 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center shrink-0">
+            <FileDown className="w-5 h-5 text-green-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-green-800 dark:text-green-300">PDF מוכן</p>
+            <p className="text-xs text-green-600 dark:text-green-400">ניתן לצפות ולשלוח</p>
+          </div>
+          <div className="flex gap-1.5">
             <a
               href={pdfUrl}
               target="_blank"
               rel="noopener noreferrer"
-              title="פתח PDF"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-medium transition-colors"
             >
-              <ExternalLink className="w-4 h-4" />
+              <ExternalLink className="w-3.5 h-3.5" /> צפה
             </a>
-          </Button>
+            <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)} className="h-8 gap-1.5 text-xs">
+              <Share2 className="w-3.5 h-3.5" /> שתף
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-border bg-muted/30">
+          <div className="w-9 h-9 bg-muted rounded-lg flex items-center justify-center shrink-0">
+            <FileDown className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">PDF לא נוצר עדיין</p>
+            <p className="text-xs text-muted-foreground">לחץ על "שמור ויצור PDF" כדי לשמור</p>
+          </div>
           <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setShareDialogOpen(true)}
-            title="שתף PDF"
+            onClick={generatePdf}
+            disabled={generating}
+            size="sm"
+            className="h-8 gap-1.5 text-xs shrink-0"
           >
-            <Share2 className="w-4 h-4" />
+            {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+            {generating ? "יוצר..." : "צור PDF"}
           </Button>
-        </>
+        </div>
+      )}
+
+      {/* Regenerate button when PDF exists */}
+      {pdfUrl && (
+        <Button
+          onClick={generatePdf}
+          disabled={generating}
+          variant="ghost"
+          size="sm"
+          className="h-7 text-xs text-muted-foreground gap-1.5 w-full"
+        >
+          {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileDown className="w-3 h-3" />}
+          {generating ? "יוצר מחדש..." : "עדכן PDF"}
+        </Button>
       )}
 
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
@@ -280,7 +311,7 @@ export function PdfReportGenerator({
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              קישור זה תקף לשעה אחת. לאחר מכן ניתן להפיק קישור חדש.
+              קישור זה תקף לשעה אחת. לאחר מכן ניתן לעדכן PDF כדי לקבל קישור חדש.
             </p>
             <div className="flex gap-2">
               <input
@@ -293,12 +324,17 @@ export function PdfReportGenerator({
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
+            <Button variant="outline" className="w-full gap-2" asChild>
+              <a href={pdfUrl || ""} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-4 h-4" /> פתח PDF בטאב חדש
+              </a>
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
     </div>
   );
-}
+});
 
 function renderSinglePageCanvasToPdf(canvas: HTMLCanvasElement, pdf: jsPDF) {
   const pageWidth = pdf.internal.pageSize.getWidth();

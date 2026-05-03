@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import {
   ArrowRight, Share2, ExternalLink, Copy, Ban, FileText, Send, Lock, MessageCircle, AlertTriangle, RefreshCw, CheckCircle2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { PdfReportGenerator } from "@/components/reports/PdfReportGenerator";
+import { PdfReportGenerator, PdfReportGeneratorHandle } from "@/components/reports/PdfReportGenerator";
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   draft: { label: "טיוטה", color: "bg-warning/15 text-warning" },
@@ -40,6 +40,7 @@ const ReportEditor = () => {
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [customWaNumber, setCustomWaNumber] = useState("");
+  const pdfRef = useRef<PdfReportGeneratorHandle>(null);
 
   const [form, setForm] = useState({
     title: "", findings: "", recommendations: "",
@@ -101,7 +102,9 @@ const ReportEditor = () => {
     try {
       const { error } = await supabase.from("reports").update(form).eq("id", id!);
       if (error) throw error;
-      toast({ title: "נשמר", description: "הדוח עודכן" });
+      toast({ title: "נשמר", description: "הדוח עודכן, יוצר PDF..." });
+      // Auto-generate PDF after saving
+      await pdfRef.current?.generate();
     } catch (err: any) {
       toast({ title: "שגיאה", description: err.message, variant: "destructive" });
     } finally {
@@ -242,10 +245,12 @@ const ReportEditor = () => {
         </Button>
         <div className="flex gap-2 flex-wrap">
           <PdfReportGenerator
+            ref={pdfRef}
             report={report}
             serviceCall={serviceCall}
             customer={customer}
             photos={photos}
+            onPdfReady={(url) => console.log("PDF ready:", url)}
           />
           {/* Show share button if link exists */}
           {shareToken && (
@@ -340,8 +345,8 @@ const ReportEditor = () => {
                   </div>
                 </div>
                 {canEdit && (
-                  <Button onClick={handleSave} disabled={saving} className="h-12">
-                    {saving ? "שומר..." : "שמור שינויים"}
+                  <Button onClick={handleSave} disabled={saving} className="h-12 gap-2">
+                    {saving ? "שומר ויוצר PDF..." : "שמור ויצור PDF"}
                   </Button>
                 )}
               </CardContent>
