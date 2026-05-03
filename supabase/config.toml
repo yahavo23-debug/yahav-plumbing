@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.save-signed-pdf]
 verify_jwt = false
+
+[functions.send-push]
+verify_jwt = false
