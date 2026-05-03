@@ -28,6 +28,7 @@ import MarketingAnalytics from "./pages/MarketingAnalytics";
 import ProfitabilityReport from "./pages/ProfitabilityReport";
 import PublicQuote from "./pages/PublicQuote";
 import NotFound from "./pages/NotFound";
+import CalendarPage from "./pages/CalendarPage";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +84,7 @@ function AppRoutes() {
       <Route path="/reports" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><Reports /></ProtectedRoute>} />
       <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ReportEditor /></ProtectedRoute>} />
       <Route path="/dispatch" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><DispatchBoard /></ProtectedRoute>} />
+      <Route path="/calendar" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><CalendarPage /></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><Finance /></ProtectedRoute>} />
       <Route path="/marketing" element={<ProtectedRoute allowedRoles={["admin"]}><MarketingAnalytics /></ProtectedRoute>} />
       <Route path="/profitability" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ProfitabilityReport /></ProtectedRoute>} />

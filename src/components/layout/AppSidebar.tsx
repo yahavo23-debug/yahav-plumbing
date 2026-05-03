@@ -4,7 +4,7 @@ import { useLogo } from "@/hooks/useLogo";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Users, Wrench, FileText, LogOut, Settings,
-  ChevronRight, CalendarDays, Wallet, BarChart2, LineChart,
+  ChevronRight, CalendarDays, Wallet, BarChart2, LineChart, BookOpen,
 } from "lucide-react";
 
 interface NavItem {
@@ -24,6 +24,7 @@ const navGroups: NavGroup[] = [
     items: [
       { icon: LayoutDashboard, label: "לוח בקרה",    path: "/",             roles: "all" },
       { icon: CalendarDays,    label: "לוח שיבוץ",   path: "/dispatch",     roles: ["admin", "technician", "secretary"] },
+      { icon: BookOpen,        label: "יומן",         path: "/calendar",     roles: ["admin", "technician", "secretary"] },
     ],
   },
   {
