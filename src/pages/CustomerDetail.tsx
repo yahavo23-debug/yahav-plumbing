@@ -12,6 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
 import {
   ArrowRight, Edit, Phone, Mail, MapPin, Plus, Calendar, Trash2, DollarSign, Check, X,
+  FileText, MessageCircle, ExternalLink,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { BillingTab } from "@/components/billing/BillingTab";
@@ -66,6 +67,7 @@ const CustomerDetail = () => {
   const canCreateCall = isAdmin || role === "technician";
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [calls, setCalls] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -84,6 +86,17 @@ const CustomerDetail = () => {
       supabase.from("customers").select("*").eq("id", id!).single(),
       supabase.from("service_calls").select("*").eq("customer_id", id!).order("created_at", { ascending: false }),
     ]);
+
+    // Load reports for this customer (via service_calls)
+    if (callsRes.data && callsRes.data.length > 0) {
+      const callIds = callsRes.data.map((c: any) => c.id);
+      const { data: reportsData } = await supabase
+        .from("reports")
+        .select("*, report_shares(share_token, is_active, revoked_at)")
+        .in("service_call_id", callIds)
+        .order("created_at", { ascending: false });
+      setReports(reportsData || []);
+    }
 
     if (custRes.error) {
       toast({ title: "שגיאה", description: "לא ניתן לטעון את הלקוח", variant: "destructive" });
@@ -155,14 +168,17 @@ const CustomerDetail = () => {
 
       <Tabs defaultValue="calls" dir="rtl">
         <TabsList className="mb-4 h-12 w-full justify-start">
-          <TabsTrigger value="calls" className="text-base px-6 h-10">
-            קריאות שירות ({calls.length})
+          <TabsTrigger value="calls" className="text-base px-4 h-10">
+            קריאות ({calls.length})
           </TabsTrigger>
-          <TabsTrigger value="details" className="text-base px-6 h-10">
+          <TabsTrigger value="reports" className="text-base px-4 h-10">
+            דוחות {reports.length > 0 && `(${reports.length})`}
+          </TabsTrigger>
+          <TabsTrigger value="details" className="text-base px-4 h-10">
             פרטים
           </TabsTrigger>
-          <TabsTrigger value="billing" className="text-base px-6 h-10">
-            חשבון ועלויות
+          <TabsTrigger value="billing" className="text-base px-4 h-10">
+            חשבון
           </TabsTrigger>
         </TabsList>
 
@@ -223,6 +239,98 @@ const CustomerDetail = () => {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Reports Tab */}
+        <TabsContent value="reports">
+          {reports.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p>אין דוחות עבור לקוח זה עדיין</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {reports.map((report) => {
+                const activeShare = (report.report_shares || []).find(
+                  (s: any) => s.is_active && !s.revoked_at
+                );
+                const shareUrl = activeShare
+                  ? `${window.location.origin}/r/${activeShare.share_token}`
+                  : null;
+                const customerPhone = customer?.phone;
+                const waText = shareUrl
+                  ? encodeURIComponent(`שלום, מצורף דוח עבודה לעיון וחתימה:\n${shareUrl}`)
+                  : null;
+                const waUrl = shareUrl && customerPhone
+                  ? `https://wa.me/972${customerPhone.replace(/^0/, "")}?text=${waText}`
+                  : shareUrl
+                  ? `https://wa.me/?text=${waText}`
+                  : null;
+
+                const reportStatusColors: Record<string, string> = {
+                  draft: "bg-warning/15 text-warning",
+                  sent: "bg-primary/15 text-primary",
+                  signed: "bg-success/15 text-success",
+                  final: "bg-muted text-muted-foreground",
+                };
+                const reportStatusLabels: Record<string, string> = {
+                  draft: "טיוטה", sent: "נשלח", signed: "נחתם", final: "סופי",
+                };
+
+                return (
+                  <div
+                    key={report.id}
+                    className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-accent/30 transition-colors"
+                  >
+                    <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                      <FileText className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm truncate">{report.title}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${reportStatusColors[report.status] || ""}`}>
+                          {reportStatusLabels[report.status] || report.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(report.created_at).toLocaleDateString("he-IL")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {shareUrl && (
+                        <a
+                          href={shareUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                          title="צפה בדוח"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
+                      {waUrl && (
+                        <a
+                          href={waUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-lg hover:bg-green-100 text-green-600 transition-colors"
+                          title={customerPhone ? `שלח לוואטסאפ ${customerPhone}` : "שלח בוואטסאפ"}
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </a>
+                      )}
+                      <button
+                        onClick={() => navigate(`/reports/${report.id}`)}
+                        className="px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-colors"
+                      >
+                        פתח
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </TabsContent>

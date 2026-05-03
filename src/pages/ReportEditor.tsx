@@ -39,6 +39,7 @@ const ReportEditor = () => {
   const [saving, setSaving] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [customWaNumber, setCustomWaNumber] = useState("");
 
   const [form, setForm] = useState({
     title: "", findings: "", recommendations: "",
@@ -206,7 +207,15 @@ const ReportEditor = () => {
   // Use published URL for production links, not window.location.origin (which may be preview)
   const baseUrl = "https://yahav-plumbing.lovable.app";
   const shareUrl = shareToken ? `${baseUrl}/r/${shareToken}` : "";
-  const whatsappUrl = shareUrl ? `https://wa.me/?text=${encodeURIComponent(`שלום, מצורף דוח עבודה לעיון וחתימה:\n${shareUrl}`)}` : "";
+  const waMessage = shareUrl ? encodeURIComponent(`שלום, מצורף דוח עבודה לעיון וחתימה:\n${shareUrl}`) : "";
+  const customerPhone = (serviceCall?.customers as any)?.phone;
+  const customerWaNumber = customerPhone ? `972${customerPhone.replace(/^0/, "")}` : "";
+  const whatsappUrl = shareUrl && customerWaNumber
+    ? `https://wa.me/${customerWaNumber}?text=${waMessage}`
+    : shareUrl ? `https://wa.me/?text=${waMessage}` : "";
+  const customWaUrl = shareUrl && customWaNumber.trim()
+    ? `https://wa.me/972${customWaNumber.trim().replace(/^0/, "")}?text=${waMessage}`
+    : "";
 
   if (loading) {
     return <AppLayout title="טוען דוח..."><p className="text-center py-8">טוען...</p></AppLayout>;
@@ -375,11 +384,45 @@ const ReportEditor = () => {
               <a href={shareUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-4 h-4" /></a>
             </Button>
           </div>
-          <Button variant="outline" className="gap-2 w-full" asChild>
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-              <MessageCircle className="w-4 h-4" /> שלח בוואטסאפ
-            </a>
-          </Button>
+          {/* WhatsApp — direct to customer */}
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full h-10 rounded-lg bg-green-500 hover:bg-green-600 text-white font-medium text-sm transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            {customerPhone ? `📲 שלח לחתימה ל-${customerPhone}` : "שלח בוואטסאפ"}
+          </a>
+
+          {/* WhatsApp — custom number */}
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">שלח למספר אחר (בן משפחה, מנהל...):</p>
+            <div className="flex gap-2">
+              <input
+                type="tel"
+                placeholder="05X-XXXXXXX"
+                value={customWaNumber}
+                onChange={e => setCustomWaNumber(e.target.value.replace(/\D/g, ""))}
+                className="flex-1 h-9 rounded-lg border border-border bg-background px-3 text-sm"
+                dir="ltr"
+              />
+              <a
+                href={customWaUrl || undefined}
+                target={customWaUrl ? "_blank" : undefined}
+                rel="noopener noreferrer"
+                onClick={e => !customWaUrl && e.preventDefault()}
+                className={`flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm font-medium transition-colors ${
+                  customWaUrl
+                    ? "bg-green-100 hover:bg-green-200 text-green-700"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                }`}
+              >
+                <MessageCircle className="w-3.5 h-3.5" /> שלח
+              </a>
+            </div>
+          </div>
+
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleRegenerateLink} disabled={saving} className="gap-2 flex-1">
               <RefreshCw className="w-4 h-4" /> צור קישור חדש
