@@ -7,12 +7,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Users, Wrench, AlertCircle, Plus, CheckCircle2, Clock,
-  PhoneCall, ChevronLeft, CalendarClock, Flame
+  PhoneCall, ChevronLeft, CalendarClock, Flame, ChevronDown,
 } from "lucide-react";
 import { getJobTypeLabel, statusColors, statusLabels, priorityColors } from "@/lib/constants";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { QuickCallDialog } from "@/components/service-calls/QuickCallDialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { toast } from "@/hooks/use-toast";
 
 interface DashboardStats {
   totalCustomers: number;
@@ -90,12 +92,34 @@ const Dashboard = () => {
 
   const todayStr = format(new Date(), "EEEE, d בMMMM yyyy", { locale: he });
 
-  const CallRow = ({ call }: { call: any }) => (
-    <button
-      onClick={() => navigate(`/service-calls/${call.id}`)}
-      className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/60 transition-colors text-right"
-    >
-      <div className="flex-1 min-w-0">
+  const statusOptions = [
+    { value: "open",             label: "פתוח" },
+    { value: "in_progress",      label: "בטיפול" },
+    { value: "pending_customer", label: "ממתין ללקוח" },
+    { value: "completed",        label: "הושלם" },
+    { value: "cancelled",        label: "בוטל" },
+  ];
+
+  const updateCallStatus = async (callId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from("service_calls")
+      .update({ status: newStatus })
+      .eq("id", callId);
+
+    if (error) {
+      toast({ title: "שגיאה", description: "לא ניתן לעדכן סטטוס", variant: "destructive" });
+      return false;
+    }
+    return true;
+  };
+
+  const CallRow = ({ call, onStatusChange }: { call: any; onStatusChange: (id: string, status: string) => void }) => (
+    <div className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/60 transition-colors text-right">
+      {/* Clickable area → navigate */}
+      <button
+        onClick={() => navigate(`/service-calls/${call.id}`)}
+        className="flex-1 min-w-0 text-right"
+      >
         <div className="flex items-center gap-2">
           <span className="font-semibold text-sm truncate">{call.customers?.name}</span>
           {call.priority === "urgent" && (
@@ -109,23 +133,55 @@ const Dashboard = () => {
           {getJobTypeLabel(call.job_type)}
           {call.description && ` • ${call.description.slice(0, 40)}`}
         </p>
-      </div>
+      </button>
+
       <div className="flex items-center gap-2 shrink-0">
         {call.customers?.phone && (
           <a
             href={`tel:${call.customers.phone}`}
-            onClick={e => e.stopPropagation()}
             className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"
           >
             <PhoneCall className="w-4 h-4" />
           </a>
         )}
-        <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[call.status]}`}>
-          {statusLabels[call.status]}
-        </span>
-        <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+
+        {/* Clickable status badge → change status */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium transition-opacity hover:opacity-80 ${statusColors[call.status]}`}
+            >
+              {statusLabels[call.status]}
+              <ChevronDown className="w-3 h-3" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-44 p-1.5">
+            <p className="text-xs text-muted-foreground font-medium px-2 py-1 mb-1">שנה סטטוס</p>
+            {statusOptions.map(opt => (
+              <button
+                key={opt.value}
+                onClick={async () => {
+                  const ok = await updateCallStatus(call.id, opt.value);
+                  if (ok) onStatusChange(call.id, opt.value);
+                }}
+                className={`w-full text-right text-sm px-3 py-2 rounded-lg transition-colors hover:bg-accent ${
+                  call.status === opt.value ? "font-semibold bg-accent" : ""
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+
+        <button
+          onClick={() => navigate(`/service-calls/${call.id}`)}
+          className="p-1 rounded hover:bg-accent transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+        </button>
       </div>
-    </button>
+    </div>
   );
 
   return (
@@ -259,7 +315,17 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {todayCalls.map(call => <CallRow key={call.id} call={call} />)}
+              {todayCalls.map(call => (
+            <CallRow
+              key={call.id}
+              call={call}
+              onStatusChange={(id, status) => {
+                setTodayCalls(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+                setRecentCalls(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+                setUrgentCalls(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+              }}
+            />
+          ))}
             </div>
           )}
         </div>
@@ -292,7 +358,17 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {recentCalls.map(call => <CallRow key={call.id} call={call} />)}
+              {recentCalls.map(call => (
+            <CallRow
+              key={call.id}
+              call={call}
+              onStatusChange={(id, status) => {
+                setTodayCalls(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+                setRecentCalls(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+                setUrgentCalls(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+              }}
+            />
+          ))}
             </div>
           )}
         </div>
