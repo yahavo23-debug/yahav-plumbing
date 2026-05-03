@@ -8,8 +8,9 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   Users, Wrench, AlertCircle, Plus, CheckCircle2, Clock,
   PhoneCall, ChevronLeft, CalendarClock, Flame, ChevronDown,
+  MessageCircle, HourglassIcon,
 } from "lucide-react";
-import { getJobTypeLabel, statusColors, statusLabels, priorityColors } from "@/lib/constants";
+import { getJobTypeLabel, statusColors, statusLabels } from "@/lib/constants";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { QuickCallDialog } from "@/components/service-calls/QuickCallDialog";
@@ -24,6 +25,16 @@ interface DashboardStats {
   urgentCalls: number;
 }
 
+function daysSince(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function toWhatsApp(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const intl = digits.startsWith("0") ? "972" + digits.slice(1) : digits;
+  return `https://wa.me/${intl}`;
+}
+
 const Dashboard = () => {
   const [stats, setStats] = useState<DashboardStats>({
     totalCustomers: 0, openCalls: 0, inProgressCalls: 0, completedCalls: 0, urgentCalls: 0,
@@ -31,6 +42,7 @@ const Dashboard = () => {
   const [todayCalls, setTodayCalls] = useState<any[]>([]);
   const [urgentCalls, setUrgentCalls] = useState<any[]>([]);
   const [recentCalls, setRecentCalls] = useState<any[]>([]);
+  const [pendingCalls, setPendingCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [quickCallOpen, setQuickCallOpen] = useState(false);
   const navigate = useNavigate();
@@ -48,7 +60,7 @@ const Dashboard = () => {
     try {
       const today = new Date().toISOString().split("T")[0];
 
-      const [customersRes, callsRes, todayRes, urgentRes, recentRes] = await Promise.all([
+      const [customersRes, callsRes, todayRes, urgentRes, recentRes, pendingRes] = await Promise.all([
         supabase.from("customers").select("id", { count: "exact", head: true }),
         supabase.from("service_calls").select("status, priority"),
         supabase
@@ -70,6 +82,11 @@ const Dashboard = () => {
           .in("status", ["open", "in_progress"])
           .order("created_at", { ascending: false })
           .limit(8),
+        supabase
+          .from("service_calls")
+          .select("*, customers(name, phone)")
+          .eq("status", "pending_customer")
+          .order("updated_at", { ascending: true }),
       ]);
 
       const calls = callsRes.data || [];
@@ -83,6 +100,7 @@ const Dashboard = () => {
       setTodayCalls(todayRes.data || []);
       setUrgentCalls(urgentRes.data || []);
       setRecentCalls(recentRes.data || []);
+      setPendingCalls(pendingRes.data || []);
     } catch (err) {
       console.error("Dashboard load error:", err);
     } finally {
@@ -113,9 +131,39 @@ const Dashboard = () => {
     return true;
   };
 
-  const CallRow = ({ call, onStatusChange }: { call: any; onStatusChange: (id: string, status: string) => void }) => (
+  // Update all local lists when a status changes
+  const handleStatusChange = (id: string, status: string) => {
+    const updatedAt = new Date().toISOString();
+    const updateList = (list: any[]) =>
+      list.map(c => c.id === id ? { ...c, status, updated_at: updatedAt } : c);
+
+    setTodayCalls(prev => updateList(prev));
+    setRecentCalls(prev => updateList(prev));
+    setUrgentCalls(prev => updateList(prev));
+
+    if (status === "pending_customer") {
+      // Find the call and add to pending list
+      const allCalls = [...todayCalls, ...recentCalls, ...urgentCalls, ...pendingCalls];
+      const call = allCalls.find(c => c.id === id);
+      if (call) {
+        const updated = { ...call, status, updated_at: updatedAt };
+        setPendingCalls(prev => {
+          const exists = prev.some(c => c.id === id);
+          return exists
+            ? updateList(prev)
+            : [...prev, updated].sort((a, b) =>
+                new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
+              );
+        });
+      }
+    } else {
+      // Remove from pending list if no longer pending
+      setPendingCalls(prev => prev.filter(c => c.id !== id));
+    }
+  };
+
+  const CallRow = ({ call }: { call: any }) => (
     <div className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/60 transition-colors text-right">
-      {/* Clickable area → navigate */}
       <button
         onClick={() => navigate(`/service-calls/${call.id}`)}
         className="flex-1 min-w-0 text-right"
@@ -145,7 +193,6 @@ const Dashboard = () => {
           </a>
         )}
 
-        {/* Clickable status badge → change status */}
         <Popover>
           <PopoverTrigger asChild>
             <button
@@ -162,7 +209,7 @@ const Dashboard = () => {
                 key={opt.value}
                 onClick={async () => {
                   const ok = await updateCallStatus(call.id, opt.value);
-                  if (ok) onStatusChange(call.id, opt.value);
+                  if (ok) handleStatusChange(call.id, opt.value);
                 }}
                 className={`w-full text-right text-sm px-3 py-2 rounded-lg transition-colors hover:bg-accent ${
                   call.status === opt.value ? "font-semibold bg-accent" : ""
@@ -183,6 +230,97 @@ const Dashboard = () => {
       </div>
     </div>
   );
+
+  // Row specifically for pending_customer calls — shows waiting days + WhatsApp
+  const PendingRow = ({ call }: { call: any }) => {
+    const days = daysSince(call.updated_at);
+    const ageBg =
+      days >= 7 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+      days >= 3 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
+                  "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400";
+    const phone = call.customers?.phone;
+
+    return (
+      <div className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-right ${
+        days >= 7 ? "border-red-200 bg-red-50/50 dark:border-red-900/40 dark:bg-red-900/10" :
+        days >= 3 ? "border-yellow-200 bg-yellow-50/50 dark:border-yellow-900/40 dark:bg-yellow-900/10" :
+                    "border-border hover:bg-accent/60"
+      }`}>
+        <button
+          onClick={() => navigate(`/service-calls/${call.id}`)}
+          className="flex-1 min-w-0 text-right"
+        >
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-sm truncate">{call.customers?.name}</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${ageBg}`}>
+              {days === 0 ? "היום" : days === 1 ? "יום 1" : `${days} ימים`}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground truncate mt-0.5">
+            {getJobTypeLabel(call.job_type)}
+            {call.description && ` • ${call.description.slice(0, 35)}`}
+          </p>
+        </button>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {phone && (
+            <>
+              <a
+                href={`tel:${phone}`}
+                className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"
+                title="התקשר"
+              >
+                <PhoneCall className="w-4 h-4" />
+              </a>
+              <a
+                href={toWhatsApp(phone)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1.5 rounded-lg hover:bg-green-100 text-green-600 transition-colors"
+                title="שלח WhatsApp"
+              >
+                <MessageCircle className="w-4 h-4" />
+              </a>
+            </>
+          )}
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium transition-opacity hover:opacity-80 ${ageBg}`}
+              >
+                סטטוס <ChevronDown className="w-3 h-3" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-44 p-1.5">
+              <p className="text-xs text-muted-foreground font-medium px-2 py-1 mb-1">שנה סטטוס</p>
+              {statusOptions.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={async () => {
+                    const ok = await updateCallStatus(call.id, opt.value);
+                    if (ok) handleStatusChange(call.id, opt.value);
+                  }}
+                  className={`w-full text-right text-sm px-3 py-2 rounded-lg transition-colors hover:bg-accent ${
+                    call.status === opt.value ? "font-semibold bg-accent" : ""
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+
+          <button
+            onClick={() => navigate(`/service-calls/${call.id}`)}
+            className="p-1 rounded hover:bg-accent transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <AppLayout title="לוח בקרה">
@@ -281,6 +419,42 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* ממתין לאישור לקוח — reminder section */}
+      {(loading || pendingCalls.length > 0) && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <HourglassIcon className="w-4 h-4 text-purple-600" />
+              ממתין לאישור לקוח
+              {pendingCalls.length > 0 && (
+                <span className={`text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold ${
+                  pendingCalls.some(c => daysSince(c.updated_at) >= 7)
+                    ? "bg-red-500 text-white"
+                    : pendingCalls.some(c => daysSince(c.updated_at) >= 3)
+                    ? "bg-yellow-500 text-white"
+                    : "bg-purple-500 text-white"
+                }`}>
+                  {pendingCalls.length}
+                </span>
+              )}
+            </h2>
+            {pendingCalls.some(c => daysSince(c.updated_at) >= 3) && (
+              <span className="text-xs text-orange-600 font-medium">⚠️ יש ממתינים מזמן רב</span>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="space-y-2">
+              {[1, 2].map(i => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}
+            </div>
+          ) : pendingCalls.length === 0 ? null : (
+            <div className="space-y-2">
+              {pendingCalls.map(call => <PendingRow key={call.id} call={call} />)}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's calls */}
         <div>
@@ -304,9 +478,7 @@ const Dashboard = () => {
 
           {loading ? (
             <div className="space-y-2">
-              {[1, 2].map(i => (
-                <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />
-              ))}
+              {[1, 2].map(i => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}
             </div>
           ) : todayCalls.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border p-8 text-center">
@@ -315,17 +487,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {todayCalls.map(call => (
-            <CallRow
-              key={call.id}
-              call={call}
-              onStatusChange={(id, status) => {
-                setTodayCalls(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-                setRecentCalls(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-                setUrgentCalls(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-              }}
-            />
-          ))}
+              {todayCalls.map(call => <CallRow key={call.id} call={call} />)}
             </div>
           )}
         </div>
@@ -347,9 +509,7 @@ const Dashboard = () => {
 
           {loading ? (
             <div className="space-y-2">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />
-              ))}
+              {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}
             </div>
           ) : recentCalls.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border p-8 text-center">
@@ -358,17 +518,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {recentCalls.map(call => (
-            <CallRow
-              key={call.id}
-              call={call}
-              onStatusChange={(id, status) => {
-                setTodayCalls(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-                setRecentCalls(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-                setUrgentCalls(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-              }}
-            />
-          ))}
+              {recentCalls.map(call => <CallRow key={call.id} call={call} />)}
             </div>
           )}
         </div>
