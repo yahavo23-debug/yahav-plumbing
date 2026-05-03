@@ -4,8 +4,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-import { RefreshCw, Receipt, AlertCircle, CheckCircle2, Link2, ExternalLink } from "lucide-react";
+import { RefreshCw, Receipt, AlertCircle, CheckCircle2, Link2 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
@@ -31,7 +30,6 @@ const Invoices = () => {
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState<YeshInvoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [filter, setFilter] = useState<"all" | "linked" | "unlinked">("all");
 
   const loadInvoices = async () => {
@@ -46,23 +44,6 @@ const Invoices = () => {
   };
 
   useEffect(() => { loadInvoices(); }, []);
-
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("sync-yesh-invoices");
-      if (error) throw error;
-      toast({
-        title: "✅ סנכרון הושלם",
-        description: `סונכרנו ${data?.synced || 0} חשבוניות מיש חשבונית`,
-      });
-      await loadInvoices();
-    } catch (err: any) {
-      toast({ title: "שגיאה בסנכרון", description: err.message, variant: "destructive" });
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const filtered = invoices.filter(inv => {
     if (filter === "linked")   return !!inv.service_call_id;
@@ -81,11 +62,11 @@ const Invoices = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-bold">קבלות וחשבוניות</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">מסונכרן עם יש חשבונית</p>
+            <p className="text-sm text-muted-foreground mt-0.5">חשבוניות מתווספות אוטומטית בעת יצירה</p>
           </div>
-          <Button onClick={handleSync} disabled={syncing} className="gap-2">
-            <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "מסנכרן..." : "סנכרן עכשיו"}
+          <Button onClick={loadInvoices} variant="outline" className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            רענן
           </Button>
         </div>
 
@@ -124,15 +105,12 @@ const Invoices = () => {
           ))}
         </div>
 
-        {/* Sync hint if empty */}
+        {/* Empty state */}
         {!loading && invoices.length === 0 && (
           <div className="text-center py-16 border border-dashed rounded-xl">
             <Receipt className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="font-medium">אין חשבוניות עדיין</p>
-            <p className="text-sm text-muted-foreground mt-1 mb-4">לחץ "סנכרן עכשיו" כדי למשוך את החשבוניות מיש חשבונית</p>
-            <Button onClick={handleSync} disabled={syncing}>
-              <RefreshCw className="w-4 h-4 mr-2" /> סנכרן עכשיו
-            </Button>
+            <p className="text-sm text-muted-foreground mt-1">חשבוניות יופיעו כאן אחרי שתיצור אותן מתוך קריאת שירות</p>
           </div>
         )}
 

@@ -16,31 +16,10 @@ const corsHeaders = {
 
 const YESH_AUTH = JSON.stringify({ secret: YESH_SECRET, userkey: YESH_USER_KEY });
 
-async function fetchYeshDocuments(fromDate?: string): Promise<any[]> {
-  // YeshInvoice getAllDocuments endpoint
-  const body: Record<string, unknown> = {
-    PageSize: 200,
-    PageNumber: 1,
-  };
-  if (fromDate) body.fromDate = fromDate;
-
-  const res = await fetch(`${YESH_API_BASE}/getAllDocuments`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: YESH_AUTH,
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`YeshInvoice API error ${res.status}: ${text}`);
-  }
-
-  const data = await res.json();
-  // API returns { documents: [...] } or { data: [...] } or array directly
-  return data?.documents || data?.data || (Array.isArray(data) ? data : []);
+async function fetchYeshDocuments(_fromDate?: string): Promise<any[]> {
+  // יש חשבונית API does not support bulk document retrieval.
+  // Invoices are synced via webhook (real-time) and via create-yesh-invoice (on creation).
+  return [];
 }
 
 function normalizePhone(phone: string | null | undefined): string {

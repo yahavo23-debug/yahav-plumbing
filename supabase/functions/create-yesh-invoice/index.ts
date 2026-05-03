@@ -169,6 +169,32 @@ Deno.serve(async (req) => {
 
     console.log(`Invoice created: #${invoiceNum} for call ${serviceCallId}`);
 
+    // Save invoice to yesh_invoices table for local tracking
+    const adminClient = createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const vatAmount = includeVat ? Number((amount * VAT_PERCENTAGE / 100).toFixed(2)) : 0;
+    const totalWithVat = includeVat ? Number((amount * (1 + VAT_PERCENTAGE / 100)).toFixed(2)) : Number(amount);
+
+    await adminClient.from("yesh_invoices").upsert({
+      yesh_doc_id:    yeshData?.docID || yeshData?.id || null,
+      doc_number:     String(invoiceNum || ""),
+      doc_type:       documentType,
+      doc_type_name:  "חשבונית מס קבלה",
+      customer_name:  customer?.name  || "",
+      customer_phone: customer?.phone || "",
+      customer_email: customer?.email || "",
+      total_price:    Number(amount),
+      total_vat:      vatAmount,
+      total_with_vat: totalWithVat,
+      date_created:   today,
+      status:         "open",
+      service_call_id: serviceCallId,
+      raw_data:       yeshData,
+      updated_at:     new Date().toISOString(),
+    }, { onConflict: "yesh_doc_id", ignoreDuplicates: false });
+
     return new Response(
       JSON.stringify({
         success:     true,
