@@ -22,6 +22,7 @@ interface ServiceCall {
   scheduled_at: string;
   status: string;
   job_type: string | null;
+  notes: string | null;
   customers: { name: string } | null;
 }
 
@@ -76,10 +77,27 @@ const VACATION_RGBA: Record<string, string> = {
   "bg-emerald-400": "rgba(52,211,153,0.40)",
 };
 
-// Color for dispatch calls highlight (orange marker)
-const DISPATCH_RGBA = "rgba(251,146,60,0.22)";
+// Status → rgba color for cell highlight
+const STATUS_RGBA: Record<string, string> = {
+  open:             "rgba(251,146,60,0.30)",   // כתום
+  in_progress:      "rgba(245,158,11,0.30)",   // צהוב
+  pending_customer: "rgba(167,139,250,0.30)",  // סגול
+  cancelled:        "rgba(248,113,113,0.30)",  // אדום
+  completed:        "rgba(52,211,153,0.30)",   // ירוק
+};
 
-// Map Tailwind bg class → rgba string for CSS gradients
+// Priority order — most urgent first
+const STATUS_PRIORITY = ["open", "in_progress", "pending_customer", "cancelled", "completed"];
+
+function getDominantStatus(calls: ServiceCall[]): string | null {
+  if (!calls.length) return null;
+  for (const s of STATUS_PRIORITY) {
+    if (calls.some(c => c.status === s)) return s;
+  }
+  return calls[0].status;
+}
+
+// Map Tailwind bg class → rgba string for personal events
 const EVENT_RGBA: Record<string, string> = {
   "bg-orange-400":  "rgba(251,146,60,0.28)",
   "bg-pink-400":    "rgba(244,114,182,0.28)",
@@ -90,15 +108,17 @@ const EVENT_RGBA: Record<string, string> = {
 };
 
 function getCellBackground(calls: ServiceCall[], events: PersonalEvent[], vacation: Vacation | null): string {
-  // Vacation covers the full cell
   if (vacation) return VACATION_RGBA[vacation.color] || "rgba(167,139,250,0.40)";
   const hasCalls  = calls.length > 0;
   const hasEvents = events.length > 0;
   if (!hasCalls && !hasEvents) return "";
-  const eventRgba = hasEvents ? (EVENT_RGBA[events[0].color] || DISPATCH_RGBA) : "";
-  if (hasCalls && !hasEvents) return DISPATCH_RGBA;
+  const dominant   = getDominantStatus(calls);
+  const callsRgba  = dominant ? (STATUS_RGBA[dominant] || "rgba(251,146,60,0.28)") : "";
+  const eventRgba  = hasEvents ? (EVENT_RGBA[events[0].color] || "rgba(251,146,60,0.28)") : "";
+  if (hasCalls && !hasEvents) return callsRgba;
   if (!hasCalls && hasEvents) return eventRgba;
-  return `linear-gradient(to left, ${DISPATCH_RGBA} 50%, ${eventRgba} 50%)`;
+  // Both: right half = call status color, left half = personal event color
+  return `linear-gradient(to left, ${callsRgba} 50%, ${eventRgba} 50%)`;
 }
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
@@ -169,6 +189,10 @@ const CalendarPage = () => {
   const [rangeActive, setRangeActive]   = useState(false);
   const [rangeMonths, setRangeMonths]   = useState<Date[]>([]);
 
+  // Inline notes per call (callId → draft text)
+  const [callNotes, setCallNotes]       = useState<Record<string, string>>({});
+  const [savingNote, setSavingNote]     = useState<string | null>(null);
+
   // Add-event form state
   const [showForm, setShowForm]         = useState(false);
   const [formTitle, setFormTitle]       = useState("");
@@ -182,7 +206,7 @@ const CalendarPage = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("service_calls")
-      .select("id, scheduled_at, status, job_type, customers(name)")
+      .select("id, scheduled_at, status, job_type, notes, customers(name)")
       .not("scheduled_at", "is", null)
       .gte("scheduled_at", fromDate.toISOString())
       .lte("scheduled_at", toDate.toISOString());
@@ -230,6 +254,17 @@ const CalendarPage = () => {
   const handleNoteChange = (text: string) => {
     setNoteText(text);
     if (selectedDay) { saveNote(getDateKey(selectedDay), text); setNotes(loadNotes()); }
+  };
+
+  // ── Sync call notes ──────────────────────────────────────────────────────────
+
+  const saveCallNote = async (callId: string) => {
+    const text = callNotes[callId] ?? "";
+    setSavingNote(callId);
+    await supabase.from("service_calls").update({ notes: text } as any).eq("id", callId);
+    // Update local calls list too
+    setCalls(prev => prev.map(c => c.id === callId ? { ...c, notes: text } : c));
+    setSavingNote(null);
   };
 
   // ── Vacations ────────────────────────────────────────────────────────────────
@@ -476,15 +511,15 @@ const CalendarPage = () => {
 
         {/* Legend */}
         <div className="flex flex-wrap gap-x-4 gap-y-1 px-1">
-          {Object.entries(STATUS_DOT).map(([st, cls]) => (
+          {Object.entries(STATUS_RGBA).map(([st, rgba]) => (
             <div key={st} className="flex items-center gap-1.5">
-              <span className={cn("w-2.5 h-2.5 rounded-full", cls)} />
+              <span className="w-5 h-3 rounded-sm shrink-0" style={{ background: rgba, border: "1px solid rgba(0,0,0,0.1)" }} />
               <span className="text-xs text-muted-foreground">{statusLabels[st] || st}</span>
             </div>
           ))}
           <div className="flex items-center gap-1.5">
-            <span className="w-5 h-3 rounded-sm shrink-0" style={{ background: DISPATCH_RGBA, border: "1px solid rgba(251,146,60,0.4)" }} />
-            <span className="text-xs text-muted-foreground">לוח שיבוץ</span>
+            <span className="w-5 h-3 rounded-sm shrink-0" style={{ background: "rgba(251,146,60,0.28)", border: "1px solid rgba(251,146,60,0.4)" }} />
+            <span className="text-xs text-muted-foreground">פגישה אישית</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-5 h-3 rounded-sm shrink-0" style={{ background: "linear-gradient(to left, rgba(251,146,60,0.22) 50%, rgba(244,114,182,0.28) 50%)", border: "1px solid rgba(0,0,0,0.1)" }} />
@@ -591,23 +626,49 @@ const CalendarPage = () => {
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                     <Wrench className="w-3.5 h-3.5" /> קריאות שירות ({selectedCalls.length})
                   </p>
-                  {selectedCalls.map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => navigate(`/service-calls/${c.id}`)}
-                      className="w-full text-right rounded-lg border border-border px-4 py-3 hover:bg-accent/60 transition-colors flex items-center justify-between gap-3"
-                    >
-                      <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className="font-medium text-sm truncate">{c.customers?.name || "לקוח לא ידוע"}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(parseISO(c.scheduled_at), "HH:mm")} · {getJobTypeLabel(c.job_type)}
-                        </span>
+                  {selectedCalls.map(c => {
+                    const draftNote = callNotes[c.id] ?? c.notes ?? "";
+                    const isDirty   = callNotes[c.id] !== undefined && callNotes[c.id] !== (c.notes ?? "");
+                    return (
+                    <div key={c.id} className="rounded-lg border border-border overflow-hidden">
+                      {/* Call header */}
+                      <div
+                        className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-accent/40 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/service-calls/${c.id}`)}
+                      >
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="font-medium text-sm truncate">{c.customers?.name || "לקוח לא ידוע"}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {format(parseISO(c.scheduled_at), "HH:mm")} · {getJobTypeLabel(c.job_type)}
+                          </span>
+                        </div>
+                        <Badge className={cn("shrink-0 text-xs", statusColors[c.status])} variant="outline">
+                          {statusLabels[c.status] || c.status}
+                        </Badge>
                       </div>
-                      <Badge className={cn("shrink-0 text-xs", statusColors[c.status])} variant="outline">
-                        {statusLabels[c.status] || c.status}
-                      </Badge>
-                    </button>
-                  ))}
+                      {/* Inline note — synced with service call */}
+                      <div className="border-t border-border px-4 py-2 bg-muted/20">
+                        <textarea
+                          dir="rtl"
+                          rows={2}
+                          value={draftNote}
+                          onChange={e => setCallNotes(n => ({ ...n, [c.id]: e.target.value }))}
+                          placeholder="הוסף הערה לקריאה... (מסונכרן עם כל המערכת)"
+                          className="w-full resize-none bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+                        />
+                        {isDirty && (
+                          <button
+                            onClick={() => saveCallNote(c.id)}
+                            disabled={savingNote === c.id}
+                            className="text-xs text-primary font-medium hover:underline disabled:opacity-50"
+                          >
+                            {savingNote === c.id ? "שומר..." : "שמור הערה ✓"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    );
+                  })}
                 </div>
               )}
 
