@@ -89,7 +89,7 @@ export function QuickCallDialog({ open, onClose }: Props) {
     setLoading(true);
     const { data, error } = await supabase
       .from("service_calls")
-      .insert({
+      .insert([{
         customer_id: selectedCustomer.id,
         job_type: jobType,
         priority,
@@ -97,7 +97,7 @@ export function QuickCallDialog({ open, onClose }: Props) {
         description: description || null,
         status: "open",
         created_by: user.id,
-      })
+      }])
       .select("id")
       .single();
 
