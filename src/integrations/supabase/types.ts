@@ -461,6 +461,36 @@ export type Database = {
           },
         ]
       }
+      personal_events: {
+        Row: {
+          color: string
+          created_at: string
+          date: string
+          id: string
+          time: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          date: string
+          id?: string
+          time: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          date?: string
+          id?: string
+          time?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -503,60 +533,30 @@ export type Database = {
         }
         Relationships: []
       }
-      personal_events: {
-        Row: {
-          id: string
-          user_id: string
-          date: string
-          time: string
-          title: string
-          color: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          date: string
-          time: string
-          title: string
-          color?: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          date?: string
-          time?: string
-          title?: string
-          color?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
       push_subscriptions: {
         Row: {
-          id: string
-          user_id: string
-          endpoint: string
-          p256dh: string
           auth: string
           created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          endpoint: string
-          p256dh: string
           auth: string
           created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          endpoint?: string
-          p256dh?: string
           auth?: string
           created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1154,6 +1154,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      yesh_invoices: {
+        Row: {
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          date_created: string
+          doc_number: string
+          doc_type: number
+          doc_type_name: string
+          id: string
+          raw_data: Json | null
+          service_call_id: string | null
+          status: string
+          total_price: number
+          total_vat: number
+          total_with_vat: number
+          updated_at: string
+          yesh_doc_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string
+          date_created?: string
+          doc_number?: string
+          doc_type?: number
+          doc_type_name?: string
+          id?: string
+          raw_data?: Json | null
+          service_call_id?: string | null
+          status?: string
+          total_price?: number
+          total_vat?: number
+          total_with_vat?: number
+          updated_at?: string
+          yesh_doc_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string
+          date_created?: string
+          doc_number?: string
+          doc_type?: number
+          doc_type_name?: string
+          id?: string
+          raw_data?: Json | null
+          service_call_id?: string | null
+          status?: string
+          total_price?: number
+          total_vat?: number
+          total_with_vat?: number
+          updated_at?: string
+          yesh_doc_id?: number | null
+        }
+        Relationships: []
       }
     }
     Views: {
