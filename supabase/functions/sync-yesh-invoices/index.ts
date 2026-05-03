@@ -24,7 +24,7 @@ async function fetchYeshDocuments(fromDate?: string): Promise<any[]> {
   };
   if (fromDate) body.fromDate = fromDate;
 
-  const res = await fetch(`${YESH_API_BASE}/getAllDocuments`, {
+  const res = await fetch(`${YESH_API_BASE}/getDocuments`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
