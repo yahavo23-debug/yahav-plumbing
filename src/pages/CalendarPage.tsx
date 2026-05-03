@@ -403,8 +403,8 @@ const CalendarPage = () => {
                 const key        = getDateKey(day);
                 const dayCalls   = callsByDate[key] || [];
                 const dayEvents  = eventsByDate[key] || [];
-                const vacation   = isMonthDay ? getVacationForDay(day, vacations) : null;
                 const isMonthDay = isSameMonth(day, month);
+                const vacation   = isMonthDay ? getVacationForDay(day, vacations) : null;
                 const isSel      = selectedDay ? isSameDay(day, selectedDay) : false;
                 const isTod      = isToday(day);
                 const hasNote    = !!notes[key];
