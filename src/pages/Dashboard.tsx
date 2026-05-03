@@ -368,10 +368,13 @@ const Dashboard = () => {
             הפעל התראות
           </button>
         ) : (
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground px-3 py-2">
+          <button
+            onClick={() => notify("⏳ ממתין לאישור לקוח", "עידו רונן ממתין 5 ימים לאישור הצעת המחיר")}
+            className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 text-green-700 transition-colors shrink-0"
+          >
             <Bell className="w-3.5 h-3.5 text-green-500" />
-            התראות פעילות
-          </span>
+            בדוק התראה
+          </button>
         )}
       </div>
 
