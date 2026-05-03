@@ -56,6 +56,30 @@ const EVENT_COLORS = [
 const EVENTS_KEY = "calendar_personal_events";
 const NOTES_KEY  = "calendar_notes";
 
+// Color for dispatch calls highlight (orange marker)
+const DISPATCH_RGBA = "rgba(251,146,60,0.22)";
+
+// Map Tailwind bg class → rgba string for CSS gradients
+const EVENT_RGBA: Record<string, string> = {
+  "bg-orange-400":  "rgba(251,146,60,0.28)",
+  "bg-pink-400":    "rgba(244,114,182,0.28)",
+  "bg-teal-400":    "rgba(45,212,191,0.28)",
+  "bg-red-400":     "rgba(248,113,113,0.28)",
+  "bg-violet-400":  "rgba(167,139,250,0.28)",
+  "bg-emerald-400": "rgba(52,211,153,0.28)",
+};
+
+function getCellBackground(calls: ServiceCall[], events: PersonalEvent[]): string {
+  const hasCalls  = calls.length > 0;
+  const hasEvents = events.length > 0;
+  if (!hasCalls && !hasEvents) return "";
+  const eventRgba = hasEvents ? (EVENT_RGBA[events[0].color] || DISPATCH_RGBA) : "";
+  if (hasCalls && !hasEvents) return DISPATCH_RGBA;
+  if (!hasCalls && hasEvents) return eventRgba;
+  // Both: right half = dispatch orange, left half = personal color (RTL: right is start)
+  return `linear-gradient(to left, ${DISPATCH_RGBA} 50%, ${eventRgba} 50%)`;
+}
+
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
 function loadEvents(): PersonalEvent[] {
@@ -239,11 +263,12 @@ const CalendarPage = () => {
                 <button
                   key={idx}
                   onClick={() => handleDayClick(day)}
+                  style={{ background: isMonth ? getCellBackground(dayCalls, dayEvents) : undefined }}
                   className={cn(
                     "relative min-h-[76px] sm:min-h-[90px] p-1.5 text-right border-b border-r border-border",
-                    "transition-colors hover:bg-accent/60 focus:outline-none",
+                    "transition-colors hover:brightness-95 focus:outline-none",
                     !isMonth && "opacity-35",
-                    isSel && "bg-primary/10 ring-1 ring-inset ring-primary",
+                    isSel && "ring-2 ring-inset ring-primary",
                     isTod && !isSel && "bg-blue-50 dark:bg-blue-950/30",
                     (idx + 1) % 7 === 0 && "border-r-0",
                     idx >= grid.length - 7 && "border-b-0",
@@ -304,11 +329,15 @@ const CalendarPage = () => {
             </div>
           ))}
           <div className="flex items-center gap-1.5">
-            <Star className="w-2.5 h-2.5 text-orange-400" />
-            <span className="text-xs text-muted-foreground">פגישה אישית</span>
+            <span className="w-5 h-3 rounded-sm shrink-0" style={{ background: DISPATCH_RGBA, border: "1px solid rgba(251,146,60,0.4)" }} />
+            <span className="text-xs text-muted-foreground">לוח שיבוץ</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 opacity-60" />
+            <span className="w-5 h-3 rounded-sm shrink-0" style={{ background: "linear-gradient(to left, rgba(251,146,60,0.22) 50%, rgba(244,114,182,0.28) 50%)", border: "1px solid rgba(0,0,0,0.1)" }} />
+            <span className="text-xs text-muted-foreground">שניהם</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-3 rounded-full bg-amber-400 opacity-60" />
             <span className="text-xs text-muted-foreground">יש הערה</span>
           </div>
         </div>
