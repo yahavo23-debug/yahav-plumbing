@@ -7,410 +7,457 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { getJobTypeLabel, statusColors, statusLabels } from "@/lib/constants";
 import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  addDays,
-  addMonths,
-  subMonths,
-  isSameDay,
-  isSameMonth,
-  isToday,
-  parseISO,
+  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+  addDays, addMonths, subMonths, isSameDay, isSameMonth, isToday, parseISO,
 } from "date-fns";
 import { he } from "date-fns/locale";
-import { ChevronRight, ChevronLeft, CalendarDays, X } from "lucide-react";
+import { ChevronRight, ChevronLeft, CalendarDays, X, Plus, Wrench, Star, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ServiceCall {
   id: string;
-  scheduled_date: string;
+  scheduled_at: string;
   status: string;
   job_type: string | null;
   customers: { name: string } | null;
+}
+
+interface PersonalEvent {
+  id: string;
+  date: string;   // YYYY-MM-DD
+  time: string;   // HH:MM
+  title: string;
+  color: string;  // tailwind bg class
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
-const STATUS_DOT_COLORS: Record<string, string> = {
-  open: "bg-blue-400",
-  in_progress: "bg-amber-400",
+const STATUS_DOT: Record<string, string> = {
+  open:             "bg-blue-400",
+  in_progress:      "bg-amber-400",
   pending_customer: "bg-purple-400",
-  completed: "bg-green-400",
-  cancelled: "bg-gray-300",
+  completed:        "bg-green-400",
+  cancelled:        "bg-gray-300",
 };
 
-const NOTES_STORAGE_KEY = "calendar_notes";
+const EVENT_COLORS = [
+  { label: "כתום",  value: "bg-orange-400",  ring: "ring-orange-400",  text: "text-orange-700",  badge: "bg-orange-100 text-orange-700" },
+  { label: "ורוד",  value: "bg-pink-400",    ring: "ring-pink-400",    text: "text-pink-700",    badge: "bg-pink-100 text-pink-700" },
+  { label: "טורקיז",value: "bg-teal-400",    ring: "ring-teal-400",    text: "text-teal-700",    badge: "bg-teal-100 text-teal-700" },
+  { label: "אדום",  value: "bg-red-400",     ring: "ring-red-400",     text: "text-red-700",     badge: "bg-red-100 text-red-700" },
+  { label: "סגול",  value: "bg-violet-400",  ring: "ring-violet-400",  text: "text-violet-700",  badge: "bg-violet-100 text-violet-700" },
+  { label: "ירוק",  value: "bg-emerald-400", ring: "ring-emerald-400", text: "text-emerald-700", badge: "bg-emerald-100 text-emerald-700" },
+];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+const EVENTS_KEY = "calendar_personal_events";
+const NOTES_KEY  = "calendar_notes";
 
-function getDateKey(date: Date): string {
-  return format(date, "yyyy-MM-dd");
+// ─── Storage helpers ──────────────────────────────────────────────────────────
+
+function loadEvents(): PersonalEvent[] {
+  try { return JSON.parse(localStorage.getItem(EVENTS_KEY) || "[]"); }
+  catch { return []; }
 }
-
-function getNotes(): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem(NOTES_STORAGE_KEY) || "{}");
-  } catch {
-    return {};
-  }
+function saveEvents(events: PersonalEvent[]) {
+  localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
 }
-
-function saveNote(dateKey: string, note: string) {
-  const notes = getNotes();
-  if (note.trim()) {
-    notes[dateKey] = note;
-  } else {
-    delete notes[dateKey];
-  }
-  localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
+function loadNotes(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(NOTES_KEY) || "{}"); }
+  catch { return {}; }
 }
+function saveNote(key: string, val: string) {
+  const n = loadNotes();
+  if (val.trim()) n[key] = val; else delete n[key];
+  localStorage.setItem(NOTES_KEY, JSON.stringify(n));
+}
+function getDateKey(d: Date) { return format(d, "yyyy-MM-dd"); }
 
-// Build calendar grid: weeks starting Sunday, 6 rows max
-function buildCalendarDays(currentMonth: Date): Date[] {
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  // weekStartsOn: 0 = Sunday
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-  const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
-
+function buildGrid(month: Date): Date[] {
+  const s = startOfWeek(startOfMonth(month), { weekStartsOn: 0 });
+  const e = endOfWeek(endOfMonth(month),     { weekStartsOn: 0 });
   const days: Date[] = [];
-  let d = gridStart;
-  while (d <= gridEnd) {
-    days.push(d);
-    d = addDays(d, 1);
-  }
+  let cur = s;
+  while (cur <= e) { days.push(cur); cur = addDays(cur, 1); }
   return days;
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 
 const CalendarPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
-  const [calls, setCalls] = useState<ServiceCall[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-  const [notes, setNotes] = useState<Record<string, string>>(getNotes);
-  const [noteText, setNoteText] = useState("");
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [calls, setCalls]               = useState<ServiceCall[]>([]);
+  const [loading, setLoading]           = useState(false);
+  const [selectedDay, setSelectedDay]   = useState<Date | null>(null);
+  const [notes, setNotes]               = useState<Record<string, string>>(loadNotes);
+  const [noteText, setNoteText]         = useState("");
+  const [events, setEvents]             = useState<PersonalEvent[]>(loadEvents);
 
-  // ── Data loading ────────────────────────────────────────────────────────────
+  // Add-event form state
+  const [showForm, setShowForm]         = useState(false);
+  const [formTitle, setFormTitle]       = useState("");
+  const [formTime, setFormTime]         = useState("09:00");
+  const [formColor, setFormColor]       = useState(EVENT_COLORS[0].value);
+
+  // ── Load service calls (use scheduled_at for time) ──────────────────────────
 
   const loadCalls = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-
-    const from = format(startOfMonth(currentMonth), "yyyy-MM-dd");
-    const to = format(endOfMonth(currentMonth), "yyyy-MM-dd");
-
+    const from = startOfMonth(currentMonth).toISOString();
+    const to   = endOfMonth(currentMonth).toISOString();
     const { data, error } = await supabase
       .from("service_calls")
-      .select("id, scheduled_date, status, job_type, customers(name)")
-      .not("scheduled_date", "is", null)
-      .gte("scheduled_date", from)
-      .lte("scheduled_date", to);
-
-    if (!error && data) {
-      setCalls(data as ServiceCall[]);
-    }
+      .select("id, scheduled_at, status, job_type, customers(name)")
+      .not("scheduled_at", "is", null)
+      .gte("scheduled_at", from)
+      .lte("scheduled_at", to);
+    if (!error && data) setCalls(data as ServiceCall[]);
     setLoading(false);
   }, [user, currentMonth]);
 
-  useEffect(() => {
-    loadCalls();
-  }, [loadCalls]);
+  useEffect(() => { loadCalls(); }, [loadCalls]);
 
-  // ── Day selection ───────────────────────────────────────────────────────────
+  // ── Day selection ────────────────────────────────────────────────────────────
 
   const handleDayClick = (day: Date) => {
     if (selectedDay && isSameDay(day, selectedDay)) {
-      setSelectedDay(null);
-      setNoteText("");
+      setSelectedDay(null); setNoteText(""); setShowForm(false);
     } else {
       setSelectedDay(day);
-      const key = getDateKey(day);
-      setNoteText(notes[key] || "");
+      setNoteText(loadNotes()[getDateKey(day)] || "");
+      setShowForm(false);
     }
   };
 
   const handleNoteChange = (text: string) => {
     setNoteText(text);
-    if (selectedDay) {
-      const key = getDateKey(selectedDay);
-      saveNote(key, text);
-      setNotes(getNotes());
-    }
+    if (selectedDay) { saveNote(getDateKey(selectedDay), text); setNotes(loadNotes()); }
   };
 
-  // ── Navigation ──────────────────────────────────────────────────────────────
+  // ── Personal events ──────────────────────────────────────────────────────────
 
-  const goPrev = () => setCurrentMonth((m) => subMonths(m, 1));
-  const goNext = () => setCurrentMonth((m) => addMonths(m, 1));
-  const goToday = () => {
-    setCurrentMonth(new Date());
-    setSelectedDay(new Date());
-    setNoteText(getNotes()[getDateKey(new Date())] || "");
+  const addEvent = () => {
+    if (!formTitle.trim() || !selectedDay) return;
+    const ev: PersonalEvent = {
+      id: crypto.randomUUID(),
+      date: getDateKey(selectedDay),
+      time: formTime,
+      title: formTitle.trim(),
+      color: formColor,
+    };
+    const updated = [...events, ev];
+    setEvents(updated);
+    saveEvents(updated);
+    setFormTitle(""); setFormTime("09:00"); setShowForm(false);
+  };
+
+  const deleteEvent = (id: string) => {
+    const updated = events.filter(e => e.id !== id);
+    setEvents(updated);
+    saveEvents(updated);
   };
 
   // ── Derived data ─────────────────────────────────────────────────────────────
 
-  const calendarDays = buildCalendarDays(currentMonth);
+  const grid = buildGrid(currentMonth);
 
-  const callsByDate = calls.reduce<Record<string, ServiceCall[]>>((acc, call) => {
-    const key = call.scheduled_date.slice(0, 10);
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(call);
+  // Group calls by date key
+  const callsByDate = calls.reduce<Record<string, ServiceCall[]>>((acc, c) => {
+    const key = c.scheduled_at.slice(0, 10);
+    (acc[key] ??= []).push(c);
     return acc;
   }, {});
 
-  const selectedDayCalls = selectedDay
-    ? callsByDate[getDateKey(selectedDay)] || []
-    : [];
+  // Group personal events by date key
+  const eventsByDate = events.reduce<Record<string, PersonalEvent[]>>((acc, e) => {
+    (acc[e.date] ??= []).push(e);
+    return acc;
+  }, {});
+
+  const selectedKey     = selectedDay ? getDateKey(selectedDay) : "";
+  const selectedCalls   = selectedKey ? (callsByDate[selectedKey] || []).sort((a,b) => a.scheduled_at.localeCompare(b.scheduled_at)) : [];
+  const selectedEvents  = selectedKey ? (eventsByDate[selectedKey] || []).sort((a,b) => a.time.localeCompare(b.time)) : [];
 
   const monthLabel = format(currentMonth, "MMMM yyyy", { locale: he });
+
+  const colorMeta = (val: string) => EVENT_COLORS.find(c => c.value === val) || EVENT_COLORS[0];
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <AppLayout title="יומן">
-      <div dir="rtl" className="flex flex-col gap-4 pb-8">
+      <div dir="rtl" className="flex flex-col gap-4 pb-10">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={goNext} aria-label="חודש הבא">
+            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(m => addMonths(m, 1))} aria-label="חודש הבא">
               <ChevronRight className="w-4 h-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={goPrev} aria-label="חודש קודם">
+            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(m => subMonths(m, 1))} aria-label="חודש קודם">
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <h2 className="text-lg font-semibold text-foreground min-w-[130px] text-center">
-              {monthLabel}
-            </h2>
+            <h2 className="text-lg font-semibold min-w-[140px] text-center">{monthLabel}</h2>
           </div>
-
           <div className="flex items-center gap-2">
-            {loading && (
-              <span className="text-xs text-muted-foreground animate-pulse">טוען...</span>
-            )}
-            <Button variant="outline" size="sm" onClick={goToday} className="gap-1">
+            {loading && <span className="text-xs text-muted-foreground animate-pulse">טוען...</span>}
+            <Button variant="outline" size="sm" onClick={() => { setCurrentMonth(new Date()); setSelectedDay(new Date()); setNoteText(loadNotes()[getDateKey(new Date())] || ""); }} className="gap-1">
               <CalendarDays className="w-4 h-4" />
               היום
             </Button>
           </div>
         </div>
 
-        {/* ── Calendar Grid ── */}
+        {/* Calendar grid */}
         <div className="rounded-xl border border-border overflow-hidden bg-card shadow-sm">
-          {/* Day-of-week headers */}
+          {/* Day headers */}
           <div className="grid grid-cols-7 border-b border-border bg-muted/50">
-            {HEBREW_DAYS.map((day) => (
-              <div
-                key={day}
-                className="py-2 text-center text-xs font-medium text-muted-foreground"
-              >
-                {day}
-              </div>
+            {HEBREW_DAYS.map(d => (
+              <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
             ))}
           </div>
 
           {/* Day cells */}
           <div className="grid grid-cols-7">
-            {calendarDays.map((day, idx) => {
-              const key = getDateKey(day);
-              const dayCalls = callsByDate[key] || [];
-              const isCurrentMonth = isSameMonth(day, currentMonth);
-              const isSelected = selectedDay ? isSameDay(day, selectedDay) : false;
-              const isTodayDay = isToday(day);
-              const hasNote = !!notes[key];
-
-              // Collect unique statuses for dots (max 4 dots shown)
-              const dotStatuses = dayCalls.slice(0, 4).map((c) => c.status);
+            {grid.map((day, idx) => {
+              const key       = getDateKey(day);
+              const dayCalls  = callsByDate[key] || [];
+              const dayEvents = eventsByDate[key] || [];
+              const isMonth   = isSameMonth(day, currentMonth);
+              const isSel     = selectedDay ? isSameDay(day, selectedDay) : false;
+              const isTod     = isToday(day);
+              const hasNote   = !!notes[key];
 
               return (
                 <button
                   key={idx}
                   onClick={() => handleDayClick(day)}
                   className={cn(
-                    "relative min-h-[72px] sm:min-h-[88px] p-1.5 text-right border-b border-r border-border",
-                    "transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    "hover:bg-accent/60",
-                    !isCurrentMonth && "opacity-40",
-                    isSelected && "bg-primary/10 ring-1 ring-inset ring-primary",
-                    isTodayDay && !isSelected && "bg-blue-50 dark:bg-blue-950/30",
-                    // Remove right border from last column, bottom border from last row
+                    "relative min-h-[76px] sm:min-h-[90px] p-1.5 text-right border-b border-r border-border",
+                    "transition-colors hover:bg-accent/60 focus:outline-none",
+                    !isMonth && "opacity-35",
+                    isSel && "bg-primary/10 ring-1 ring-inset ring-primary",
+                    isTod && !isSel && "bg-blue-50 dark:bg-blue-950/30",
                     (idx + 1) % 7 === 0 && "border-r-0",
-                    idx >= calendarDays.length - 7 && "border-b-0",
+                    idx >= grid.length - 7 && "border-b-0",
                   )}
                 >
                   {/* Day number */}
-                  <span
-                    className={cn(
-                      "inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium mb-0.5",
-                      isTodayDay
-                        ? "bg-primary text-primary-foreground font-bold"
-                        : "text-foreground",
-                    )}
-                  >
+                  <span className={cn(
+                    "inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium mb-0.5",
+                    isTod ? "bg-primary text-primary-foreground font-bold" : "text-foreground"
+                  )}>
                     {format(day, "d")}
                   </span>
 
-                  {/* Customer names (truncated) */}
+                  {/* Service call names */}
+                  <div className="flex flex-col gap-px overflow-hidden">
+                    {dayCalls.slice(0, 1).map(c => (
+                      <span key={c.id} className="text-[10px] leading-tight truncate text-muted-foreground flex items-center gap-0.5">
+                        <Wrench className="w-2.5 h-2.5 shrink-0 opacity-60" />
+                        {c.customers?.name || "—"}
+                      </span>
+                    ))}
+                    {/* Personal events */}
+                    {dayEvents.slice(0, 1).map(e => (
+                      <span key={e.id} className="text-[10px] leading-tight truncate flex items-center gap-0.5" style={{}}>
+                        <span className={cn("w-2 h-2 rounded-full shrink-0", e.color)} />
+                        {e.title}
+                      </span>
+                    ))}
+                    {(dayCalls.length + dayEvents.length) > 2 && (
+                      <span className="text-[10px] text-muted-foreground">+{dayCalls.length + dayEvents.length - 2} עוד</span>
+                    )}
+                  </div>
+
+                  {/* Status dots */}
                   {dayCalls.length > 0 && (
-                    <div className="flex flex-col gap-0.5 overflow-hidden">
-                      {dayCalls.slice(0, 2).map((call) => (
-                        <span
-                          key={call.id}
-                          className="text-[10px] leading-tight truncate text-muted-foreground"
-                        >
-                          {call.customers?.name || "—"}
-                        </span>
+                    <div className="flex gap-0.5 mt-0.5 flex-wrap">
+                      {dayCalls.slice(0, 4).map((c, i) => (
+                        <span key={i} className={cn("w-1.5 h-1.5 rounded-full", STATUS_DOT[c.status] || "bg-gray-300")} />
                       ))}
-                      {dayCalls.length > 2 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          +{dayCalls.length - 2} נוספים
-                        </span>
-                      )}
+                      {dayCalls.length > 4 && <span className="text-[8px] text-muted-foreground">+{dayCalls.length - 4}</span>}
                     </div>
                   )}
 
-                  {/* Status dots row */}
-                  {dotStatuses.length > 0 && (
-                    <div className="flex gap-0.5 mt-1 flex-wrap">
-                      {dotStatuses.map((status, i) => (
-                        <span
-                          key={i}
-                          className={cn(
-                            "w-2 h-2 rounded-full shrink-0",
-                            STATUS_DOT_COLORS[status] || "bg-gray-300",
-                          )}
-                        />
-                      ))}
-                      {dayCalls.length > 4 && (
-                        <span className="text-[9px] text-muted-foreground leading-none self-center">
-                          +{dayCalls.length - 4}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Note indicator */}
-                  {hasNote && (
-                    <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-amber-400" />
-                  )}
+                  {/* Note dot */}
+                  {hasNote && <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-amber-400" />}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* ── Legend ── */}
+        {/* Legend */}
         <div className="flex flex-wrap gap-x-4 gap-y-1 px-1">
-          {Object.entries(STATUS_DOT_COLORS).map(([status, dotClass]) => (
-            <div key={status} className="flex items-center gap-1.5">
-              <span className={cn("w-2.5 h-2.5 rounded-full", dotClass)} />
-              <span className="text-xs text-muted-foreground">{statusLabels[status] || status}</span>
+          {Object.entries(STATUS_DOT).map(([st, cls]) => (
+            <div key={st} className="flex items-center gap-1.5">
+              <span className={cn("w-2.5 h-2.5 rounded-full", cls)} />
+              <span className="text-xs text-muted-foreground">{statusLabels[st] || st}</span>
             </div>
           ))}
+          <div className="flex items-center gap-1.5">
+            <Star className="w-2.5 h-2.5 text-orange-400" />
+            <span className="text-xs text-muted-foreground">פגישה אישית</span>
+          </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400 opacity-60" />
             <span className="text-xs text-muted-foreground">יש הערה</span>
           </div>
         </div>
 
-        {/* ── Day Panel ── */}
+        {/* Day panel */}
         {selectedDay && (
           <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
             {/* Panel header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/40">
-              <h3 className="font-semibold text-foreground">
-                {format(selectedDay, "EEEE, d בMMMM yyyy", { locale: he })}
-              </h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => { setSelectedDay(null); setNoteText(""); }}
-                aria-label="סגור"
-              >
+              <h3 className="font-semibold">{format(selectedDay, "EEEE, d בMMMM yyyy", { locale: he })}</h3>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedDay(null); setNoteText(""); setShowForm(false); }}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
 
-            <div className="p-4 flex flex-col gap-4">
-              {/* Calls list */}
-              {selectedDayCalls.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  אין קריאות שירות ביום זה
-                </p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    קריאות שירות ({selectedDayCalls.length})
+            <div className="p-4 space-y-5">
+
+              {/* ── Service calls ── */}
+              {selectedCalls.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                    <Wrench className="w-3.5 h-3.5" /> קריאות שירות ({selectedCalls.length})
                   </p>
-                  {selectedDayCalls.map((call) => (
+                  {selectedCalls.map(c => (
                     <button
-                      key={call.id}
-                      onClick={() => navigate(`/service-calls/${call.id}`)}
-                      className={cn(
-                        "w-full text-right rounded-lg border border-border px-4 py-3",
-                        "hover:bg-accent/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        "flex items-center justify-between gap-3",
-                      )}
+                      key={c.id}
+                      onClick={() => navigate(`/service-calls/${c.id}`)}
+                      className="w-full text-right rounded-lg border border-border px-4 py-3 hover:bg-accent/60 transition-colors flex items-center justify-between gap-3"
                     >
                       <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className="font-medium text-sm truncate">
-                          {call.customers?.name || "לקוח לא ידוע"}
-                        </span>
-                        <span className="text-xs text-muted-foreground truncate">
-                          {getJobTypeLabel(call.job_type)}
+                        <span className="font-medium text-sm truncate">{c.customers?.name || "לקוח לא ידוע"}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(parseISO(c.scheduled_at), "HH:mm")} · {getJobTypeLabel(c.job_type)}
                         </span>
                       </div>
-                      <Badge
-                        className={cn(
-                          "shrink-0 text-xs",
-                          statusColors[call.status],
-                        )}
-                        variant="outline"
-                      >
-                        {statusLabels[call.status] || call.status}
+                      <Badge className={cn("shrink-0 text-xs", statusColors[c.status])} variant="outline">
+                        {statusLabels[c.status] || c.status}
                       </Badge>
                     </button>
                   ))}
                 </div>
               )}
 
-              {/* Personal notes */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  הערה אישית
+              {/* ── Personal events ── */}
+              {(selectedEvents.length > 0 || showForm) && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                    <Star className="w-3.5 h-3.5" /> פגישות אישיות
+                  </p>
+                  {selectedEvents.map(e => {
+                    const meta = colorMeta(e.color);
+                    return (
+                      <div key={e.id} className={cn("flex items-center gap-3 rounded-lg px-4 py-3 border", meta.badge)}>
+                        <span className={cn("w-3 h-3 rounded-full shrink-0", e.color)} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{e.title}</p>
+                          <p className="text-xs opacity-70">{e.time}</p>
+                        </div>
+                        <button onClick={() => deleteEvent(e.id)} className="p-1 rounded hover:bg-black/10 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5 opacity-60" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Add event form */}
+              {showForm ? (
+                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                  <p className="text-sm font-semibold">פגישה אישית חדשה</p>
+
+                  {/* Title */}
+                  <input
+                    type="text"
+                    placeholder="כותרת הפגישה..."
+                    value={formTitle}
+                    onChange={e => setFormTitle(e.target.value)}
+                    className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    dir="rtl"
+                    autoFocus
+                  />
+
+                  {/* Time */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-muted-foreground shrink-0">שעה:</label>
+                    <input
+                      type="time"
+                      value={formTime}
+                      onChange={e => setFormTime(e.target.value)}
+                      className="h-9 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+
+                  {/* Color picker */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground shrink-0">צבע:</span>
+                    {EVENT_COLORS.map(c => (
+                      <button
+                        key={c.value}
+                        onClick={() => setFormColor(c.value)}
+                        title={c.label}
+                        className={cn(
+                          "w-6 h-6 rounded-full transition-all",
+                          c.value,
+                          formColor === c.value ? `ring-2 ring-offset-1 ${c.ring}` : "opacity-70 hover:opacity-100"
+                        )}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={addEvent} disabled={!formTitle.trim()} className="gap-1.5 flex-1">
+                      <Plus className="w-3.5 h-3.5" /> הוסף
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowForm(false)}>
+                      ביטול
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5"
+                  onClick={() => setShowForm(true)}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  הוסף פגישה אישית
+                </Button>
+              )}
+
+              {/* Personal note */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  הערה ליום
                 </label>
                 <textarea
                   dir="rtl"
                   rows={3}
                   value={noteText}
-                  onChange={(e) => handleNoteChange(e.target.value)}
+                  onChange={e => handleNoteChange(e.target.value)}
                   placeholder="הוסף הערה ליום זה..."
-                  className={cn(
-                    "w-full resize-none rounded-lg border border-border bg-background px-3 py-2",
-                    "text-sm text-foreground placeholder:text-muted-foreground",
-                    "focus:outline-none focus:ring-2 focus:ring-ring",
-                  )}
+                  className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
-                {noteText && (
-                  <p className="text-[11px] text-muted-foreground text-left">
-                    ההערה נשמרת אוטומטית
-                  </p>
-                )}
+                {noteText && <p className="text-[11px] text-muted-foreground">נשמר אוטומטית</p>}
               </div>
+
             </div>
           </div>
         )}
