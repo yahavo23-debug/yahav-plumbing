@@ -1,26 +1,24 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Search, Calendar, User } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { getJobTypeLabel } from "@/lib/constants";
+import { Plus, Search, Calendar, ChevronLeft } from "lucide-react";
+import { getJobTypeLabel, statusLabels, statusColors, priorityColors } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { QuickCallDialog } from "@/components/service-calls/QuickCallDialog";
 
-const statusLabels: Record<string, string> = {
-  open: "פתוח", in_progress: "בטיפול", completed: "הושלם", cancelled: "בוטל", pending_customer: "ממתין לאישור לקוח",
-};
-const statusColors: Record<string, string> = {
-  open: "bg-warning/15 text-warning border-warning/30",
-  in_progress: "bg-primary/15 text-primary border-primary/30",
-  completed: "bg-success/15 text-success border-success/30",
-  cancelled: "bg-destructive/15 text-destructive border-destructive/30",
-  pending_customer: "bg-purple-500/15 text-purple-600 border-purple-500/30",
-};
+const statusFilters = [
+  { value: "all", label: "הכל" },
+  { value: "open", label: "פתוח" },
+  { value: "in_progress", label: "בטיפול" },
+  { value: "pending_customer", label: "ממתין" },
+  { value: "completed", label: "הושלם" },
+  { value: "cancelled", label: "בוטל" },
+];
 
 const ServiceCalls = () => {
   const [calls, setCalls] = useState<any[]>([]);
@@ -29,24 +27,20 @@ const ServiceCalls = () => {
   const initialStatus = searchParams.get("status") || "all";
   const [filter, setFilter] = useState<string>(initialStatus);
   const [loading, setLoading] = useState(true);
+  const [quickCallOpen, setQuickCallOpen] = useState(false);
   const navigate = useNavigate();
   const { user, isAdmin, role } = useAuth();
   const isContractor = role === "contractor";
-  const canCreate = isAdmin || role === "technician";
+  const canCreate = isAdmin || role === "technician" || role === "secretary";
 
-  useEffect(() => {
-    if (!user) return;
-    loadCalls();
-  }, [user]);
+  useEffect(() => { if (!user) return; loadCalls(); }, [user]);
 
   const loadCalls = async () => {
     const { data, error } = await supabase
       .from("service_calls")
-      .select("*, customers(name)")
+      .select("*, customers(name, phone)")
       .order("created_at", { ascending: false });
-
     if (error) {
-      console.error("Load calls error:", error);
       toast({ title: "שגיאה", description: "לא ניתן לטעון את הקריאות", variant: "destructive" });
     } else {
       setCalls(data || []);
@@ -55,72 +49,117 @@ const ServiceCalls = () => {
   };
 
   const filtered = calls.filter((c) => {
-    const matchesSearch = (c.customers as any)?.name?.includes(search) || c.job_type?.includes(search) || c.description?.includes(search);
+    const q = search.toLowerCase();
+    const matchesSearch = !q ||
+      (c.customers as any)?.name?.toLowerCase().includes(q) ||
+      c.job_type?.toLowerCase().includes(q) ||
+      c.description?.toLowerCase().includes(q);
     const matchesFilter = filter === "all" || c.status === filter;
     return matchesSearch && matchesFilter;
   });
 
   return (
     <AppLayout title="קריאות שירות">
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      <QuickCallDialog open={quickCallOpen} onClose={() => { setQuickCallOpen(false); loadCalls(); }} />
+
+      {/* Top bar */}
+      <div className="flex gap-2 mb-4">
         {!isContractor && (
           <div className="relative flex-1">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="חיפוש..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" />
+            <Input
+              placeholder="חיפוש לקוח, סוג עבודה..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pr-10"
+            />
           </div>
         )}
         {canCreate && (
-          <Button onClick={() => navigate("/service-calls/new")} className="h-10 gap-2">
-            <Plus className="w-4 h-4" /> קריאה חדשה
+          <Button onClick={() => setQuickCallOpen(true)} className="h-10 gap-2 shrink-0">
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">קריאה חדשה</span>
+            <span className="sm:hidden">חדשה</span>
           </Button>
         )}
       </div>
 
-      {/* Status filters - not shown for contractors */}
+      {/* Status filters */}
       {!isContractor && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {[{ value: "all", label: "הכל" }, ...Object.entries(statusLabels).map(([k, v]) => ({ value: k, label: v }))].map((f) => (
-            <Button
+        <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1 scrollbar-none">
+          {statusFilters.map((f) => (
+            <button
               key={f.value}
-              variant={filter === f.value ? "default" : "outline"}
-              size="sm"
               onClick={() => setFilter(f.value)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors shrink-0",
+                filter === f.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
             >
               {f.label}
-            </Button>
+              {f.value !== "all" && (
+                <span className="mr-1.5 text-xs opacity-70">
+                  {calls.filter(c => c.status === f.value).length}
+                </span>
+              )}
+            </button>
           ))}
         </div>
       )}
 
+      {/* List */}
       {loading ? (
-        <p className="text-center text-muted-foreground py-8">טוען...</p>
+        <div className="space-y-2">
+          {[1,2,3,4].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}
+        </div>
       ) : filtered.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">לא נמצאו קריאות</p>
+        <div className="text-center py-16 text-muted-foreground">
+          <p className="text-lg">לא נמצאו קריאות</p>
+          {canCreate && (
+            <Button className="mt-4 gap-2" onClick={() => setQuickCallOpen(true)}>
+              <Plus className="w-4 h-4" /> פתח קריאה חדשה
+            </Button>
+          )}
+        </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {filtered.map((call) => (
-            <Card
+            <button
               key={call.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => navigate(`/service-calls/${call.id}`)}
+              className="w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-accent/50 hover:shadow-sm transition-all text-right"
             >
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{(call.customers as any)?.name}</h3>
-                    <Badge variant="outline" className={statusColors[call.status]}>
-                      {statusLabels[call.status]}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{getJobTypeLabel(call.job_type)}</p>
-                  {call.scheduled_date && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Calendar className="w-3 h-3" /> {new Date(call.scheduled_date).toLocaleDateString("he-IL")}
-                    </div>
-                  )}
+              {/* Priority strip */}
+              <div className={cn(
+                "w-1 self-stretch rounded-full shrink-0",
+                call.priority === "urgent" ? "bg-destructive" :
+                call.priority === "high"   ? "bg-orange-400" :
+                call.priority === "medium" ? "bg-primary" : "bg-muted-foreground/30"
+              )} />
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-semibold truncate">{(call.customers as any)?.name}</span>
+                  <span className={cn(
+                    "text-xs px-2 py-0.5 rounded-full font-medium shrink-0",
+                    statusColors[call.status]
+                  )}>
+                    {statusLabels[call.status]}
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+                <p className="text-sm text-muted-foreground truncate">{getJobTypeLabel(call.job_type)}</p>
+                {call.scheduled_date && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(call.scheduled_date).toLocaleDateString("he-IL")}
+                  </div>
+                )}
+              </div>
+
+              <ChevronLeft className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
           ))}
         </div>
       )}

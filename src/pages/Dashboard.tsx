@@ -10,8 +10,9 @@ import {
   PhoneCall, ChevronLeft, CalendarClock, Flame
 } from "lucide-react";
 import { getJobTypeLabel, statusColors, statusLabels, priorityColors } from "@/lib/constants";
-import { format, isToday, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { QuickCallDialog } from "@/components/service-calls/QuickCallDialog";
 
 interface DashboardStats {
   totalCustomers: number;
@@ -29,6 +30,7 @@ const Dashboard = () => {
   const [urgentCalls, setUrgentCalls] = useState<any[]>([]);
   const [recentCalls, setRecentCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [quickCallOpen, setQuickCallOpen] = useState(false);
   const navigate = useNavigate();
   const { user, isAdmin, role } = useAuth();
   const isSecretary = role === "secretary";
@@ -128,6 +130,7 @@ const Dashboard = () => {
 
   return (
     <AppLayout title="לוח בקרה">
+      <QuickCallDialog open={quickCallOpen} onClose={() => setQuickCallOpen(false)} />
       {/* Date + greeting */}
       <div className="mb-6">
         <p className="text-muted-foreground text-sm">{todayStr}</p>
@@ -140,7 +143,7 @@ const Dashboard = () => {
           <Button
             size="lg"
             className="h-12 gap-2 text-base shadow-sm"
-            onClick={() => navigate("/service-calls/new")}
+            onClick={() => setQuickCallOpen(true)}
           >
             <Plus className="w-5 h-5" />
             קריאה חדשה
