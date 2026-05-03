@@ -12,7 +12,7 @@ import {
   eachMonthOfInterval, parseISO as parse, isWithinInterval,
 } from "date-fns";
 import { he } from "date-fns/locale";
-import { ChevronRight, ChevronLeft, CalendarDays, X, Plus, Wrench, Star, Trash2 } from "lucide-react";
+import { ChevronRight, ChevronLeft, CalendarDays, X, Plus, Wrench, Star, Trash2, Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,6 +30,14 @@ interface PersonalEvent {
   date: string;   // YYYY-MM-DD
   time: string;   // HH:MM
   title: string;
+  color: string;  // tailwind bg class
+}
+
+interface Vacation {
+  id: string;
+  from: string;   // YYYY-MM-DD
+  to: string;     // YYYY-MM-DD
+  title: string;  // e.g. "אילת", "חופשה משפחתית"
   color: string;  // tailwind bg class
 }
 
@@ -54,8 +62,19 @@ const EVENT_COLORS = [
   { label: "ירוק",  value: "bg-emerald-400", ring: "ring-emerald-400", text: "text-emerald-700", badge: "bg-emerald-100 text-emerald-700" },
 ];
 
-const EVENTS_KEY = "calendar_personal_events";
-const NOTES_KEY  = "calendar_notes";
+const EVENTS_KEY    = "calendar_personal_events";
+const NOTES_KEY     = "calendar_notes";
+const VACATIONS_KEY = "calendar_vacations";
+
+// Vacation rgba (higher opacity — more prominent)
+const VACATION_RGBA: Record<string, string> = {
+  "bg-orange-400":  "rgba(251,146,60,0.40)",
+  "bg-pink-400":    "rgba(244,114,182,0.40)",
+  "bg-teal-400":    "rgba(45,212,191,0.40)",
+  "bg-red-400":     "rgba(248,113,113,0.40)",
+  "bg-violet-400":  "rgba(167,139,250,0.40)",
+  "bg-emerald-400": "rgba(52,211,153,0.40)",
+};
 
 // Color for dispatch calls highlight (orange marker)
 const DISPATCH_RGBA = "rgba(251,146,60,0.22)";
@@ -70,18 +89,31 @@ const EVENT_RGBA: Record<string, string> = {
   "bg-emerald-400": "rgba(52,211,153,0.28)",
 };
 
-function getCellBackground(calls: ServiceCall[], events: PersonalEvent[]): string {
+function getCellBackground(calls: ServiceCall[], events: PersonalEvent[], vacation: Vacation | null): string {
+  // Vacation covers the full cell
+  if (vacation) return VACATION_RGBA[vacation.color] || "rgba(167,139,250,0.40)";
   const hasCalls  = calls.length > 0;
   const hasEvents = events.length > 0;
   if (!hasCalls && !hasEvents) return "";
   const eventRgba = hasEvents ? (EVENT_RGBA[events[0].color] || DISPATCH_RGBA) : "";
   if (hasCalls && !hasEvents) return DISPATCH_RGBA;
   if (!hasCalls && hasEvents) return eventRgba;
-  // Both: right half = dispatch orange, left half = personal color (RTL: right is start)
   return `linear-gradient(to left, ${DISPATCH_RGBA} 50%, ${eventRgba} 50%)`;
 }
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
+
+function loadVacations(): Vacation[] {
+  try { return JSON.parse(localStorage.getItem(VACATIONS_KEY) || "[]"); }
+  catch { return []; }
+}
+function saveVacations(v: Vacation[]) {
+  localStorage.setItem(VACATIONS_KEY, JSON.stringify(v));
+}
+function getVacationForDay(day: Date, vacations: Vacation[]): Vacation | null {
+  const key = getDateKey(day);
+  return vacations.find(v => key >= v.from && key <= v.to) || null;
+}
 
 function loadEvents(): PersonalEvent[] {
   try { return JSON.parse(localStorage.getItem(EVENTS_KEY) || "[]"); }
@@ -123,6 +155,13 @@ const CalendarPage = () => {
   const [notes, setNotes]               = useState<Record<string, string>>(loadNotes);
   const [noteText, setNoteText]         = useState("");
   const [events, setEvents]             = useState<PersonalEvent[]>(loadEvents);
+  const [vacations, setVacations]       = useState<Vacation[]>(loadVacations);
+
+  // Vacation form state
+  const [showVacForm, setShowVacForm]   = useState(false);
+  const [vacTo, setVacTo]               = useState("");
+  const [vacTitle, setVacTitle]         = useState("");
+  const [vacColor, setVacColor]         = useState(EVENT_COLORS[2].value); // teal default
 
   // Range mode
   const [rangeFrom, setRangeFrom]       = useState("");
@@ -191,6 +230,31 @@ const CalendarPage = () => {
   const handleNoteChange = (text: string) => {
     setNoteText(text);
     if (selectedDay) { saveNote(getDateKey(selectedDay), text); setNotes(loadNotes()); }
+  };
+
+  // ── Vacations ────────────────────────────────────────────────────────────────
+
+  const addVacation = () => {
+    if (!vacTitle.trim() || !selectedDay || !vacTo) return;
+    const from = getDateKey(selectedDay);
+    if (vacTo < from) return;
+    const vac: Vacation = {
+      id: crypto.randomUUID(),
+      from,
+      to: vacTo,
+      title: vacTitle.trim(),
+      color: vacColor,
+    };
+    const updated = [...vacations, vac];
+    setVacations(updated);
+    saveVacations(updated);
+    setVacTo(""); setVacTitle(""); setShowVacForm(false);
+  };
+
+  const deleteVacation = (id: string) => {
+    const updated = vacations.filter(v => v.id !== id);
+    setVacations(updated);
+    saveVacations(updated);
   };
 
   // ── Personal events ──────────────────────────────────────────────────────────
@@ -336,19 +400,20 @@ const CalendarPage = () => {
             {/* Day cells */}
             <div className="grid grid-cols-7">
               {monthGrid.map((day, idx) => {
-                const key       = getDateKey(day);
-                const dayCalls  = callsByDate[key] || [];
-                const dayEvents = eventsByDate[key] || [];
+                const key        = getDateKey(day);
+                const dayCalls   = callsByDate[key] || [];
+                const dayEvents  = eventsByDate[key] || [];
+                const vacation   = isMonthDay ? getVacationForDay(day, vacations) : null;
                 const isMonthDay = isSameMonth(day, month);
-                const isSel     = selectedDay ? isSameDay(day, selectedDay) : false;
-                const isTod     = isToday(day);
-                const hasNote   = !!notes[key];
+                const isSel      = selectedDay ? isSameDay(day, selectedDay) : false;
+                const isTod      = isToday(day);
+                const hasNote    = !!notes[key];
 
                 return (
                   <button
                     key={idx}
                     onClick={() => handleDayClick(day)}
-                    style={{ background: isMonthDay ? getCellBackground(dayCalls, dayEvents) : undefined }}
+                    style={{ background: isMonthDay ? getCellBackground(dayCalls, dayEvents, vacation) : undefined }}
                     className={cn(
                       "relative min-h-[76px] sm:min-h-[90px] p-1.5 text-right border-b border-r border-border",
                       "transition-colors hover:brightness-95 focus:outline-none",
@@ -367,19 +432,26 @@ const CalendarPage = () => {
                     </span>
 
                     <div className="flex flex-col gap-px overflow-hidden">
-                      {dayCalls.slice(0, 1).map(c => (
+                      {/* Vacation label */}
+                      {vacation && (
+                        <span className="text-[10px] leading-tight truncate font-semibold flex items-center gap-0.5">
+                          <Plane className="w-2.5 h-2.5 shrink-0" />
+                          {vacation.title}
+                        </span>
+                      )}
+                      {!vacation && dayCalls.slice(0, 1).map(c => (
                         <span key={c.id} className="text-[10px] leading-tight truncate text-muted-foreground flex items-center gap-0.5">
                           <Wrench className="w-2.5 h-2.5 shrink-0 opacity-60" />
                           {c.customers?.name || "—"}
                         </span>
                       ))}
-                      {dayEvents.slice(0, 1).map(e => (
+                      {!vacation && dayEvents.slice(0, 1).map(e => (
                         <span key={e.id} className="text-[10px] leading-tight truncate flex items-center gap-0.5">
                           <span className={cn("w-2 h-2 rounded-full shrink-0", e.color)} />
                           {e.title}
                         </span>
                       ))}
-                      {(dayCalls.length + dayEvents.length) > 2 && (
+                      {!vacation && (dayCalls.length + dayEvents.length) > 2 && (
                         <span className="text-[10px] text-muted-foreground">+{dayCalls.length + dayEvents.length - 2} עוד</span>
                       )}
                     </div>
@@ -436,6 +508,82 @@ const CalendarPage = () => {
             </div>
 
             <div className="p-4 space-y-5">
+
+              {/* ── Vacation on this day ── */}
+              {selectedDay && (() => {
+                const vac = getVacationForDay(selectedDay, vacations);
+                if (!vac) return null;
+                const meta = EVENT_COLORS.find(c => c.value === vac.color) || EVENT_COLORS[2];
+                return (
+                  <div className={cn("flex items-center gap-3 rounded-xl px-4 py-3 border-2", meta.badge)}>
+                    <Plane className="w-5 h-5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">✈️ {vac.title}</p>
+                      <p className="text-xs opacity-70">{vac.from === vac.to ? vac.from : `${vac.from} עד ${vac.to}`}</p>
+                    </div>
+                    <button
+                      onClick={() => deleteVacation(vac.id)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-600 text-xs font-medium transition-colors shrink-0"
+                    >
+                      <Trash2 className="w-3 h-3" /> מחק
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* ── Vacation form ── */}
+              {showVacForm ? (
+                <div className="rounded-xl border-2 border-dashed border-teal-300 bg-teal-50/50 dark:bg-teal-900/10 p-4 space-y-3">
+                  <p className="text-sm font-semibold flex items-center gap-1.5">
+                    <Plane className="w-4 h-4" /> סמן היעדרות / חופשה
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    מתאריך: <strong>{selectedDay ? getDateKey(selectedDay) : ""}</strong>
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-muted-foreground shrink-0">עד תאריך:</label>
+                    <input
+                      type="date"
+                      value={vacTo}
+                      min={selectedDay ? getDateKey(selectedDay) : ""}
+                      onChange={e => setVacTo(e.target.value)}
+                      className="h-9 rounded-lg border border-border bg-background px-3 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="איפה אתה? (אילת, חופשה משפחתית...)"
+                    value={vacTitle}
+                    onChange={e => setVacTitle(e.target.value)}
+                    className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    dir="rtl"
+                    autoFocus
+                  />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground shrink-0">צבע:</span>
+                    {EVENT_COLORS.map(c => (
+                      <button
+                        key={c.value}
+                        onClick={() => setVacColor(c.value)}
+                        title={c.label}
+                        className={cn("w-6 h-6 rounded-full transition-all", c.value,
+                          vacColor === c.value ? `ring-2 ring-offset-1 ${c.ring}` : "opacity-70 hover:opacity-100"
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={addVacation} disabled={!vacTitle.trim() || !vacTo} className="gap-1.5 flex-1">
+                      <Plane className="w-3.5 h-3.5" /> שמור חופשה
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowVacForm(false)}>ביטול</Button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" className="w-full gap-1.5 border-dashed" onClick={() => { setShowVacForm(true); setVacTo(selectedDay ? getDateKey(selectedDay) : ""); }}>
+                  <Plane className="w-3.5 h-3.5" /> סמן היעדרות / חופשה
+                </Button>
+              )}
 
               {/* ── Service calls ── */}
               {selectedCalls.length > 0 && (
