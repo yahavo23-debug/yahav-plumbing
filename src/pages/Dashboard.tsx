@@ -16,6 +16,8 @@ import { he } from "date-fns/locale";
 import { QuickCallDialog } from "@/components/service-calls/QuickCallDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/hooks/use-toast";
+import { useNotifications } from "@/hooks/useNotifications";
+import { Bell, BellOff } from "lucide-react";
 
 interface DashboardStats {
   totalCustomers: number;
@@ -47,6 +49,7 @@ const Dashboard = () => {
   const [quickCallOpen, setQuickCallOpen] = useState(false);
   const navigate = useNavigate();
   const { user, isAdmin, role } = useAuth();
+  const { requestPermission, notify, permission } = useNotifications();
   const isSecretary = role === "secretary";
   const isTechnician = role === "technician";
   const canCreate = isAdmin || isTechnician || isSecretary;
@@ -100,11 +103,35 @@ const Dashboard = () => {
       setTodayCalls(todayRes.data || []);
       setUrgentCalls(urgentRes.data || []);
       setRecentCalls(recentRes.data || []);
-      setPendingCalls(pendingRes.data || []);
+      const pending = pendingRes.data || [];
+      setPendingCalls(pending);
+
+      // Send notification if there are stale pending calls
+      if (Notification.permission === "granted" && pending.length > 0) {
+        const stale = pending.filter((c: any) => daysSince(c.updated_at) >= 3);
+        if (stale.length > 0) {
+          notify(
+            "⏳ ממתין לאישור לקוח",
+            stale.length === 1
+              ? `${stale[0].customers?.name} ממתין ${daysSince(stale[0].updated_at)} ימים לאישור`
+              : `יש ${stale.length} לקוחות שממתינים 3+ ימים לאישור`
+          );
+        }
+      }
     } catch (err) {
       console.error("Dashboard load error:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEnableNotifications = async () => {
+    const result = await requestPermission();
+    if (result === "granted") {
+      toast({ title: "✅ התראות הופעלו!", description: "תקבל התראה כשיש לקוחות שממתינים לאישור" });
+      notify("🔔 יהב אינסטלציה", "התראות הופעלו בהצלחה!");
+    } else if (result === "denied") {
+      toast({ title: "אופס", description: "חסמת התראות. כדי להפעיל — שנה הרשאות בדפדפן", variant: "destructive" });
     }
   };
 
@@ -326,9 +353,26 @@ const Dashboard = () => {
     <AppLayout title="לוח בקרה">
       <QuickCallDialog open={quickCallOpen} onClose={() => setQuickCallOpen(false)} />
       {/* Date + greeting */}
-      <div className="mb-6">
-        <p className="text-muted-foreground text-sm">{todayStr}</p>
-        <h1 className="text-2xl font-bold mt-1">שלום, בוא נראה מה קורה היום 👋</h1>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <p className="text-muted-foreground text-sm">{todayStr}</p>
+          <h1 className="text-2xl font-bold mt-1">שלום, בוא נראה מה קורה היום 👋</h1>
+        </div>
+        {/* Notification toggle */}
+        {permission !== "granted" ? (
+          <button
+            onClick={handleEnableNotifications}
+            className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-border bg-background hover:bg-accent transition-colors shrink-0"
+          >
+            <Bell className="w-3.5 h-3.5 text-primary" />
+            הפעל התראות
+          </button>
+        ) : (
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground px-3 py-2">
+            <Bell className="w-3.5 h-3.5 text-green-500" />
+            התראות פעילות
+          </span>
+        )}
       </div>
 
       {/* Quick action buttons */}
