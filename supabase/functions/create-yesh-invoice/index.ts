@@ -195,6 +195,22 @@ Deno.serve(async (req) => {
       updated_at:     new Date().toISOString(),
     }, { onConflict: "yesh_doc_id", ignoreDuplicates: false });
 
+    // Auto-create financial transaction for income tracking
+    await adminClient.from("financial_transactions").insert({
+      direction:        "income",
+      amount:           totalWithVat,
+      txn_date:         today,
+      category:         "service",
+      counterparty_name: customer?.name || "",
+      customer_id:      callData.customer_id || null,
+      service_call_id:  serviceCallId,
+      notes:            description || callData.job_type || "שירות אינסטלציה",
+      payment_method:   "cash",
+      status:           "completed",
+      currency:         "ILS",
+      created_by:       user.id,
+    });
+
     return new Response(
       JSON.stringify({
         success:     true,

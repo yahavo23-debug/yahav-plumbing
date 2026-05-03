@@ -81,6 +81,32 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Auto-create financial transaction for income tracking (only for new docs)
+    const totalWithVat = Number(doc.totalWithVat || doc.total || 0);
+    if (totalWithVat > 0 && docId) {
+      const { data: existing } = await adminClient
+        .from("financial_transactions")
+        .select("id")
+        .eq("notes", `yesh_doc_${docId}`)
+        .maybeSingle();
+
+      if (!existing) {
+        await adminClient.from("financial_transactions").insert({
+          direction:        "income",
+          amount:           totalWithVat,
+          txn_date:         (doc.dateCreated || doc.DateCreated || new Date().toISOString()).slice(0, 10),
+          category:         "service",
+          counterparty_name: doc.customerName || doc.Customer?.Name || "",
+          service_call_id:  serviceCallId,
+          notes:            `yesh_doc_${docId}`,
+          payment_method:   "cash",
+          status:           "completed",
+          currency:         "ILS",
+          created_by:       "00000000-0000-0000-0000-000000000000",
+        });
+      }
+    }
+
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
