@@ -38,3 +38,9 @@ verify_jwt = false
 
 [functions.create-yesh-invoice]
 verify_jwt = false
+
+[functions.sync-yesh-invoices]
+verify_jwt = false
+
+[functions.yesh-webhook]
+verify_jwt = false

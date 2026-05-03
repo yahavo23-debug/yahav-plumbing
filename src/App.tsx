@@ -29,6 +29,7 @@ import ProfitabilityReport from "./pages/ProfitabilityReport";
 import PublicQuote from "./pages/PublicQuote";
 import NotFound from "./pages/NotFound";
 import CalendarPage from "./pages/CalendarPage";
+import Invoices from "./pages/Invoices";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,7 @@ function AppRoutes() {
       <Route path="/dispatch" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><DispatchBoard /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><CalendarPage /></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><Finance /></ProtectedRoute>} />
+      <Route path="/invoices" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><Invoices /></ProtectedRoute>} />
       <Route path="/marketing" element={<ProtectedRoute allowedRoles={["admin"]}><MarketingAnalytics /></ProtectedRoute>} />
       <Route path="/profitability" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ProfitabilityReport /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute allowedRoles={["admin"]}><Settings /></ProtectedRoute>} />
