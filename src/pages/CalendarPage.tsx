@@ -9,6 +9,7 @@ import { getJobTypeLabel, statusColors, statusLabels } from "@/lib/constants";
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   addDays, addMonths, subMonths, isSameDay, isSameMonth, isToday, parseISO,
+  eachMonthOfInterval, parseISO as parse, isWithinInterval,
 } from "date-fns";
 import { he } from "date-fns/locale";
 import { ChevronRight, ChevronLeft, CalendarDays, X, Plus, Wrench, Star, Trash2 } from "lucide-react";
@@ -123,6 +124,12 @@ const CalendarPage = () => {
   const [noteText, setNoteText]         = useState("");
   const [events, setEvents]             = useState<PersonalEvent[]>(loadEvents);
 
+  // Range mode
+  const [rangeFrom, setRangeFrom]       = useState("");
+  const [rangeTo, setRangeTo]           = useState("");
+  const [rangeActive, setRangeActive]   = useState(false);
+  const [rangeMonths, setRangeMonths]   = useState<Date[]>([]);
+
   // Add-event form state
   const [showForm, setShowForm]         = useState(false);
   const [formTitle, setFormTitle]       = useState("");
@@ -131,22 +138,43 @@ const CalendarPage = () => {
 
   // ── Load service calls (use scheduled_at for time) ──────────────────────────
 
-  const loadCalls = useCallback(async () => {
+  const loadCalls = useCallback(async (fromDate: Date, toDate: Date) => {
     if (!user) return;
     setLoading(true);
-    const from = startOfMonth(currentMonth).toISOString();
-    const to   = endOfMonth(currentMonth).toISOString();
     const { data, error } = await supabase
       .from("service_calls")
       .select("id, scheduled_at, status, job_type, customers(name)")
       .not("scheduled_at", "is", null)
-      .gte("scheduled_at", from)
-      .lte("scheduled_at", to);
+      .gte("scheduled_at", fromDate.toISOString())
+      .lte("scheduled_at", toDate.toISOString());
     if (!error && data) setCalls(data as ServiceCall[]);
     setLoading(false);
-  }, [user, currentMonth]);
+  }, [user]);
 
-  useEffect(() => { loadCalls(); }, [loadCalls]);
+  useEffect(() => {
+    if (!rangeActive) {
+      loadCalls(startOfMonth(currentMonth), endOfMonth(currentMonth));
+    }
+  }, [loadCalls, currentMonth, rangeActive]);
+
+  const applyRange = () => {
+    if (!rangeFrom || !rangeTo || rangeFrom > rangeTo) return;
+    const from = new Date(rangeFrom);
+    const to   = new Date(rangeTo);
+    const months = eachMonthOfInterval({ start: from, end: to });
+    setRangeMonths(months);
+    setRangeActive(true);
+    setSelectedDay(null);
+    loadCalls(startOfMonth(from), endOfMonth(to));
+  };
+
+  const clearRange = () => {
+    setRangeActive(false);
+    setRangeFrom("");
+    setRangeTo("");
+    setRangeMonths([]);
+    loadCalls(startOfMonth(currentMonth), endOfMonth(currentMonth));
+  };
 
   // ── Day selection ────────────────────────────────────────────────────────────
 
@@ -190,8 +218,6 @@ const CalendarPage = () => {
 
   // ── Derived data ─────────────────────────────────────────────────────────────
 
-  const grid = buildGrid(currentMonth);
-
   // Group calls by date key
   const callsByDate = calls.reduce<Record<string, ServiceCall[]>>((acc, c) => {
     const key = c.scheduled_at.slice(0, 10);
@@ -220,105 +246,161 @@ const CalendarPage = () => {
       <div dir="rtl" className="flex flex-col gap-4 pb-10">
 
         {/* Header */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(m => addMonths(m, 1))} aria-label="חודש הבא">
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(m => subMonths(m, 1))} aria-label="חודש קודם">
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <h2 className="text-lg font-semibold min-w-[140px] text-center">{monthLabel}</h2>
+        <div className="flex flex-col gap-3">
+          {/* Month navigation */}
+          {!rangeActive && (
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={() => setCurrentMonth(m => addMonths(m, 1))} aria-label="חודש הבא">
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+                <Button variant="outline" size="icon" onClick={() => setCurrentMonth(m => subMonths(m, 1))} aria-label="חודש קודם">
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <h2 className="text-lg font-semibold min-w-[140px] text-center">{monthLabel}</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                {loading && <span className="text-xs text-muted-foreground animate-pulse">טוען...</span>}
+                <Button variant="outline" size="sm" onClick={() => { setCurrentMonth(new Date()); setSelectedDay(new Date()); setNoteText(loadNotes()[getDateKey(new Date())] || ""); }} className="gap-1">
+                  <CalendarDays className="w-4 h-4" />
+                  היום
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Range picker */}
+          <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-border bg-muted/30">
+            <span className="text-sm font-medium shrink-0">טווח תאריכים:</span>
+            <div className="flex items-center gap-2 flex-wrap flex-1">
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-muted-foreground">מ-</label>
+                <input
+                  type="date"
+                  value={rangeFrom}
+                  onChange={e => setRangeFrom(e.target.value)}
+                  className="h-8 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-muted-foreground">עד</label>
+                <input
+                  type="date"
+                  value={rangeTo}
+                  min={rangeFrom}
+                  onChange={e => setRangeTo(e.target.value)}
+                  className="h-8 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <Button size="sm" onClick={applyRange} disabled={!rangeFrom || !rangeTo || rangeFrom > rangeTo || loading} className="h-8 gap-1.5">
+                <CalendarDays className="w-3.5 h-3.5" />
+                הצג
+              </Button>
+              {rangeActive && (
+                <Button size="sm" variant="ghost" onClick={clearRange} className="h-8 gap-1 text-muted-foreground">
+                  <X className="w-3.5 h-3.5" /> נקה
+                </Button>
+              )}
+              {loading && <span className="text-xs text-muted-foreground animate-pulse">טוען...</span>}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {loading && <span className="text-xs text-muted-foreground animate-pulse">טוען...</span>}
-            <Button variant="outline" size="sm" onClick={() => { setCurrentMonth(new Date()); setSelectedDay(new Date()); setNoteText(loadNotes()[getDateKey(new Date())] || ""); }} className="gap-1">
-              <CalendarDays className="w-4 h-4" />
-              היום
-            </Button>
-          </div>
+
+          {/* Range label when active */}
+          {rangeActive && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-primary">
+                {format(new Date(rangeFrom), "d MMM yyyy", { locale: he })} — {format(new Date(rangeTo), "d MMM yyyy", { locale: he })}
+              </span>
+              <span className="text-xs text-muted-foreground">({rangeMonths.length} חודשים)</span>
+            </div>
+          )}
         </div>
 
-        {/* Calendar grid */}
-        <div className="rounded-xl border border-border overflow-hidden bg-card shadow-sm">
-          {/* Day headers */}
-          <div className="grid grid-cols-7 border-b border-border bg-muted/50">
-            {HEBREW_DAYS.map(d => (
-              <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
-            ))}
-          </div>
+        {/* Calendar grid(s) */}
+        {(rangeActive ? rangeMonths : [currentMonth]).map((month, monthIdx) => {
+          const monthGrid = buildGrid(month);
+          const mLabel = format(month, "MMMM yyyy", { locale: he });
+          return (
+          <div key={monthIdx} className="rounded-xl border border-border overflow-hidden bg-card shadow-sm">
+            {/* Month label in range mode */}
+            {rangeActive && (
+              <div className="px-4 py-2 border-b border-border bg-muted/40 font-semibold text-sm">{mLabel}</div>
+            )}
+            {/* Day headers */}
+            <div className="grid grid-cols-7 border-b border-border bg-muted/50">
+              {HEBREW_DAYS.map(d => (
+                <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
+              ))}
+            </div>
 
-          {/* Day cells */}
-          <div className="grid grid-cols-7">
-            {grid.map((day, idx) => {
-              const key       = getDateKey(day);
-              const dayCalls  = callsByDate[key] || [];
-              const dayEvents = eventsByDate[key] || [];
-              const isMonth   = isSameMonth(day, currentMonth);
-              const isSel     = selectedDay ? isSameDay(day, selectedDay) : false;
-              const isTod     = isToday(day);
-              const hasNote   = !!notes[key];
+            {/* Day cells */}
+            <div className="grid grid-cols-7">
+              {monthGrid.map((day, idx) => {
+                const key       = getDateKey(day);
+                const dayCalls  = callsByDate[key] || [];
+                const dayEvents = eventsByDate[key] || [];
+                const isMonthDay = isSameMonth(day, month);
+                const isSel     = selectedDay ? isSameDay(day, selectedDay) : false;
+                const isTod     = isToday(day);
+                const hasNote   = !!notes[key];
 
-              return (
-                <button
-                  key={idx}
-                  onClick={() => handleDayClick(day)}
-                  style={{ background: isMonth ? getCellBackground(dayCalls, dayEvents) : undefined }}
-                  className={cn(
-                    "relative min-h-[76px] sm:min-h-[90px] p-1.5 text-right border-b border-r border-border",
-                    "transition-colors hover:brightness-95 focus:outline-none",
-                    !isMonth && "opacity-35",
-                    isSel && "ring-2 ring-inset ring-primary",
-                    isTod && !isSel && "bg-blue-50 dark:bg-blue-950/30",
-                    (idx + 1) % 7 === 0 && "border-r-0",
-                    idx >= grid.length - 7 && "border-b-0",
-                  )}
-                >
-                  {/* Day number */}
-                  <span className={cn(
-                    "inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium mb-0.5",
-                    isTod ? "bg-primary text-primary-foreground font-bold" : "text-foreground"
-                  )}>
-                    {format(day, "d")}
-                  </span>
-
-                  {/* Service call names */}
-                  <div className="flex flex-col gap-px overflow-hidden">
-                    {dayCalls.slice(0, 1).map(c => (
-                      <span key={c.id} className="text-[10px] leading-tight truncate text-muted-foreground flex items-center gap-0.5">
-                        <Wrench className="w-2.5 h-2.5 shrink-0 opacity-60" />
-                        {c.customers?.name || "—"}
-                      </span>
-                    ))}
-                    {/* Personal events */}
-                    {dayEvents.slice(0, 1).map(e => (
-                      <span key={e.id} className="text-[10px] leading-tight truncate flex items-center gap-0.5" style={{}}>
-                        <span className={cn("w-2 h-2 rounded-full shrink-0", e.color)} />
-                        {e.title}
-                      </span>
-                    ))}
-                    {(dayCalls.length + dayEvents.length) > 2 && (
-                      <span className="text-[10px] text-muted-foreground">+{dayCalls.length + dayEvents.length - 2} עוד</span>
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => handleDayClick(day)}
+                    style={{ background: isMonthDay ? getCellBackground(dayCalls, dayEvents) : undefined }}
+                    className={cn(
+                      "relative min-h-[76px] sm:min-h-[90px] p-1.5 text-right border-b border-r border-border",
+                      "transition-colors hover:brightness-95 focus:outline-none",
+                      !isMonthDay && "opacity-35",
+                      isSel && "ring-2 ring-inset ring-primary",
+                      isTod && !isSel && "bg-blue-50 dark:bg-blue-950/30",
+                      (idx + 1) % 7 === 0 && "border-r-0",
+                      idx >= monthGrid.length - 7 && "border-b-0",
                     )}
-                  </div>
+                  >
+                    <span className={cn(
+                      "inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium mb-0.5",
+                      isTod ? "bg-primary text-primary-foreground font-bold" : "text-foreground"
+                    )}>
+                      {format(day, "d")}
+                    </span>
 
-                  {/* Status dots */}
-                  {dayCalls.length > 0 && (
-                    <div className="flex gap-0.5 mt-0.5 flex-wrap">
-                      {dayCalls.slice(0, 4).map((c, i) => (
-                        <span key={i} className={cn("w-1.5 h-1.5 rounded-full", STATUS_DOT[c.status] || "bg-gray-300")} />
+                    <div className="flex flex-col gap-px overflow-hidden">
+                      {dayCalls.slice(0, 1).map(c => (
+                        <span key={c.id} className="text-[10px] leading-tight truncate text-muted-foreground flex items-center gap-0.5">
+                          <Wrench className="w-2.5 h-2.5 shrink-0 opacity-60" />
+                          {c.customers?.name || "—"}
+                        </span>
                       ))}
-                      {dayCalls.length > 4 && <span className="text-[8px] text-muted-foreground">+{dayCalls.length - 4}</span>}
+                      {dayEvents.slice(0, 1).map(e => (
+                        <span key={e.id} className="text-[10px] leading-tight truncate flex items-center gap-0.5">
+                          <span className={cn("w-2 h-2 rounded-full shrink-0", e.color)} />
+                          {e.title}
+                        </span>
+                      ))}
+                      {(dayCalls.length + dayEvents.length) > 2 && (
+                        <span className="text-[10px] text-muted-foreground">+{dayCalls.length + dayEvents.length - 2} עוד</span>
+                      )}
                     </div>
-                  )}
 
-                  {/* Note dot */}
-                  {hasNote && <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-amber-400" />}
-                </button>
-              );
-            })}
+                    {dayCalls.length > 0 && (
+                      <div className="flex gap-0.5 mt-0.5 flex-wrap">
+                        {dayCalls.slice(0, 4).map((c, i) => (
+                          <span key={i} className={cn("w-1.5 h-1.5 rounded-full", STATUS_DOT[c.status] || "bg-gray-300")} />
+                        ))}
+                        {dayCalls.length > 4 && <span className="text-[8px] text-muted-foreground">+{dayCalls.length - 4}</span>}
+                      </div>
+                    )}
+
+                    {hasNote && <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+          );
+        })}
 
         {/* Legend */}
         <div className="flex flex-wrap gap-x-4 gap-y-1 px-1">
