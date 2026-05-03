@@ -367,8 +367,11 @@ const CalendarPage = () => {
                           <p className="font-medium text-sm">{e.title}</p>
                           <p className="text-xs opacity-70">{e.time}</p>
                         </div>
-                        <button onClick={() => deleteEvent(e.id)} className="p-1 rounded hover:bg-black/10 transition-colors">
-                          <Trash2 className="w-3.5 h-3.5 opacity-60" />
+                        <button
+                          onClick={() => deleteEvent(e.id)}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-600 text-xs font-medium transition-colors shrink-0"
+                        >
+                          <Trash2 className="w-3 h-3" /> מחק
                         </button>
                       </div>
                     );
