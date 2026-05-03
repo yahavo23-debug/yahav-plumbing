@@ -135,12 +135,9 @@ function getVacationForDay(day: Date, vacations: Vacation[]): Vacation | null {
   return vacations.find(v => key >= v.from && key <= v.to) || null;
 }
 
-function loadEvents(): PersonalEvent[] {
+function loadLocalEvents(): PersonalEvent[] {
   try { return JSON.parse(localStorage.getItem(EVENTS_KEY) || "[]"); }
   catch { return []; }
-}
-function saveEvents(events: PersonalEvent[]) {
-  localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
 }
 function loadNotes(): Record<string, string> {
   try { return JSON.parse(localStorage.getItem(NOTES_KEY) || "{}"); }
@@ -174,7 +171,7 @@ const CalendarPage = () => {
   const [selectedDay, setSelectedDay]   = useState<Date | null>(null);
   const [notes, setNotes]               = useState<Record<string, string>>(loadNotes);
   const [noteText, setNoteText]         = useState("");
-  const [events, setEvents]             = useState<PersonalEvent[]>(loadEvents);
+  const [events, setEvents]             = useState<PersonalEvent[]>([]);
   const [vacations, setVacations]       = useState<Vacation[]>(loadVacations);
 
   // Vacation form state
@@ -199,6 +196,47 @@ const CalendarPage = () => {
   const [formTime, setFormTime]         = useState("09:00");
   const [formColor, setFormColor]       = useState(EVENT_COLORS[0].value);
 
+  // ── Load personal events from Supabase ──────────────────────────────────────
+
+  const loadEvents = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("personal_events")
+      .select("id, date, time, title, color")
+      .eq("user_id", user.id)
+      .order("date")
+      .order("time");
+    if (data) {
+      const mapped: PersonalEvent[] = data.map(r => ({
+        id:    r.id,
+        date:  r.date,
+        time:  (r.time as string).slice(0, 5),
+        title: r.title,
+        color: r.color,
+      }));
+      setEvents(mapped);
+
+      // One-time migration: import any events still in localStorage
+      const local = loadLocalEvents();
+      if (local.length > 0 && data.length === 0) {
+        const inserts = local.map(e => ({
+          user_id: user.id,
+          date:    e.date,
+          time:    e.time,
+          title:   e.title,
+          color:   e.color,
+        }));
+        await supabase.from("personal_events").insert(inserts);
+        localStorage.removeItem(EVENTS_KEY);
+        // Reload after migration
+        loadEvents();
+      } else if (local.length > 0) {
+        // Already have DB events — just clear stale localStorage
+        localStorage.removeItem(EVENTS_KEY);
+      }
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Load service calls (use scheduled_at for time) ──────────────────────────
 
   const loadCalls = useCallback(async (fromDate: Date, toDate: Date) => {
@@ -213,6 +251,9 @@ const CalendarPage = () => {
     if (!error && data) setCalls(data as ServiceCall[]);
     setLoading(false);
   }, [user]);
+
+  // Load personal events once (on mount / user change)
+  useEffect(() => { loadEvents(); }, [loadEvents]);
 
   useEffect(() => {
     if (!rangeActive) {
@@ -292,27 +333,37 @@ const CalendarPage = () => {
     saveVacations(updated);
   };
 
-  // ── Personal events ──────────────────────────────────────────────────────────
+  // ── Personal events (saved to Supabase for server-side push scheduling) ──────
 
-  const addEvent = () => {
-    if (!formTitle.trim() || !selectedDay) return;
-    const ev: PersonalEvent = {
-      id: crypto.randomUUID(),
-      date: getDateKey(selectedDay),
-      time: formTime,
-      title: formTitle.trim(),
-      color: formColor,
+  const addEvent = async () => {
+    if (!formTitle.trim() || !selectedDay || !user) return;
+    const newEvent = {
+      user_id: user.id,
+      date:    getDateKey(selectedDay),
+      time:    formTime,
+      title:   formTitle.trim(),
+      color:   formColor,
     };
-    const updated = [...events, ev];
-    setEvents(updated);
-    saveEvents(updated);
+    const { data, error } = await supabase
+      .from("personal_events")
+      .insert(newEvent)
+      .select("id, date, time, title, color")
+      .single();
+    if (!error && data) {
+      setEvents(prev => [...prev, {
+        id:    data.id,
+        date:  data.date,
+        time:  (data.time as string).slice(0, 5),
+        title: data.title,
+        color: data.color,
+      }].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)));
+    }
     setFormTitle(""); setFormTime("09:00"); setShowForm(false);
   };
 
-  const deleteEvent = (id: string) => {
-    const updated = events.filter(e => e.id !== id);
-    setEvents(updated);
-    saveEvents(updated);
+  const deleteEvent = async (id: string) => {
+    await supabase.from("personal_events").delete().eq("id", id);
+    setEvents(prev => prev.filter(e => e.id !== id));
   };
 
   // ── Derived data ─────────────────────────────────────────────────────────────

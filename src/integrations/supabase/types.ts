@@ -503,6 +503,36 @@ export type Database = {
         }
         Relationships: []
       }
+      personal_events: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          time: string
+          title: string
+          color: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date: string
+          time: string
+          title: string
+          color?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          date?: string
+          time?: string
+          title?: string
+          color?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           id: string
