@@ -16,8 +16,12 @@ import { VideoList } from "@/components/media/VideoList";
 import { MediaUploader } from "@/components/media/MediaUploader";
 import { Tables } from "@/integrations/supabase/types";
 import {
-  ArrowRight, Edit, FileText, Calendar, User, MapPin, Phone, Trash2,
+  ArrowRight, Edit, FileText, Calendar, User, MapPin, Phone, Trash2, Receipt,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -74,6 +78,12 @@ const ServiceCallDetail = () => {
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Invoice dialog state
+  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  const [invoiceAmount, setInvoiceAmount] = useState("");
+  const [invoiceDesc, setInvoiceDesc] = useState("");
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
 
   // Keep findings/recommendations for report creation
   const [findings, setFindings] = useState("");
@@ -158,6 +168,40 @@ const ServiceCallDetail = () => {
     } catch (err: any) {
       console.error("Create report error:", err);
       toast({ title: "שגיאה ביצירת דוח", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleCreateInvoice = async () => {
+    if (!invoiceAmount || isNaN(Number(invoiceAmount))) {
+      toast({ title: "שגיאה", description: "יש להזין סכום תקין", variant: "destructive" });
+      return;
+    }
+    setInvoiceLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-yesh-invoice", {
+        body: {
+          serviceCallId: id,
+          amount: Number(invoiceAmount),
+          description: invoiceDesc || call?.job_type || "שירות אינסטלציה",
+          includeVat: true,
+        },
+      });
+      if (error) throw error;
+      if (data?.invoiceUrl) {
+        window.open(data.invoiceUrl, "_blank");
+      }
+      toast({
+        title: "✅ חשבונית נוצרה!",
+        description: data?.invoiceNum ? `חשבונית מס' ${data.invoiceNum}` : "החשבונית נוצרה בהצלחה ביש חשבונית",
+      });
+      setShowInvoiceDialog(false);
+      setInvoiceAmount("");
+      setInvoiceDesc("");
+    } catch (err: any) {
+      console.error("Invoice error:", err);
+      toast({ title: "שגיאה ביצירת חשבונית", description: err.message || "אנא נסה שנית", variant: "destructive" });
+    } finally {
+      setInvoiceLoading(false);
     }
   };
 
@@ -278,6 +322,16 @@ const ServiceCallDetail = () => {
             )}
             <Button onClick={handleCreateReport} className="gap-2">
               <FileText className="w-4 h-4" /> דוח עבודה
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+              onClick={() => {
+                setInvoiceDesc(call?.job_type || "שירות אינסטלציה");
+                setShowInvoiceDialog(true);
+              }}
+            >
+              <Receipt className="w-4 h-4" /> צור חשבונית
             </Button>
             {isAdmin && (
               <Button
@@ -516,6 +570,61 @@ const ServiceCallDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Invoice dialog */}
+      <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
+        <DialogContent dir="rtl" className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="w-5 h-5 text-emerald-600" />
+              צור חשבונית מס קבלה
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <p className="text-sm font-medium mb-1">לקוח</p>
+              <p className="text-sm text-muted-foreground">{customer?.name}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">תיאור העבודה</label>
+              <Input
+                value={invoiceDesc}
+                onChange={e => setInvoiceDesc(e.target.value)}
+                placeholder="שירות אינסטלציה"
+                dir="rtl"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">סכום לפני מע"מ (₪)</label>
+              <Input
+                type="number"
+                value={invoiceAmount}
+                onChange={e => setInvoiceAmount(e.target.value)}
+                placeholder="0"
+                dir="ltr"
+                className="text-right"
+              />
+              {invoiceAmount && !isNaN(Number(invoiceAmount)) && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  סה"כ כולל מע"מ: ₪{(Number(invoiceAmount) * 1.18).toFixed(2)}
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="flex-row-reverse gap-2">
+            <Button
+              onClick={handleCreateInvoice}
+              disabled={invoiceLoading || !invoiceAmount}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {invoiceLoading ? "יוצר חשבונית..." : "צור חשבונית ביש חשבונית"}
+            </Button>
+            <Button variant="outline" onClick={() => setShowInvoiceDialog(false)}>
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };
