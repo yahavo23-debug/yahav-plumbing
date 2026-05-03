@@ -95,7 +95,7 @@ const Dashboard = () => {
   const statusOptions = [
     { value: "open",             label: "פתוח" },
     { value: "in_progress",      label: "בטיפול" },
-    { value: "pending_customer", label: "ממתין ללקוח" },
+    { value: "pending_customer", label: "ממתין לאישור לקוח" },
     { value: "completed",        label: "הושלם" },
     { value: "cancelled",        label: "בוטל" },
   ];
