@@ -338,17 +338,25 @@ export default function MarketingAnalytics() {
     }
   }
 
-  const totalRevenue = filteredCustomers.reduce((s, c) => s + c.revenue, 0);
-  // totalAdCost: manual ad costs (excluding madrag) + madrag commission
-  const madragRevenue = filteredCustomers
-    .filter((c) => c.lead_source === "madrag")
-    .reduce((s, c) => s + c.revenue, 0);
-  const madragCommissionCost = madragRevenue * (madragCommission / 100);
-  const nonMadragAdCost = filteredAdCosts
-    .filter((e) => e.source !== "madrag")
-    .reduce((s, e) => s + e.cost, 0);
-  const totalAdCost = nonMadragAdCost + madragCommissionCost;
-  const totalCustomers = filteredCustomers.length;
+  const {
+    totalRevenue,
+    madragRevenue,
+    madragCommissionCost,
+    totalAdCost,
+    totalCustomers,
+  } = useMemo(() => {
+    const totalRevenue = filteredCustomers.reduce((s, c) => s + c.revenue, 0);
+    const madragRevenue = filteredCustomers
+      .filter((c) => c.lead_source === "madrag")
+      .reduce((s, c) => s + c.revenue, 0);
+    const madragCommissionCost = madragRevenue * (madragCommission / 100);
+    const nonMadragAdCost = filteredAdCosts
+      .filter((e) => e.source !== "madrag")
+      .reduce((s, e) => s + e.cost, 0);
+    const totalAdCost = nonMadragAdCost + madragCommissionCost;
+    const totalCustomers = filteredCustomers.length;
+    return { totalRevenue, madragRevenue, madragCommissionCost, totalAdCost, totalCustomers };
+  }, [filteredCustomers, filteredAdCosts, madragCommission]);
 
   // ── KPI metrics per platform ────────────────────────────────────────────────
   const platformKPIs = useMemo(() => {
@@ -361,9 +369,12 @@ export default function MarketingAnalytics() {
   }, [sourceData]);
 
   // Global averages
-  const globalLTV = totalCustomers > 0 ? totalRevenue / totalCustomers : 0;
-  const globalCAC = totalAdCost > 0 && totalCustomers > 0 ? totalAdCost / totalCustomers : null;
-  const globalProfitPerShekel = totalAdCost > 0 ? (totalRevenue - totalAdCost) / totalAdCost : null;
+  const { globalLTV, globalCAC, globalProfitPerShekel } = useMemo(() => {
+    const globalLTV = totalCustomers > 0 ? totalRevenue / totalCustomers : 0;
+    const globalCAC = totalAdCost > 0 && totalCustomers > 0 ? totalAdCost / totalCustomers : null;
+    const globalProfitPerShekel = totalAdCost > 0 ? (totalRevenue - totalAdCost) / totalAdCost : null;
+    return { globalLTV, globalCAC, globalProfitPerShekel };
+  }, [totalRevenue, totalAdCost, totalCustomers]);
 
 
   return (
@@ -674,7 +685,7 @@ export default function MarketingAnalytics() {
                 wrapperStyle={{ fontSize: 12 }}
               />
               {allSources.map((src) => (
-                <Bar key={src} dataKey={src} stackId="a" fill={SOURCE_CONFIG[src]?.color || "#6b7280"} />
+                <Bar key={src} dataKey={src} stackId="a" fill={SOURCE_CONFIG[src]?.color || "#6b7280"} isAnimationActive={false} />
               ))}
             </BarChart>
           </ResponsiveContainer>
@@ -712,6 +723,7 @@ export default function MarketingAnalytics() {
                   dot={{ r: 4, fill: SOURCE_CONFIG[src]?.color || "#6b7280" }}
                   activeDot={{ r: 6, cursor: "pointer", onClick: (_: any, payload: any) => openDrilldown(src) }}
                   connectNulls
+                  isAnimationActive={false}
                 />
               ))}
             </LineChart>
@@ -743,8 +755,8 @@ export default function MarketingAnalytics() {
                   contentStyle={{ direction: "rtl", fontSize: 12 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="revenue" name="הכנסות" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="adCost" name="עלות פרסום" fill="hsl(var(--destructive))" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="revenue" name="הכנסות" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} isAnimationActive={false} />
+                <Bar dataKey="adCost" name="עלות פרסום" fill="hsl(var(--destructive))" radius={[0, 4, 4, 0]} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
             <p className="text-xs text-muted-foreground text-center mt-1">לחץ על שורה לצפות בלקוחות</p>
@@ -769,6 +781,7 @@ export default function MarketingAnalytics() {
                   onClick={(d) => openDrilldown(d.source)}
                   label={({ label, count }) => `${label} (${count})`}
                   labelLine={false}
+                  isAnimationActive={false}
                 >
                   {sourceData.map((entry) => (
                     <Cell key={entry.source} fill={entry.color} />
