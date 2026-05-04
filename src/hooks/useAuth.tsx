@@ -29,7 +29,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        setLoading(false);
 
         if (session?.user) {
           setTimeout(() => {
@@ -38,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setIsAdmin(false);
           setRole(null);
+          setLoading(false);
         }
       }
     );
@@ -45,10 +45,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
 
       if (session?.user) {
         fetchUserRole(session.user.id);
+      } else {
+        setLoading(false);
       }
     });
 
@@ -56,16 +57,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchUserRole = async (userId: string) => {
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .limit(1)
-      .maybeSingle();
+    try {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle();
 
-    const userRole = (data?.role as AppRole) || null;
-    setRole(userRole);
-    setIsAdmin(userRole === "admin");
+      const userRole = (data?.role as AppRole) || null;
+      setRole(userRole);
+      setIsAdmin(userRole === "admin");
+    } catch (err) {
+      console.error("fetchUserRole error:", err);
+      setRole(null);
+      setIsAdmin(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signUp = async (email: string, password: string, fullName: string, phone?: string, idNumber?: string) => {
