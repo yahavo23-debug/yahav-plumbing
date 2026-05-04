@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +7,30 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth, AppRole } from "@/hooks/useAuth";
 import { NoAccessScreen } from "@/components/layout/NoAccessScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+/**
+ * Workaround for Radix Dialog/AlertDialog bug where `pointer-events: none`
+ * stays stuck on <body> after closing nested/stacked dialogs (desktop only —
+ * mobile uses touch which bypasses this). Watches body style and clears it
+ * whenever there are no open Radix overlays on the page.
+ */
+function PointerEventsGuard() {
+  useEffect(() => {
+    const cleanup = () => {
+      const hasOpenOverlay = document.querySelector(
+        '[data-state="open"][role="dialog"], [data-state="open"][role="alertdialog"]'
+      );
+      if (!hasOpenOverlay && document.body.style.pointerEvents === "none") {
+        document.body.style.pointerEvents = "";
+      }
+    };
+    const observer = new MutationObserver(cleanup);
+    observer.observe(document.body, { attributes: true, attributeFilter: ["style"], subtree: false });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+  return null;
+}
 
 // Pages
 import Auth from "./pages/Auth";
@@ -99,6 +124,7 @@ function AppRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <PointerEventsGuard />
       <Toaster />
       <Sonner />
       <BrowserRouter>
