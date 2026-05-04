@@ -165,6 +165,14 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Also lift the Auth-layer ban
+      const { error: authUnbanError } = await adminClient.auth.admin.updateUserById(userId, {
+        ban_duration: "none",
+      });
+      if (authUnbanError) {
+        console.error("Error unbanning user at auth layer:", authUnbanError.message);
+      }
+
       console.log(`User ${userId} unbanned`);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
