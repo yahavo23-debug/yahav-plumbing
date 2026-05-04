@@ -5,8 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { RefreshCw, Receipt, AlertCircle, CheckCircle2, Link2 } from "lucide-react";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { he } from "date-fns/locale";
+
+function safeFormat(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return isValid(d) ? format(d, "d MMM yyyy", { locale: he }) : null;
+}
 
 interface YeshInvoice {
   id: string;
@@ -34,13 +40,18 @@ const Invoices = () => {
 
   const loadInvoices = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("yesh_invoices")
-      .select("*")
-      .order("date_created", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("yesh_invoices")
+        .select("*")
+        .order("date_created", { ascending: false });
 
-    if (!error && data) setInvoices(data as YeshInvoice[]);
-    setLoading(false);
+      if (!error && data) setInvoices(data as YeshInvoice[]);
+    } catch (err) {
+      console.error("Invoices load error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { loadInvoices(); }, []);
@@ -151,10 +162,8 @@ const Invoices = () => {
 
                     <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
                       {inv.customer_phone && <span>📞 {inv.customer_phone}</span>}
-                      {inv.date_created && (
-                        <span>
-                          {format(new Date(inv.date_created), "d MMM yyyy", { locale: he })}
-                        </span>
+                      {safeFormat(inv.date_created) && (
+                        <span>{safeFormat(inv.date_created)}</span>
                       )}
                       <span className="text-xs">{inv.doc_type_name || "חשבונית מס קבלה"}</span>
                     </div>
