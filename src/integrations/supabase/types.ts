@@ -1244,6 +1244,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      user_can_access_storage_object: {
+        Args: { _name: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "technician" | "secretary" | "contractor"
