@@ -491,36 +491,6 @@ export type Database = {
         }
         Relationships: []
       }
-      personal_vacations: {
-        Row: {
-          color: string
-          created_at: string
-          from_date: string
-          id: string
-          title: string
-          to_date: string
-          user_id: string
-        }
-        Insert: {
-          color?: string
-          created_at?: string
-          from_date: string
-          id?: string
-          title: string
-          to_date: string
-          user_id: string
-        }
-        Update: {
-          color?: string
-          created_at?: string
-          from_date?: string
-          id?: string
-          title?: string
-          to_date?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           avatar_url: string | null
