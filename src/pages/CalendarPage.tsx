@@ -204,26 +204,32 @@ const CalendarPage = () => {
 
   const loadEvents = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+
+    // Personal events — only current user's
+    const { data: myEvents } = await supabase
       .from("personal_events")
       .select("id, date, time, title, color")
       .eq("user_id", user.id)
-      .order("date")
-      .order("time");
+      .not("color", "like", `${VAC_PREFIX}%`)
+      .order("date").order("time");
 
-    if (!data) return;
+    // Vacations — all users (everyone sees everyone's vacations)
+    const { data: allVacs } = await supabase
+      .from("personal_events")
+      .select("id, date, time, title, color")
+      .like("color", `${VAC_PREFIX}%`)
+      .order("date");
 
-    const rawEvents: PersonalEvent[] = data.map(r => ({
-      id:    r.id,
-      date:  r.date,
-      time:  (r.time as string).slice(0, 5),
-      title: r.title,
-      color: r.color,
-    }));
-
-    // Split into events vs vacations
-    setEvents(rawEvents.filter(r => !isVacationRow(r)));
-    setVacations(rawEvents.filter(isVacationRow).map(decodeVacation));
+    setEvents((myEvents || []).map(r => ({
+      id: r.id, date: r.date,
+      time: (r.time as string).slice(0, 5),
+      title: r.title, color: r.color,
+    })));
+    setVacations((allVacs || []).map(r => decodeVacation({
+      id: r.id, date: r.date,
+      time: (r.time as string).slice(0, 5),
+      title: r.title, color: r.color,
+    })));
 
     // One-time migration: localStorage events → Supabase
     const EVENTS_KEY = "calendar_personal_events";
