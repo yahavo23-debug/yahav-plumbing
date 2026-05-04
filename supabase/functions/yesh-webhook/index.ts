@@ -20,15 +20,19 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Verify webhook secret (set YESH_WEBHOOK_SECRET in Supabase secrets)
+  // Webhook secret is REQUIRED — reject all requests if not configured
   const webhookSecret = Deno.env.get("YESH_WEBHOOK_SECRET");
-  if (webhookSecret) {
-    const incoming = req.headers.get("x-webhook-secret") || req.headers.get("authorization");
-    if (incoming !== webhookSecret) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  if (!webhookSecret) {
+    console.error("YESH_WEBHOOK_SECRET is not configured — rejecting webhook");
+    return new Response(JSON.stringify({ error: "Webhook not configured" }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const incoming = req.headers.get("x-webhook-secret") || req.headers.get("authorization");
+  if (incoming !== webhookSecret) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
