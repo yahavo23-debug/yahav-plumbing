@@ -38,6 +38,7 @@ const Invoices = () => {
   const [invoices, setInvoices] = useState<YeshInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "linked" | "unlinked">("all");
+  const [importOpen, setImportOpen] = useState(false);
 
   const loadInvoices = async () => {
     setLoading(true);
