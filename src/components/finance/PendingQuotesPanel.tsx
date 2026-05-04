@@ -48,7 +48,7 @@ export function PendingQuotesPanel() {
   const loadPendingQuotes = async () => {
     const { data, error } = await supabase
       .from("quotes")
-      .select("id, quote_number, title, status, created_at, service_call_id, service_calls!inner(status, customers!inner(name))")
+      .select("id, quote_number, title, status, created_at, service_call_id, service_calls!quotes_service_call_id_fkey!inner(status, customers!inner(name))")
       .in("status", ["draft", "sent"])
       .order("created_at", { ascending: false });
 
