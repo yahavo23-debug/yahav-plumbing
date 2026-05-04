@@ -4,9 +4,10 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { RefreshCw, Receipt, AlertCircle, CheckCircle2, Link2 } from "lucide-react";
+import { RefreshCw, Receipt, AlertCircle, CheckCircle2, Link2, Upload } from "lucide-react";
 import { format, isValid } from "date-fns";
 import { he } from "date-fns/locale";
+import { ImportInvoicesDialog } from "@/components/invoices/ImportInvoicesDialog";
 
 function safeFormat(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null;
@@ -37,6 +38,7 @@ const Invoices = () => {
   const [invoices, setInvoices] = useState<YeshInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "linked" | "unlinked">("all");
+  const [importOpen, setImportOpen] = useState(false);
 
   const loadInvoices = async () => {
     setLoading(true);
@@ -75,11 +77,19 @@ const Invoices = () => {
             <h1 className="text-xl font-bold">קבלות וחשבוניות</h1>
             <p className="text-sm text-muted-foreground mt-0.5">חשבוניות מתווספות אוטומטית בעת יצירה</p>
           </div>
-          <Button onClick={loadInvoices} variant="outline" className="gap-2">
-            <RefreshCw className="w-4 h-4" />
-            רענן
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setImportOpen(true)} className="gap-2">
+              <Upload className="w-4 h-4" />
+              ייבוא מתמונות (AI)
+            </Button>
+            <Button onClick={loadInvoices} variant="outline" className="gap-2">
+              <RefreshCw className="w-4 h-4" />
+              רענן
+            </Button>
+          </div>
         </div>
+
+        <ImportInvoicesDialog open={importOpen} onOpenChange={setImportOpen} onDone={loadInvoices} />
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-6">
