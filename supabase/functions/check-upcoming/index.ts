@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
   // Verify cron secret
   const secret = req.headers.get("x-cron-secret");
-  if (secret !== CRON_SECRET) {
+  if (!CRON_SECRET || secret !== CRON_SECRET) {
     return new Response(JSON.stringify({ error: "Forbidden" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
