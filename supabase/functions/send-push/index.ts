@@ -11,8 +11,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const VAPID_PUBLIC_KEY  = Deno.env.get("VAPID_PUBLIC_KEY")  ??
-  "BGETmSsR4q4O56saqKoR93x9ETQZpED4I4AXJe5YY0rVCRcNlqPTh6XWPdP9_nUn_qAqqVechWDW0jVVP6DXoq4";
+const VAPID_PUBLIC_KEY  = Deno.env.get("VAPID_PUBLIC_KEY")  ?? "";
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") ?? "";
 
 webpush.setVapidDetails(
