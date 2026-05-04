@@ -1,0 +1,1 @@
+DELETE FROM public.financial_transactions WHERE id IN ('42549301-f646-4356-be5d-6d47d03d69e8','bd0c4087-a275-476c-8435-9d89345ce88e','f2b309d8-b98a-4d50-82bd-d19e9cfadcf3');
