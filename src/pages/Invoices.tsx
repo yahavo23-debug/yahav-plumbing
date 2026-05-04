@@ -77,11 +77,19 @@ const Invoices = () => {
             <h1 className="text-xl font-bold">קבלות וחשבוניות</h1>
             <p className="text-sm text-muted-foreground mt-0.5">חשבוניות מתווספות אוטומטית בעת יצירה</p>
           </div>
-          <Button onClick={loadInvoices} variant="outline" className="gap-2">
-            <RefreshCw className="w-4 h-4" />
-            רענן
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setImportOpen(true)} className="gap-2">
+              <Upload className="w-4 h-4" />
+              ייבוא מתמונות (AI)
+            </Button>
+            <Button onClick={loadInvoices} variant="outline" className="gap-2">
+              <RefreshCw className="w-4 h-4" />
+              רענן
+            </Button>
+          </div>
         </div>
+
+        <ImportInvoicesDialog open={importOpen} onOpenChange={setImportOpen} onDone={loadInvoices} />
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-6">
