@@ -123,6 +123,14 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Also ban at the Supabase Auth layer so existing tokens cannot be refreshed
+      const { error: authBanError } = await adminClient.auth.admin.updateUserById(userId, {
+        ban_duration: "876000h", // ~100 years
+      });
+      if (authBanError) {
+        console.error("Error banning user at auth layer:", authBanError.message);
+      }
+
       console.log(`User ${userId} banned until ${bannedUntil}`);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
