@@ -46,15 +46,18 @@ Deno.serve(async (req) => {
     let documentId: string;
     let bucketName: string;
 
+    const isExpired = (exp: string | null | undefined) =>
+      !!exp && new Date(exp).getTime() < Date.now();
+
     if (docType === "quote") {
       // Verify quote share token
       const { data: share, error: shareErr } = await supabase
         .from("quote_shares")
-        .select("quote_id, is_active, revoked_at")
+        .select("quote_id, is_active, revoked_at, expires_at")
         .eq("share_token", shareToken)
         .single();
 
-      if (shareErr || !share || !share.is_active || share.revoked_at) {
+      if (shareErr || !share || !share.is_active || share.revoked_at || isExpired(share.expires_at)) {
         return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -66,11 +69,11 @@ Deno.serve(async (req) => {
       // Verify report share token
       const { data: share, error: shareErr } = await supabase
         .from("report_shares")
-        .select("report_id, is_active, revoked_at")
+        .select("report_id, is_active, revoked_at, expires_at")
         .eq("share_token", shareToken)
         .single();
 
-      if (shareErr || !share || !share.is_active || share.revoked_at) {
+      if (shareErr || !share || !share.is_active || share.revoked_at || isExpired(share.expires_at)) {
         return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
