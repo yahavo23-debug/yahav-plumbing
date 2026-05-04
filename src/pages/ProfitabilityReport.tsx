@@ -163,6 +163,7 @@ export default function ProfitabilityReport() {
       };
     }
     txns.forEach(t => {
+      if (!t.txn_date) return;
       const key = t.txn_date.slice(0, 7);
       if (!map[key]) return;
       const amt = Number(t.amount);
@@ -189,11 +190,11 @@ export default function ProfitabilityReport() {
     });
   }, [txns, year]);
 
-  const now = new Date();
   const activeMonths = useMemo(() => {
+    const now = new Date();
     const maxM = Number(year) < now.getFullYear() ? 12 : now.getMonth() + 1;
     return months.slice(0, maxM);
-  }, [months, year, now.getFullYear(), now.getMonth()]);
+  }, [months, year]);
 
   const T = useMemo(() => activeMonths.reduce((a, m) => ({
     revenue: a.revenue + m.revenue,

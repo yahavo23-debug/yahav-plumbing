@@ -191,12 +191,14 @@ export default function MarketingAnalytics() {
         .eq("direction", "expense")
         .order("txn_date", { ascending: false });
 
-      const costs: AdCostEntry[] = (txns || []).map((t) => ({
-        id: t.id,
-        source: t.counterparty_name || "other",
-        month: t.txn_date.slice(0, 7),
-        cost: Number(t.amount),
-      }));
+      const costs: AdCostEntry[] = (txns || [])
+        .filter((t) => !!t.txn_date)
+        .map((t) => ({
+          id: t.id,
+          source: t.counterparty_name || "other",
+          month: t.txn_date!.slice(0, 7),
+          cost: Number(t.amount),
+        }));
       setAdCosts(costs);
     } finally {
       setLoading(false);
@@ -206,7 +208,7 @@ export default function MarketingAnalytics() {
   // Filter by selected month
   const filteredCustomers = useMemo(() => {
     if (selectedMonth === "all") return customers;
-    return customers.filter((c) => c.created_at.startsWith(selectedMonth));
+    return customers.filter((c) => c.created_at?.startsWith(selectedMonth));
   }, [customers, selectedMonth]);
 
   const filteredAdCosts = useMemo(() => {
@@ -255,6 +257,7 @@ export default function MarketingAnalytics() {
   const monthlyData = useMemo(() => {
     const monthMap: Record<string, Record<string, number>> = {};
     customers.forEach((c) => {
+      if (!c.created_at) return;
       const month = c.created_at.slice(0, 7);
       const src = c.lead_source || "other";
       if (!monthMap[month]) monthMap[month] = {};

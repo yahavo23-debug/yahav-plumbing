@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth, AppRole } from "@/hooks/useAuth";
 import { NoAccessScreen } from "@/components/layout/NoAccessScreen";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Pages
 import Auth from "./pages/Auth";
@@ -71,26 +72,26 @@ function AppRoutes() {
       <Route path="/q/:token" element={<PublicQuote />} />
       <Route path="/s/:token" element={<PublicShare />} />
 
-      {/* Protected routes */}
-      <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-      <Route path="/customers/new" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><CustomerForm /></ProtectedRoute>} />
-      <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
-      <Route path="/customers/:id/edit" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><CustomerForm /></ProtectedRoute>} />
-      <Route path="/service-calls" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary", "contractor"]}><ServiceCalls /></ProtectedRoute>} />
-      <Route path="/service-calls/new" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><CustomerSelect /></ProtectedRoute>} />
-      <Route path="/service-calls/new/:customerId" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ServiceCallForm /></ProtectedRoute>} />
-      <Route path="/service-calls/:id" element={<ProtectedRoute><ServiceCallDetail /></ProtectedRoute>} />
-      <Route path="/service-calls/:id/edit" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ServiceCallForm /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><Reports /></ProtectedRoute>} />
-      <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ReportEditor /></ProtectedRoute>} />
-      <Route path="/dispatch" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><DispatchBoard /></ProtectedRoute>} />
-      <Route path="/calendar" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><CalendarPage /></ProtectedRoute>} />
-      <Route path="/finance" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><Finance /></ProtectedRoute>} />
-      <Route path="/invoices" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><Invoices /></ProtectedRoute>} />
-      <Route path="/marketing" element={<ProtectedRoute allowedRoles={["admin"]}><MarketingAnalytics /></ProtectedRoute>} />
-      <Route path="/profitability" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ProfitabilityReport /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute allowedRoles={["admin"]}><Settings /></ProtectedRoute>} />
+      {/* Protected routes — each wrapped in ErrorBoundary so crashes show a message not a white screen */}
+      <Route path="/" element={<ProtectedRoute><ErrorBoundary><Dashboard /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/customers" element={<ProtectedRoute><ErrorBoundary><Customers /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/customers/new" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><CustomerForm /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/customers/:id" element={<ProtectedRoute><ErrorBoundary><CustomerDetail /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/customers/:id/edit" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><CustomerForm /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/service-calls" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary", "contractor"]}><ErrorBoundary><ServiceCalls /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/service-calls/new" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><CustomerSelect /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/service-calls/new/:customerId" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><ServiceCallForm /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/service-calls/:id" element={<ProtectedRoute><ErrorBoundary><ServiceCallDetail /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/service-calls/:id/edit" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><ServiceCallForm /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><Reports /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><ReportEditor /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/dispatch" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><DispatchBoard /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/calendar" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><CalendarPage /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/finance" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><Finance /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/invoices" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><Invoices /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/marketing" element={<ProtectedRoute allowedRoles={["admin"]}><ErrorBoundary><MarketingAnalytics /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/profitability" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><ProfitabilityReport /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute allowedRoles={["admin"]}><ErrorBoundary><Settings /></ErrorBoundary></ProtectedRoute>} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>
