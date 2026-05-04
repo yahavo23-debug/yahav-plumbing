@@ -41,7 +41,6 @@ const navGroups: NavGroup[] = [
       { icon: Wallet,    label: "הכנסות והוצאות", path: "/finance",        roles: ["admin", "secretary"] },
       { icon: Receipt,   label: "קבלות וחשבוניות", path: "/invoices",       roles: ["admin", "secretary"] },
       { icon: LineChart, label: "רווחיות",         path: "/profitability",  roles: ["admin", "secretary"] },
-      { icon: BarChart2, label: "שיווק",            path: "/marketing",     roles: ["admin"] },
     ],
   },
 ];

@@ -25,7 +25,6 @@ import PublicShare from "./pages/PublicShare";
 import Settings from "./pages/Settings";
 import DispatchBoard from "./pages/DispatchBoard";
 import Finance from "./pages/Finance";
-import MarketingAnalytics from "./pages/MarketingAnalytics";
 import ProfitabilityReport from "./pages/ProfitabilityReport";
 import PublicQuote from "./pages/PublicQuote";
 import NotFound from "./pages/NotFound";
@@ -89,7 +88,6 @@ function AppRoutes() {
       <Route path="/calendar" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><CalendarPage /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><Finance /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/invoices" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><Invoices /></ErrorBoundary></ProtectedRoute>} />
-      <Route path="/marketing" element={<ProtectedRoute allowedRoles={["admin"]}><ErrorBoundary><MarketingAnalytics /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/profitability" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><ProfitabilityReport /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute allowedRoles={["admin"]}><ErrorBoundary><Settings /></ErrorBoundary></ProtectedRoute>} />
 
