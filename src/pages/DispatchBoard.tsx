@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { format, addDays, subDays, isToday } from "date-fns";
 import { he } from "date-fns/locale";
-import { ChevronRight, ChevronLeft, CalendarDays, RefreshCw, Filter, X } from "lucide-react";
+import { ChevronRight, ChevronLeft, CalendarDays, RefreshCw, Filter, X, Inbox, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DispatchDayView } from "@/components/dispatch/DispatchDayView";
@@ -22,19 +22,22 @@ import { TechnicianStatsPanel } from "@/components/dispatch/TechnicianStatsPanel
 import { useDispatchCalls, type DispatchCall } from "@/hooks/useDispatchCalls";
 import { useTechnicians } from "@/hooks/useTechnicians";
 import { getTechnicianColor } from "@/lib/dispatch-constants";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 export default function DispatchBoard() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeCall, setActiveCall] = useState<DispatchCall | null>(null);
   const [filterTechId, setFilterTechId] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<"schedule" | "unscheduled">("schedule");
+
+  const isMobile = useIsMobile();
 
   const { calls, unscheduledCalls, loading, scheduleCall, unscheduleCall, assignTechnician, reload } =
     useDispatchCalls(selectedDate);
 
   const { technicians } = useTechnicians();
 
-  // Stable color mapping: sorted by user_id → index
   const techColorMap = useMemo(() => {
     const map = new Map<string, number>();
     const sorted = [...technicians].sort((a, b) => a.user_id.localeCompare(b.user_id));
@@ -42,10 +45,9 @@ export default function DispatchBoard() {
     return map;
   }, [technicians]);
 
-  // DnD sensors — optimised for tablet touch
   const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 8 } });
   const touchSensor = useSensor(TouchSensor, {
-    activationConstraint: { delay: 200, tolerance: 8 },
+    activationConstraint: { delay: 250, tolerance: 10 },
   });
   const sensors = useSensors(pointerSensor, touchSensor);
 
@@ -63,20 +65,15 @@ export default function DispatchBoard() {
       const callId = active.id as string;
       const overId = String(over.id);
 
-      // Dropped on "unscheduled" zone
       if (overId === "unscheduled") {
         await unscheduleCall(callId);
         return;
       }
-
-      // Dropped on a time slot (hour-XX)
       if (overId.startsWith("hour-")) {
         const hour = parseInt(overId.replace("hour-", ""), 10);
         await scheduleCall(callId, hour);
         return;
       }
-
-      // Dropped on another card — use that card's time slot
       const overCallData = over.data.current?.call as DispatchCall | undefined;
       if (overCallData?.scheduled_at) {
         const hour = new Date(overCallData.scheduled_at).getHours();
@@ -100,7 +97,6 @@ export default function DispatchBoard() {
     [unscheduleCall]
   );
 
-  // Filter calls by selected technician
   const filteredCalls = useMemo(
     () => (filterTechId ? calls.filter((c) => c.assigned_to === filterTechId) : calls),
     [calls, filterTechId]
@@ -111,50 +107,57 @@ export default function DispatchBoard() {
   );
 
   const todayLabel = isToday(selectedDate);
-  const dateDisplay = format(selectedDate, "EEEE, d בMMMM yyyy", { locale: he });
+  const dateDisplay = isMobile
+    ? format(selectedDate, "EEEE d/M", { locale: he })
+    : format(selectedDate, "EEEE, d בMMMM yyyy", { locale: he });
 
   return (
     <AppLayout>
       <div className="flex flex-col h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)]">
-        {/* Header bar */}
-        <header className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 bg-card border-b border-border rounded-t-lg">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="w-5 h-5 text-primary" />
-            <h1 className="text-lg font-bold">לוח שיבוץ</h1>
-          </div>
 
-          <div className="flex items-center gap-2">
+        {/* ── Header ── */}
+        <header className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 bg-card border-b border-border rounded-t-lg">
+          {/* Title — hidden on mobile to save space */}
+          {!isMobile && (
+            <div className="flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-primary" />
+              <h1 className="text-lg font-bold">לוח שיבוץ</h1>
+            </div>
+          )}
+
+          {/* Date navigation */}
+          <div className="flex items-center gap-1 flex-1 justify-center md:justify-start md:flex-none">
             <Button
               variant="outline"
               size="icon"
-              className="h-10 w-10"
+              className="h-9 w-9 shrink-0"
               onClick={() => setSelectedDate((d) => subDays(d, 1))}
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4" />
             </Button>
 
             <Button
               variant={todayLabel ? "default" : "outline"}
-              className="min-w-[180px] text-sm font-semibold h-10"
+              className="text-sm font-semibold h-9 px-3 min-w-0 flex-1 md:flex-none md:min-w-[160px]"
               onClick={() => setSelectedDate(new Date())}
             >
-              {todayLabel ? "היום — " : ""}
-              {dateDisplay}
+              {todayLabel && <span className="ml-1">היום —</span>}
+              <span className="truncate">{dateDisplay}</span>
             </Button>
 
             <Button
               variant="outline"
               size="icon"
-              className="h-10 w-10"
+              className="h-9 w-9 shrink-0"
               onClick={() => setSelectedDate((d) => addDays(d, 1))}
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4" />
             </Button>
 
             <Button
               variant="ghost"
               size="icon"
-              className="h-10 w-10"
+              className="h-9 w-9 shrink-0"
               onClick={reload}
               disabled={loading}
             >
@@ -162,21 +165,24 @@ export default function DispatchBoard() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-3">
-            <TechnicianStatsPanel technicians={technicians} techColorMap={techColorMap} />
-            <div className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{filteredCalls.length}</span> קריאות משובצות
+          {/* Stats — only on desktop */}
+          {!isMobile && (
+            <div className="flex items-center gap-3">
+              <TechnicianStatsPanel technicians={technicians} techColorMap={techColorMap} />
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{filteredCalls.length}</span> קריאות
+              </div>
             </div>
-          </div>
+          )}
         </header>
 
-        {/* Technician filter bar */}
-        <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-muted/30 border-b border-border overflow-x-auto">
-          <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+        {/* ── Technician filter bar ── */}
+        <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-muted/30 border-b border-border overflow-x-auto">
+          <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           <Button
             variant={filterTechId === null ? "default" : "ghost"}
             size="sm"
-            className="h-7 text-xs shrink-0"
+            className="h-6 text-xs shrink-0 px-2"
             onClick={() => setFilterTechId(null)}
           >
             הכל
@@ -190,57 +196,119 @@ export default function DispatchBoard() {
                 key={tech.user_id}
                 variant={isActive ? "default" : "outline"}
                 size="sm"
-                className={cn(
-                  "h-7 text-xs shrink-0 gap-1.5",
-                  !isActive && "bg-card"
-                )}
+                className={cn("h-6 text-xs shrink-0 gap-1 px-2", !isActive && "bg-card")}
                 onClick={() => setFilterTechId(isActive ? null : tech.user_id)}
               >
-                <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", color.dot)} />
-                {tech.full_name}
+                <div className={cn("w-2 h-2 rounded-full shrink-0", color.dot)} />
+                {tech.full_name.split(" ")[0]}
                 {isActive && <X className="w-3 h-3" />}
               </Button>
             );
           })}
         </div>
 
-        {/* Main content with DnD */}
+        {/* ── Mobile tab switcher ── */}
+        {isMobile && (
+          <div className="shrink-0 flex border-b border-border bg-card">
+            <button
+              onClick={() => setMobileTab("schedule")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors",
+                mobileTab === "schedule"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted-foreground"
+              )}
+            >
+              <Clock className="w-4 h-4" />
+              לוח יום
+              {filteredCalls.length > 0 && (
+                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                  {filteredCalls.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setMobileTab("unscheduled")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors",
+                mobileTab === "unscheduled"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted-foreground"
+              )}
+            >
+              <Inbox className="w-4 h-4" />
+              ממתינות
+              {filteredUnscheduled.length > 0 && (
+                <span className="text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full">
+                  {filteredUnscheduled.length}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* ── Main content ── */}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex flex-1 overflow-hidden">
-            {/* Unscheduled sidebar */}
-            <div className="w-72 shrink-0">
-              <UnscheduledSidebar
-                calls={filteredUnscheduled}
-                technicians={technicians}
-                techColorMap={techColorMap}
-                onAssignTechnician={handleAssignTechnician}
-              />
-            </div>
-
-            {/* Day timeline */}
-            <div className="flex-1 overflow-hidden bg-card">
-              {loading ? (
-                <div className="flex items-center justify-center h-full">
-                  <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <DispatchDayView
-                  calls={filteredCalls}
+          {isMobile ? (
+            /* ── MOBILE: single panel with tabs ── */
+            <div className="flex-1 overflow-hidden">
+              {mobileTab === "unscheduled" ? (
+                <UnscheduledSidebar
+                  calls={filteredUnscheduled}
                   technicians={technicians}
                   techColorMap={techColorMap}
                   onAssignTechnician={handleAssignTechnician}
-                  onUnscheduleCall={handleUnscheduleCall}
                 />
+              ) : (
+                loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <DispatchDayView
+                    calls={filteredCalls}
+                    technicians={technicians}
+                    techColorMap={techColorMap}
+                    onAssignTechnician={handleAssignTechnician}
+                    onUnscheduleCall={handleUnscheduleCall}
+                  />
+                )
               )}
             </div>
-          </div>
+          ) : (
+            /* ── DESKTOP: side-by-side layout ── */
+            <div className="flex flex-1 overflow-hidden">
+              <div className="w-72 shrink-0">
+                <UnscheduledSidebar
+                  calls={filteredUnscheduled}
+                  technicians={technicians}
+                  techColorMap={techColorMap}
+                  onAssignTechnician={handleAssignTechnician}
+                />
+              </div>
+              <div className="flex-1 overflow-hidden bg-card">
+                {loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <DispatchDayView
+                    calls={filteredCalls}
+                    technicians={technicians}
+                    techColorMap={techColorMap}
+                    onAssignTechnician={handleAssignTechnician}
+                    onUnscheduleCall={handleUnscheduleCall}
+                  />
+                )}
+              </div>
+            </div>
+          )}
 
-          {/* Drag overlay */}
           <DragOverlay dropAnimation={null}>
             {activeCall && (
               <DispatchCard
