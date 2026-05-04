@@ -233,22 +233,20 @@ const CalendarPage = () => {
 
     // One-time migration: localStorage events → Supabase
     const EVENTS_KEY = "calendar_personal_events";
-    const localEvts = (() => { try { return JSON.parse(localStorage.getItem(EVENTS_KEY) || "[]"); } catch { return []; } })();
-    if (localEvts.length > 0 && data.filter(r => !isVacationRow({ color: r.color } as PersonalEvent)).length === 0) {
+    const localEvts: PersonalEvent[] = (() => { try { return JSON.parse(localStorage.getItem(EVENTS_KEY) || "[]"); } catch { return []; } })();
+    if (localEvts.length > 0) {
       await supabase.from("personal_events").insert(
-        localEvts.map((e: PersonalEvent) => ({ user_id: user.id, date: e.date, time: e.time, title: e.title, color: e.color }))
+        localEvts.map(e => ({ user_id: user.id, date: e.date, time: e.time, title: e.title, color: e.color }))
       );
-      localStorage.removeItem(EVENTS_KEY);
-    } else if (localEvts.length > 0) {
       localStorage.removeItem(EVENTS_KEY);
     }
 
     // One-time migration: localStorage vacations → Supabase
     const VACATIONS_KEY = "calendar_vacations";
-    const localVacs = (() => { try { return JSON.parse(localStorage.getItem(VACATIONS_KEY) || "[]"); } catch { return []; } })();
+    const localVacs: Vacation[] = (() => { try { return JSON.parse(localStorage.getItem(VACATIONS_KEY) || "[]"); } catch { return []; } })();
     if (localVacs.length > 0) {
       await supabase.from("personal_events").insert(
-        localVacs.map((v: Vacation) => ({
+        localVacs.map(v => ({
           user_id: user.id,
           date:    v.from,
           time:    "00:00",
@@ -257,13 +255,13 @@ const CalendarPage = () => {
         }))
       );
       localStorage.removeItem(VACATIONS_KEY);
-      // Reload after migration
-      const { data: d2 } = await supabase.from("personal_events").select("id, date, time, title, color").eq("user_id", user.id).order("date").order("time");
-      if (d2) {
-        const rows2 = d2.map(r => ({ id: r.id, date: r.date, time: (r.time as string).slice(0, 5), title: r.title, color: r.color }));
-        setEvents(rows2.filter(r => !isVacationRow(r)));
-        setVacations(rows2.filter(isVacationRow).map(decodeVacation));
-      }
+      // Re-fetch vacations after migration
+      const { data: vacs2 } = await supabase
+        .from("personal_events")
+        .select("id, date, time, title, color")
+        .like("color", `${VAC_PREFIX}%`)
+        .order("date");
+      if (vacs2) setVacations(vacs2.map(r => decodeVacation({ id: r.id, date: r.date, time: (r.time as string).slice(0, 5), title: r.title, color: r.color })));
     }
   }, [user]);
 
