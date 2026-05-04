@@ -10,9 +10,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// YeshInvoice API credentials (יש חשבונית)
-const YESH_USER_KEY  = "JWVyZuY5TF6qkCMHaBpo";
-const YESH_SECRET    = "2767c6cf-d633-464c-bb34-000bb173d342";
+// YeshInvoice API credentials — stored as Supabase secrets
+const YESH_USER_KEY  = Deno.env.get("YESH_USER_KEY")  ?? "";
+const YESH_SECRET    = Deno.env.get("YESH_SECRET")    ?? "";
 const YESH_API_URL   = "https://api.yeshinvoice.co.il/api/v1.1/createDocument";
 
 // DocumentType 9 = חשבונית מס קבלה (Tax Invoice + Receipt)
@@ -44,6 +44,20 @@ Deno.serve(async (req) => {
     if (!user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Role check: only admin or secretary can create invoices
+    const adminClient2 = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: profile } = await adminClient2
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!profile || !["admin", "secretary"].includes(profile.role)) {
+      return new Response(JSON.stringify({ error: "Forbidden: admin or secretary only" }), {
+        status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
