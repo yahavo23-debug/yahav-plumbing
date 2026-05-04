@@ -42,6 +42,28 @@ interface Vacation {
   color: string;
 }
 
+// ─── Vacation encoding ────────────────────────────────────────────────────────
+// Vacations are stored in personal_events with color = "__vac__:YYYY-MM-DD:hex"
+// where YYYY-MM-DD = to_date and hex = tailwind color class encoded
+
+const VAC_PREFIX = "__vac__:";
+
+function encodeVacColor(toDate: string, color: string): string {
+  return `${VAC_PREFIX}${toDate}:${color}`;
+}
+
+function isVacationRow(row: PersonalEvent): boolean {
+  return row.color.startsWith(VAC_PREFIX);
+}
+
+function decodeVacation(row: PersonalEvent): Vacation {
+  // color = "__vac__:YYYY-MM-DD:bg-xxx-400"
+  const parts = row.color.slice(VAC_PREFIX.length).split(":");
+  const toDate   = parts[0] ?? row.date;
+  const color    = parts.slice(1).join(":") || "bg-teal-400";
+  return { id: row.id, from: row.date, to: toDate, title: row.title, color };
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
@@ -55,18 +77,16 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 const EVENT_COLORS = [
-  { label: "כתום",   value: "bg-orange-400",  ring: "ring-orange-400",  text: "text-orange-700",  badge: "bg-orange-100 text-orange-700" },
-  { label: "ורוד",   value: "bg-pink-400",    ring: "ring-pink-400",    text: "text-pink-700",    badge: "bg-pink-100 text-pink-700" },
-  { label: "טורקיז", value: "bg-teal-400",    ring: "ring-teal-400",    text: "text-teal-700",    badge: "bg-teal-100 text-teal-700" },
-  { label: "אדום",   value: "bg-red-400",     ring: "ring-red-400",     text: "text-red-700",     badge: "bg-red-100 text-red-700" },
-  { label: "סגול",   value: "bg-violet-400",  ring: "ring-violet-400",  text: "text-violet-700",  badge: "bg-violet-100 text-violet-700" },
-  { label: "ירוק",   value: "bg-emerald-400", ring: "ring-emerald-400", text: "text-emerald-700", badge: "bg-emerald-100 text-emerald-700" },
+  { label: "כתום",   value: "bg-orange-400",  ring: "ring-orange-400",  badge: "bg-orange-100 text-orange-700" },
+  { label: "ורוד",   value: "bg-pink-400",    ring: "ring-pink-400",    badge: "bg-pink-100 text-pink-700" },
+  { label: "טורקיז", value: "bg-teal-400",    ring: "ring-teal-400",    badge: "bg-teal-100 text-teal-700" },
+  { label: "אדום",   value: "bg-red-400",     ring: "ring-red-400",     badge: "bg-red-100 text-red-700" },
+  { label: "סגול",   value: "bg-violet-400",  ring: "ring-violet-400",  badge: "bg-violet-100 text-violet-700" },
+  { label: "ירוק",   value: "bg-emerald-400", ring: "ring-emerald-400", badge: "bg-emerald-100 text-emerald-700" },
 ];
 
-const NOTES_KEY     = "calendar_notes";
-const VACATIONS_KEY = "calendar_vacations"; // legacy localStorage key
+const NOTES_KEY = "calendar_notes";
 
-// Vacation rgba
 const VACATION_RGBA: Record<string, string> = {
   "bg-orange-400":  "rgba(251,146,60,0.40)",
   "bg-pink-400":    "rgba(244,114,182,0.40)",
@@ -109,8 +129,8 @@ function getCellBackground(calls: ServiceCall[], events: PersonalEvent[], vacati
   const hasEvents = events.length > 0;
   if (!hasCalls && !hasEvents) return "";
   const dominant  = getDominantStatus(calls);
-  const callsRgba = dominant ? (STATUS_RGBA[dominant] || "rgba(251,146,60,0.28)") : "";
-  const eventRgba = hasEvents ? (EVENT_RGBA[events[0].color] || "rgba(251,146,60,0.28)") : "";
+  const callsRgba = dominant ? (STATUS_RGBA[dominant] || "") : "";
+  const eventRgba = hasEvents ? (EVENT_RGBA[events[0].color] || "") : "";
   if (hasCalls && !hasEvents) return callsRgba;
   if (!hasCalls && hasEvents) return eventRgba;
   return `linear-gradient(to left, ${callsRgba} 50%, ${eventRgba} 50%)`;
@@ -158,7 +178,7 @@ const CalendarPage = () => {
   const [events, setEvents]             = useState<PersonalEvent[]>([]);
   const [vacations, setVacations]       = useState<Vacation[]>([]);
 
-  // Vacation form state
+  // Vacation form
   const [showVacForm, setShowVacForm] = useState(false);
   const [vacTo, setVacTo]             = useState("");
   const [vacTitle, setVacTitle]       = useState("");
@@ -170,17 +190,17 @@ const CalendarPage = () => {
   const [rangeActive, setRangeActive] = useState(false);
   const [rangeMonths, setRangeMonths] = useState<Date[]>([]);
 
-  // Inline notes per call
+  // Inline call notes
   const [callNotes, setCallNotes]     = useState<Record<string, string>>({});
   const [savingNote, setSavingNote]   = useState<string | null>(null);
 
-  // Add-event form state
+  // Add-event form
   const [showForm, setShowForm]       = useState(false);
   const [formTitle, setFormTitle]     = useState("");
   const [formTime, setFormTime]       = useState("09:00");
   const [formColor, setFormColor]     = useState(EVENT_COLORS[0].value);
 
-  // ── Load personal events from Supabase ──────────────────────────────────────
+  // ── Load events + vacations from Supabase (same table) ──────────────────────
 
   const loadEvents = useCallback(async () => {
     if (!user) return;
@@ -190,34 +210,54 @@ const CalendarPage = () => {
       .eq("user_id", user.id)
       .order("date")
       .order("time");
-    if (data) {
-      setEvents(data.map(r => ({
-        id:    r.id,
-        date:  r.date,
-        time:  (r.time as string).slice(0, 5),
-        title: r.title,
-        color: r.color,
-      })));
+
+    if (!data) return;
+
+    const rawEvents: PersonalEvent[] = data.map(r => ({
+      id:    r.id,
+      date:  r.date,
+      time:  (r.time as string).slice(0, 5),
+      title: r.title,
+      color: r.color,
+    }));
+
+    // Split into events vs vacations
+    setEvents(rawEvents.filter(r => !isVacationRow(r)));
+    setVacations(rawEvents.filter(isVacationRow).map(decodeVacation));
+
+    // One-time migration: localStorage events → Supabase
+    const EVENTS_KEY = "calendar_personal_events";
+    const localEvts = (() => { try { return JSON.parse(localStorage.getItem(EVENTS_KEY) || "[]"); } catch { return []; } })();
+    if (localEvts.length > 0 && data.filter(r => !isVacationRow({ color: r.color } as PersonalEvent)).length === 0) {
+      await supabase.from("personal_events").insert(
+        localEvts.map((e: PersonalEvent) => ({ user_id: user.id, date: e.date, time: e.time, title: e.title, color: e.color }))
+      );
+      localStorage.removeItem(EVENTS_KEY);
+    } else if (localEvts.length > 0) {
+      localStorage.removeItem(EVENTS_KEY);
     }
-  }, [user]);
 
-  // ── Load vacations from Supabase ─────────────────────────────────────────────
-
-  const loadVacations = useCallback(async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("personal_vacations")
-      .select("id, from_date, to_date, title, color")
-      .eq("user_id", user.id)
-      .order("from_date");
-    if (data) {
-      setVacations(data.map(r => ({
-        id:    r.id,
-        from:  r.from_date,
-        to:    r.to_date,
-        title: r.title,
-        color: r.color,
-      })));
+    // One-time migration: localStorage vacations → Supabase
+    const VACATIONS_KEY = "calendar_vacations";
+    const localVacs = (() => { try { return JSON.parse(localStorage.getItem(VACATIONS_KEY) || "[]"); } catch { return []; } })();
+    if (localVacs.length > 0) {
+      await supabase.from("personal_events").insert(
+        localVacs.map((v: Vacation) => ({
+          user_id: user.id,
+          date:    v.from,
+          time:    "00:00",
+          title:   v.title,
+          color:   encodeVacColor(v.to, v.color),
+        }))
+      );
+      localStorage.removeItem(VACATIONS_KEY);
+      // Reload after migration
+      const { data: d2 } = await supabase.from("personal_events").select("id, date, time, title, color").eq("user_id", user.id).order("date").order("time");
+      if (d2) {
+        const rows2 = d2.map(r => ({ id: r.id, date: r.date, time: (r.time as string).slice(0, 5), title: r.title, color: r.color }));
+        setEvents(rows2.filter(r => !isVacationRow(r)));
+        setVacations(rows2.filter(isVacationRow).map(decodeVacation));
+      }
     }
   }, [user]);
 
@@ -236,56 +276,23 @@ const CalendarPage = () => {
     setLoading(false);
   }, [user]);
 
-  // ── Initial loads ────────────────────────────────────────────────────────────
+  // ── Initial load ─────────────────────────────────────────────────────────────
+
+  useEffect(() => { loadEvents(); }, [loadEvents]);
 
   useEffect(() => {
-    if (!user) return;
-    loadEvents();
-
-    // One-time migration: localStorage events → Supabase
-    const EVENTS_KEY = "calendar_personal_events";
-    const localEvents = (() => {
-      try { return JSON.parse(localStorage.getItem(EVENTS_KEY) || "[]"); } catch { return []; }
-    })();
-    if (localEvents.length > 0) {
-      supabase.from("personal_events").insert(
-        localEvents.map((e: PersonalEvent) => ({ user_id: user.id, date: e.date, time: e.time, title: e.title, color: e.color }))
-      ).then(() => { localStorage.removeItem(EVENTS_KEY); loadEvents(); });
-    }
-
-    // One-time migration: localStorage vacations → Supabase
-    const localVacs = (() => {
-      try { return JSON.parse(localStorage.getItem(VACATIONS_KEY) || "[]"); } catch { return []; }
-    })();
-    if (localVacs.length > 0) {
-      supabase.from("personal_vacations").insert(
-        localVacs.map((v: Vacation) => ({ user_id: user.id, from_date: v.from, to_date: v.to, title: v.title, color: v.color }))
-      ).then(() => { localStorage.removeItem(VACATIONS_KEY); loadVacations(); });
-    } else {
-      loadVacations();
-    }
-  }, [user, loadEvents, loadVacations]);
-
-  useEffect(() => {
-    if (!rangeActive) {
-      loadCalls(startOfMonth(currentMonth), endOfMonth(currentMonth));
-    }
+    if (!rangeActive) loadCalls(startOfMonth(currentMonth), endOfMonth(currentMonth));
   }, [loadCalls, currentMonth, rangeActive]);
 
-  // ── Real-time sync across all devices ───────────────────────────────────────
+  // ── Real-time sync ───────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!user) return;
-
     const channel = supabase
-      .channel("calendar-realtime-v2")
+      .channel("calendar-realtime-v3")
       .on("postgres_changes",
-        { event: "*", schema: "public", table: "personal_events",   filter: `user_id=eq.${user.id}` },
+        { event: "*", schema: "public", table: "personal_events", filter: `user_id=eq.${user.id}` },
         () => loadEvents()
-      )
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "personal_vacations", filter: `user_id=eq.${user.id}` },
-        () => loadVacations()
       )
       .on("postgres_changes",
         { event: "*", schema: "public", table: "service_calls" },
@@ -298,11 +305,10 @@ const CalendarPage = () => {
         }
       )
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
-  }, [user, loadEvents, loadVacations, loadCalls, currentMonth, rangeActive, rangeFrom, rangeTo]);
+  }, [user, loadEvents, loadCalls, currentMonth, rangeActive, rangeFrom, rangeTo]);
 
-  // ── Range helpers ────────────────────────────────────────────────────────────
+  // ── Range ────────────────────────────────────────────────────────────────────
 
   const applyRange = () => {
     if (!rangeFrom || !rangeTo || rangeFrom > rangeTo) return;
@@ -315,10 +321,7 @@ const CalendarPage = () => {
   };
 
   const clearRange = () => {
-    setRangeActive(false);
-    setRangeFrom("");
-    setRangeTo("");
-    setRangeMonths([]);
+    setRangeActive(false); setRangeFrom(""); setRangeTo(""); setRangeMonths([]);
     loadCalls(startOfMonth(currentMonth), endOfMonth(currentMonth));
   };
 
@@ -349,29 +352,37 @@ const CalendarPage = () => {
     setSavingNote(null);
   };
 
-  // ── Vacations (Supabase) ─────────────────────────────────────────────────────
+  // ── Vacations (stored as personal_events with encoded color) ─────────────────
 
   const addVacation = async () => {
     if (!vacTitle.trim() || !selectedDay || !vacTo || !user) return;
-    const from = getDateKey(selectedDay);
-    if (vacTo < from) return;
+    const fromDate = getDateKey(selectedDay);
+    if (vacTo < fromDate) return;
     const { data, error } = await supabase
-      .from("personal_vacations")
-      .insert({ user_id: user.id, from_date: from, to_date: vacTo, title: vacTitle.trim(), color: vacColor })
-      .select("id, from_date, to_date, title, color")
+      .from("personal_events")
+      .insert({
+        user_id: user.id,
+        date:    fromDate,
+        time:    "00:00",
+        title:   vacTitle.trim(),
+        color:   encodeVacColor(vacTo, vacColor),
+      })
+      .select("id, date, time, title, color")
       .single();
     if (!error && data) {
-      setVacations(prev => [...prev, { id: data.id, from: data.from_date, to: data.to_date, title: data.title, color: data.color }]);
+      setVacations(prev => [...prev, decodeVacation({
+        id: data.id, date: data.date, time: (data.time as string).slice(0, 5), title: data.title, color: data.color,
+      })]);
     }
     setVacTo(""); setVacTitle(""); setShowVacForm(false);
   };
 
   const deleteVacation = async (id: string) => {
-    await supabase.from("personal_vacations").delete().eq("id", id);
+    await supabase.from("personal_events").delete().eq("id", id);
     setVacations(prev => prev.filter(v => v.id !== id));
   };
 
-  // ── Personal events (Supabase) ───────────────────────────────────────────────
+  // ── Personal events ──────────────────────────────────────────────────────────
 
   const addEvent = async () => {
     if (!formTitle.trim() || !selectedDay || !user) return;
@@ -392,7 +403,7 @@ const CalendarPage = () => {
     setEvents(prev => prev.filter(e => e.id !== id));
   };
 
-  // ── Derived ──────────────────────────────────────────────────────────────────
+  // ── Derived data ─────────────────────────────────────────────────────────────
 
   const callsByDate = calls.reduce<Record<string, ServiceCall[]>>((acc, c) => {
     const key = c.scheduled_at.slice(0, 10);
@@ -432,7 +443,8 @@ const CalendarPage = () => {
               </div>
               <div className="flex items-center gap-2">
                 {loading && <span className="text-xs text-muted-foreground animate-pulse">טוען...</span>}
-                <Button variant="outline" size="sm" onClick={() => { setCurrentMonth(new Date()); setSelectedDay(new Date()); setNoteText(loadNotes()[getDateKey(new Date())] || ""); }} className="gap-1">
+                <Button variant="outline" size="sm" className="gap-1"
+                  onClick={() => { setCurrentMonth(new Date()); setSelectedDay(new Date()); setNoteText(loadNotes()[getDateKey(new Date())] || ""); }}>
                   <CalendarDays className="w-4 h-4" /> היום
                 </Button>
               </div>
@@ -461,7 +473,6 @@ const CalendarPage = () => {
                   <X className="w-3.5 h-3.5" /> נקה
                 </Button>
               )}
-              {loading && <span className="text-xs text-muted-foreground animate-pulse">טוען...</span>}
             </div>
           </div>
 
@@ -478,83 +489,83 @@ const CalendarPage = () => {
         {/* Calendar grid(s) */}
         {(rangeActive ? rangeMonths : [currentMonth]).map((month, monthIdx) => {
           const monthGrid = buildGrid(month);
-          const mLabel = format(month, "MMMM yyyy", { locale: he });
+          const mLabel    = format(month, "MMMM yyyy", { locale: he });
           return (
-          <div key={monthIdx} className="rounded-xl border border-border overflow-hidden bg-card shadow-sm">
-            {rangeActive && (
-              <div className="px-4 py-2 border-b border-border bg-muted/40 font-semibold text-sm">{mLabel}</div>
-            )}
-            <div className="grid grid-cols-7 border-b border-border bg-muted/50">
-              {HEBREW_DAYS.map(d => (
-                <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7">
-              {monthGrid.map((day, idx) => {
-                const key        = getDateKey(day);
-                const dayCalls   = callsByDate[key] || [];
-                const dayEvents  = eventsByDate[key] || [];
-                const isMonthDay = isSameMonth(day, month);
-                const vacation   = isMonthDay ? getVacationForDay(day, vacations) : null;
-                const isSel      = selectedDay ? isSameDay(day, selectedDay) : false;
-                const isTod      = isToday(day);
-                const hasNote    = !!notes[key];
+            <div key={monthIdx} className="rounded-xl border border-border overflow-hidden bg-card shadow-sm">
+              {rangeActive && (
+                <div className="px-4 py-2 border-b border-border bg-muted/40 font-semibold text-sm">{mLabel}</div>
+              )}
+              <div className="grid grid-cols-7 border-b border-border bg-muted/50">
+                {HEBREW_DAYS.map(d => (
+                  <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7">
+                {monthGrid.map((day, idx) => {
+                  const key        = getDateKey(day);
+                  const dayCalls   = callsByDate[key] || [];
+                  const dayEvents  = eventsByDate[key] || [];
+                  const isMonthDay = isSameMonth(day, month);
+                  const vacation   = isMonthDay ? getVacationForDay(day, vacations) : null;
+                  const isSel      = selectedDay ? isSameDay(day, selectedDay) : false;
+                  const isTod      = isToday(day);
+                  const hasNote    = !!notes[key];
 
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => handleDayClick(day)}
-                    style={{ background: isMonthDay ? getCellBackground(dayCalls, dayEvents, vacation) : undefined }}
-                    className={cn(
-                      "relative min-h-[76px] sm:min-h-[90px] p-1.5 text-right border-b border-r border-border",
-                      "transition-colors hover:brightness-95 focus:outline-none",
-                      !isMonthDay && "opacity-35",
-                      isSel && "ring-2 ring-inset ring-primary",
-                      isTod && !isSel && "bg-blue-50 dark:bg-blue-950/30",
-                      (idx + 1) % 7 === 0 && "border-r-0",
-                      idx >= monthGrid.length - 7 && "border-b-0",
-                    )}
-                  >
-                    <span className={cn(
-                      "inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium mb-0.5",
-                      isTod ? "bg-primary text-primary-foreground font-bold" : "text-foreground"
-                    )}>
-                      {format(day, "d")}
-                    </span>
-                    <div className="flex flex-col gap-px overflow-hidden">
-                      {vacation && (
-                        <span className="text-[10px] leading-tight truncate font-semibold flex items-center gap-0.5">
-                          <Plane className="w-2.5 h-2.5 shrink-0" />{vacation.title}
-                        </span>
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => handleDayClick(day)}
+                      style={{ background: isMonthDay ? getCellBackground(dayCalls, dayEvents, vacation) : undefined }}
+                      className={cn(
+                        "relative min-h-[76px] sm:min-h-[90px] p-1.5 text-right border-b border-r border-border",
+                        "transition-colors hover:brightness-95 focus:outline-none",
+                        !isMonthDay && "opacity-35",
+                        isSel && "ring-2 ring-inset ring-primary",
+                        isTod && !isSel && "bg-blue-50 dark:bg-blue-950/30",
+                        (idx + 1) % 7 === 0 && "border-r-0",
+                        idx >= monthGrid.length - 7 && "border-b-0",
                       )}
-                      {!vacation && dayCalls.slice(0, 1).map(c => (
-                        <span key={c.id} className="text-[10px] leading-tight truncate text-muted-foreground flex items-center gap-0.5">
-                          <Wrench className="w-2.5 h-2.5 shrink-0 opacity-60" />{c.customers?.name || "—"}
-                        </span>
-                      ))}
-                      {!vacation && dayEvents.slice(0, 1).map(e => (
-                        <span key={e.id} className="text-[10px] leading-tight truncate flex items-center gap-0.5">
-                          <span className={cn("w-2 h-2 rounded-full shrink-0", e.color)} />{e.title}
-                        </span>
-                      ))}
-                      {!vacation && (dayCalls.length + dayEvents.length) > 2 && (
-                        <span className="text-[10px] text-muted-foreground">+{dayCalls.length + dayEvents.length - 2} עוד</span>
-                      )}
-                    </div>
-                    {dayCalls.length > 0 && (
-                      <div className="flex gap-0.5 mt-0.5 flex-wrap">
-                        {dayCalls.slice(0, 4).map((c, i) => (
-                          <span key={i} className={cn("w-1.5 h-1.5 rounded-full", STATUS_DOT[c.status] || "bg-gray-300")} />
+                    >
+                      <span className={cn(
+                        "inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium mb-0.5",
+                        isTod ? "bg-primary text-primary-foreground font-bold" : "text-foreground"
+                      )}>
+                        {format(day, "d")}
+                      </span>
+                      <div className="flex flex-col gap-px overflow-hidden">
+                        {vacation && (
+                          <span className="text-[10px] leading-tight truncate font-semibold flex items-center gap-0.5">
+                            <Plane className="w-2.5 h-2.5 shrink-0" />{vacation.title}
+                          </span>
+                        )}
+                        {!vacation && dayCalls.slice(0, 1).map(c => (
+                          <span key={c.id} className="text-[10px] leading-tight truncate text-muted-foreground flex items-center gap-0.5">
+                            <Wrench className="w-2.5 h-2.5 shrink-0 opacity-60" />{c.customers?.name || "—"}
+                          </span>
                         ))}
-                        {dayCalls.length > 4 && <span className="text-[8px] text-muted-foreground">+{dayCalls.length - 4}</span>}
+                        {!vacation && dayEvents.slice(0, 1).map(e => (
+                          <span key={e.id} className="text-[10px] leading-tight truncate flex items-center gap-0.5">
+                            <span className={cn("w-2 h-2 rounded-full shrink-0", e.color)} />{e.title}
+                          </span>
+                        ))}
+                        {!vacation && (dayCalls.length + dayEvents.length) > 2 && (
+                          <span className="text-[10px] text-muted-foreground">+{dayCalls.length + dayEvents.length - 2} עוד</span>
+                        )}
                       </div>
-                    )}
-                    {hasNote && <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-amber-400" />}
-                  </button>
-                );
-              })}
+                      {dayCalls.length > 0 && (
+                        <div className="flex gap-0.5 mt-0.5 flex-wrap">
+                          {dayCalls.slice(0, 4).map((c, i) => (
+                            <span key={i} className={cn("w-1.5 h-1.5 rounded-full", STATUS_DOT[c.status] || "bg-gray-300")} />
+                          ))}
+                          {dayCalls.length > 4 && <span className="text-[8px] text-muted-foreground">+{dayCalls.length - 4}</span>}
+                        </div>
+                      )}
+                      {hasNote && <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
           );
         })}
 
@@ -581,7 +592,8 @@ const CalendarPage = () => {
           <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/40">
               <h3 className="font-semibold">{format(selectedDay, "EEEE, d בMMMM yyyy", { locale: he })}</h3>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedDay(null); setNoteText(""); setShowForm(false); }}>
+              <Button variant="ghost" size="icon" className="h-7 w-7"
+                onClick={() => { setSelectedDay(null); setNoteText(""); setShowForm(false); }}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
@@ -600,10 +612,8 @@ const CalendarPage = () => {
                       <p className="font-semibold text-sm">✈️ {vac.title}</p>
                       <p className="text-xs opacity-70">{vac.from === vac.to ? vac.from : `${vac.from} עד ${vac.to}`}</p>
                     </div>
-                    <button
-                      onClick={() => deleteVacation(vac.id)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-600 text-xs font-medium transition-colors shrink-0"
-                    >
+                    <button onClick={() => deleteVacation(vac.id)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-600 text-xs font-medium transition-colors shrink-0">
                       <Trash2 className="w-3 h-3" /> מחק
                     </button>
                   </div>
@@ -630,8 +640,7 @@ const CalendarPage = () => {
                     {EVENT_COLORS.map(c => (
                       <button key={c.value} onClick={() => setVacColor(c.value)} title={c.label}
                         className={cn("w-6 h-6 rounded-full transition-all", c.value,
-                          vacColor === c.value ? `ring-2 ring-offset-1 ${c.ring}` : "opacity-70 hover:opacity-100"
-                        )} />
+                          vacColor === c.value ? `ring-2 ring-offset-1 ${c.ring}` : "opacity-70 hover:opacity-100")} />
                     ))}
                   </div>
                   <div className="flex gap-2">
@@ -674,7 +683,7 @@ const CalendarPage = () => {
                         <div className="border-t border-border px-4 py-2 bg-muted/20">
                           <textarea dir="rtl" rows={2} value={draftNote}
                             onChange={e => setCallNotes(n => ({ ...n, [c.id]: e.target.value }))}
-                            placeholder="הוסף הערה לקריאה... (מסונכרן עם כל המערכת)"
+                            placeholder="הוסף הערה לקריאה..."
                             className="w-full resize-none bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none" />
                           {isDirty && (
                             <button onClick={() => saveCallNote(c.id)} disabled={savingNote === c.id}
@@ -731,8 +740,7 @@ const CalendarPage = () => {
                     {EVENT_COLORS.map(c => (
                       <button key={c.value} onClick={() => setFormColor(c.value)} title={c.label}
                         className={cn("w-6 h-6 rounded-full transition-all", c.value,
-                          formColor === c.value ? `ring-2 ring-offset-1 ${c.ring}` : "opacity-70 hover:opacity-100"
-                        )} />
+                          formColor === c.value ? `ring-2 ring-offset-1 ${c.ring}` : "opacity-70 hover:opacity-100")} />
                     ))}
                   </div>
                   <div className="flex gap-2">
@@ -748,7 +756,7 @@ const CalendarPage = () => {
                 </Button>
               )}
 
-              {/* Personal note (local) */}
+              {/* Personal note */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">הערה ליום</label>
                 <textarea dir="rtl" rows={3} value={noteText} onChange={e => handleNoteChange(e.target.value)}
