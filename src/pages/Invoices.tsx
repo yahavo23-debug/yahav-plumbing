@@ -4,9 +4,10 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { RefreshCw, Receipt, AlertCircle, CheckCircle2, Link2 } from "lucide-react";
+import { RefreshCw, Receipt, AlertCircle, CheckCircle2, Link2, Upload } from "lucide-react";
 import { format, isValid } from "date-fns";
 import { he } from "date-fns/locale";
+import { ImportInvoicesDialog } from "@/components/invoices/ImportInvoicesDialog";
 
 function safeFormat(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null;
