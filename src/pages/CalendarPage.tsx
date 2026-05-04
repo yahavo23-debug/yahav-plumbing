@@ -261,6 +261,35 @@ const CalendarPage = () => {
     }
   }, [loadCalls, currentMonth, rangeActive]);
 
+  // ── Real-time sync across devices ───────────────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel("calendar-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "personal_events", filter: `user_id=eq.${user.id}` },
+        () => { loadEvents(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "service_calls" },
+        () => {
+          if (rangeActive) {
+            if (rangeFrom && rangeTo) {
+              loadCalls(startOfMonth(new Date(rangeFrom)), endOfMonth(new Date(rangeTo)));
+            }
+          } else {
+            loadCalls(startOfMonth(currentMonth), endOfMonth(currentMonth));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, loadEvents, loadCalls, currentMonth, rangeActive, rangeFrom, rangeTo]);
+
   const applyRange = () => {
     if (!rangeFrom || !rangeTo || rangeFrom > rangeTo) return;
     const from = new Date(rangeFrom);
