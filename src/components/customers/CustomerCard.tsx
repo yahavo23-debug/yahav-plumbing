@@ -66,7 +66,7 @@ export function CustomerCard({ customer, isAdmin, isContractor, hasPendingCall, 
             </h3>
           </div>
           <div className="flex items-center gap-1">
-            {!isContractor && <CustomerBillingBadgeInline customerId={customer.id} />}
+            {!isContractor && <CustomerBillingBadgeInline customerId={customer.id} billing={billing} />}
             {isAdmin && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

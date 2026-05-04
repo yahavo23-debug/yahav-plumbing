@@ -120,7 +120,8 @@ const CustomerDetail = () => {
   const saveLeadCost = async () => {
     if (!customer) return;
     setSavingLeadCost(true);
-    const val = leadCostInput !== "" ? parseFloat(leadCostInput) : null;
+    const parsed = parseFloat(leadCostInput);
+    const val = leadCostInput !== "" && !isNaN(parsed) ? parsed : null;
     const { error } = await supabase.from("customers").update({ lead_cost: val } as any).eq("id", id!);
     if (!error) {
       setCustomer({ ...customer, ...({ lead_cost: val } as any) });

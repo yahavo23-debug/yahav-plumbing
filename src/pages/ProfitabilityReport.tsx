@@ -410,9 +410,9 @@ export default function ProfitabilityReport() {
                 <YAxis tick={{ fontSize: 9 }} tickFormatter={v => v === 0 ? "0" : `${(v / 1000).toFixed(0)}K`} axisLine={false} tickLine={false} />
                 <Tooltip formatter={(v: number) => fmt(v)} />
                 <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="הכנסות" fill="#22c55e" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="הוצאות ישירות" fill="#f97316" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="הנהלה" fill="#94a3b8" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="הכנסות" fill="#22c55e" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                <Bar dataKey="הוצאות ישירות" fill="#f97316" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                <Bar dataKey="הנהלה" fill="#94a3b8" radius={[3, 3, 0, 0]} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -430,7 +430,7 @@ export default function ProfitabilityReport() {
                 <YAxis tick={{ fontSize: 9 }} tickFormatter={v => v === 0 ? "0" : `${(v / 1000).toFixed(0)}K`} axisLine={false} tickLine={false} />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
                 <Tooltip formatter={(v: number) => fmt(v)} />
-                <Bar dataKey="יתרה מצטברת" radius={[3, 3, 0, 0]}>
+                <Bar dataKey="יתרה מצטברת" radius={[3, 3, 0, 0]} isAnimationActive={false}>
                   {chartData.map((e, i) => (
                     <Cell key={i} fill={e["יתרה מצטברת"] >= 0 ? "#22c55e" : "#ef4444"} />
                   ))}

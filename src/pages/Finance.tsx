@@ -301,7 +301,8 @@ export default function Finance() {
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie data={expensePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={11}>
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={11}
+                    isAnimationActive={false}>
                     {expensePieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(value: number) => `₪${value.toLocaleString("he-IL", { minimumFractionDigits: 2 })}`} />
@@ -319,7 +320,8 @@ export default function Finance() {
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie data={incomePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={11}>
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={11}
+                    isAnimationActive={false}>
                     {incomePieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(value: number) => `₪${value.toLocaleString("he-IL", { minimumFractionDigits: 2 })}`} />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ type Customer = Tables<"customers">;
 const Customers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [pendingCustomerIds, setPendingCustomerIds] = useState<Set<string>>(new Set());
   const [returningCustomerIds, setReturningCustomerIds] = useState<Set<string>>(new Set());
@@ -37,6 +38,12 @@ const Customers = () => {
     loadPendingCalls();
     loadReturningCustomers();
   }, [user]);
+
+  // Debounce search: wait 300ms after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const loadPendingCalls = async () => {
     const { data } = await supabase
@@ -124,13 +131,13 @@ const Customers = () => {
     setDeleteTarget(null);
   };
 
-  const filtered = customers.filter(
+  const filtered = useMemo(() => customers.filter(
     (c) =>
-      c.name.includes(search) ||
-      c.phone?.includes(search) ||
-      c.email?.includes(search) ||
-      c.city?.includes(search)
-  );
+      c.name.includes(debouncedSearch) ||
+      c.phone?.includes(debouncedSearch) ||
+      c.email?.includes(debouncedSearch) ||
+      c.city?.includes(debouncedSearch)
+  ), [customers, debouncedSearch]);
 
   return (
     <AppLayout title="לקוחות">
@@ -154,7 +161,11 @@ const Customers = () => {
       </div>
 
       {loading ? (
-        <p className="text-center text-muted-foreground py-8">טוען...</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-32 rounded-xl bg-muted animate-pulse" />
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
         <p className="text-center text-muted-foreground py-8">לא נמצאו לקוחות</p>
       ) : (

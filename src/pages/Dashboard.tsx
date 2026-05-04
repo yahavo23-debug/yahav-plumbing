@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import { QuickCallDialog } from "@/components/service-calls/QuickCallDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/hooks/use-toast";
 import { useNotifications } from "@/hooks/useNotifications";
-import { Bell, BellOff } from "lucide-react";
+import { Bell } from "lucide-react";
 
 interface DashboardStats {
   totalCustomers: number;
@@ -30,6 +30,137 @@ interface DashboardStats {
 function daysSince(dateStr: string): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 }
+
+const STATUS_OPTIONS = [
+  { value: "open",             label: "פתוח" },
+  { value: "in_progress",      label: "בטיפול" },
+  { value: "pending_customer", label: "ממתין לאישור לקוח" },
+  { value: "completed",        label: "הושלם" },
+  { value: "cancelled",        label: "בוטל" },
+];
+
+interface CallRowProps {
+  call: any;
+  onNavigate: (id: string) => void;
+  onStatusChange: (id: string, status: string) => void;
+  updateCallStatus: (id: string, status: string) => Promise<boolean>;
+}
+
+const CallRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: CallRowProps) => (
+  <div className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/60 transition-colors text-right">
+    <button
+      onClick={() => onNavigate(call.id)}
+      className="flex-1 min-w-0 text-right"
+    >
+      <div className="flex items-center gap-2">
+        <span className="font-semibold text-sm truncate">{call.customers?.name}</span>
+        {call.priority === "urgent" && (
+          <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium shrink-0">דחוף</span>
+        )}
+        {call.priority === "high" && (
+          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium shrink-0">גבוהה</span>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground truncate mt-0.5">
+        {getJobTypeLabel(call.job_type)}
+        {call.description && ` • ${call.description.slice(0, 40)}`}
+      </p>
+    </button>
+    <div className="flex items-center gap-2 shrink-0">
+      {call.customers?.phone && (
+        <a href={`tel:${call.customers.phone}`} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors">
+          <PhoneCall className="w-4 h-4" />
+        </a>
+      )}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium transition-opacity hover:opacity-80 ${statusColors[call.status]}`}>
+            {statusLabels[call.status]}<ChevronDown className="w-3 h-3" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-44 p-1.5">
+          <p className="text-xs text-muted-foreground font-medium px-2 py-1 mb-1">שנה סטטוס</p>
+          {STATUS_OPTIONS.map(opt => (
+            <button key={opt.value} onClick={async () => { const ok = await updateCallStatus(call.id, opt.value); if (ok) onStatusChange(call.id, opt.value); }}
+              className={`w-full text-right text-sm px-3 py-2 rounded-lg transition-colors hover:bg-accent ${call.status === opt.value ? "font-semibold bg-accent" : ""}`}>
+              {opt.label}
+            </button>
+          ))}
+        </PopoverContent>
+      </Popover>
+      <button onClick={() => onNavigate(call.id)} className="p-1 rounded hover:bg-accent transition-colors">
+        <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+      </button>
+    </div>
+  </div>
+);
+
+interface PendingRowProps {
+  call: any;
+  onNavigate: (id: string) => void;
+  onStatusChange: (id: string, status: string) => void;
+  updateCallStatus: (id: string, status: string) => Promise<boolean>;
+}
+
+const PendingRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: PendingRowProps) => {
+  const days = daysSince(call.updated_at);
+  const ageBg =
+    days >= 7 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+    days >= 3 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
+                "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400";
+  const phone = call.customers?.phone;
+  return (
+    <div className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-right ${
+      days >= 7 ? "border-red-200 bg-red-50/50 dark:border-red-900/40 dark:bg-red-900/10" :
+      days >= 3 ? "border-yellow-200 bg-yellow-50/50 dark:border-yellow-900/40 dark:bg-yellow-900/10" :
+                  "border-border hover:bg-accent/60"
+    }`}>
+      <button onClick={() => onNavigate(call.id)} className="flex-1 min-w-0 text-right">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-sm truncate">{call.customers?.name}</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${ageBg}`}>
+            {days === 0 ? "היום" : days === 1 ? "יום 1" : `${days} ימים`}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground truncate mt-0.5">
+          {getJobTypeLabel(call.job_type)}{call.description && ` • ${call.description.slice(0, 35)}`}
+        </p>
+      </button>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {phone && (
+          <>
+            <a href={`tel:${phone}`} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="התקשר">
+              <PhoneCall className="w-4 h-4" />
+            </a>
+            <a href={toWhatsApp(phone)} target="_blank" rel="noopener noreferrer"
+              className="p-1.5 rounded-lg hover:bg-green-100 text-green-600 transition-colors" title="שלח WhatsApp">
+              <MessageCircle className="w-4 h-4" />
+            </a>
+          </>
+        )}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium transition-opacity hover:opacity-80 ${ageBg}`}>
+              סטטוס <ChevronDown className="w-3 h-3" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-44 p-1.5">
+            <p className="text-xs text-muted-foreground font-medium px-2 py-1 mb-1">שנה סטטוס</p>
+            {STATUS_OPTIONS.map(opt => (
+              <button key={opt.value} onClick={async () => { const ok = await updateCallStatus(call.id, opt.value); if (ok) onStatusChange(call.id, opt.value); }}
+                className={`w-full text-right text-sm px-3 py-2 rounded-lg transition-colors hover:bg-accent ${call.status === opt.value ? "font-semibold bg-accent" : ""}`}>
+                {opt.label}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+        <button onClick={() => onNavigate(call.id)} className="p-1 rounded hover:bg-accent transition-colors">
+          <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 function toWhatsApp(phone: string) {
   const digits = phone.replace(/\D/g, "");
@@ -137,14 +268,6 @@ const Dashboard = () => {
 
   const todayStr = format(new Date(), "EEEE, d בMMMM yyyy", { locale: he });
 
-  const statusOptions = [
-    { value: "open",             label: "פתוח" },
-    { value: "in_progress",      label: "בטיפול" },
-    { value: "pending_customer", label: "ממתין לאישור לקוח" },
-    { value: "completed",        label: "הושלם" },
-    { value: "cancelled",        label: "בוטל" },
-  ];
-
   const updateCallStatus = async (callId: string, newStatus: string) => {
     const { error } = await supabase
       .from("service_calls")
@@ -189,165 +312,7 @@ const Dashboard = () => {
     }
   };
 
-  const CallRow = ({ call }: { call: any }) => (
-    <div className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/60 transition-colors text-right">
-      <button
-        onClick={() => navigate(`/service-calls/${call.id}`)}
-        className="flex-1 min-w-0 text-right"
-      >
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm truncate">{call.customers?.name}</span>
-          {call.priority === "urgent" && (
-            <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium shrink-0">דחוף</span>
-          )}
-          {call.priority === "high" && (
-            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium shrink-0">גבוהה</span>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground truncate mt-0.5">
-          {getJobTypeLabel(call.job_type)}
-          {call.description && ` • ${call.description.slice(0, 40)}`}
-        </p>
-      </button>
-
-      <div className="flex items-center gap-2 shrink-0">
-        {call.customers?.phone && (
-          <a
-            href={`tel:${call.customers.phone}`}
-            className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"
-          >
-            <PhoneCall className="w-4 h-4" />
-          </a>
-        )}
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium transition-opacity hover:opacity-80 ${statusColors[call.status]}`}
-            >
-              {statusLabels[call.status]}
-              <ChevronDown className="w-3 h-3" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-44 p-1.5">
-            <p className="text-xs text-muted-foreground font-medium px-2 py-1 mb-1">שנה סטטוס</p>
-            {statusOptions.map(opt => (
-              <button
-                key={opt.value}
-                onClick={async () => {
-                  const ok = await updateCallStatus(call.id, opt.value);
-                  if (ok) handleStatusChange(call.id, opt.value);
-                }}
-                className={`w-full text-right text-sm px-3 py-2 rounded-lg transition-colors hover:bg-accent ${
-                  call.status === opt.value ? "font-semibold bg-accent" : ""
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </PopoverContent>
-        </Popover>
-
-        <button
-          onClick={() => navigate(`/service-calls/${call.id}`)}
-          className="p-1 rounded hover:bg-accent transition-colors"
-        >
-          <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-        </button>
-      </div>
-    </div>
-  );
-
-  // Row specifically for pending_customer calls — shows waiting days + WhatsApp
-  const PendingRow = ({ call }: { call: any }) => {
-    const days = daysSince(call.updated_at);
-    const ageBg =
-      days >= 7 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
-      days >= 3 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
-                  "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400";
-    const phone = call.customers?.phone;
-
-    return (
-      <div className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-right ${
-        days >= 7 ? "border-red-200 bg-red-50/50 dark:border-red-900/40 dark:bg-red-900/10" :
-        days >= 3 ? "border-yellow-200 bg-yellow-50/50 dark:border-yellow-900/40 dark:bg-yellow-900/10" :
-                    "border-border hover:bg-accent/60"
-      }`}>
-        <button
-          onClick={() => navigate(`/service-calls/${call.id}`)}
-          className="flex-1 min-w-0 text-right"
-        >
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm truncate">{call.customers?.name}</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${ageBg}`}>
-              {days === 0 ? "היום" : days === 1 ? "יום 1" : `${days} ימים`}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground truncate mt-0.5">
-            {getJobTypeLabel(call.job_type)}
-            {call.description && ` • ${call.description.slice(0, 35)}`}
-          </p>
-        </button>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          {phone && (
-            <>
-              <a
-                href={`tel:${phone}`}
-                className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"
-                title="התקשר"
-              >
-                <PhoneCall className="w-4 h-4" />
-              </a>
-              <a
-                href={toWhatsApp(phone)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-1.5 rounded-lg hover:bg-green-100 text-green-600 transition-colors"
-                title="שלח WhatsApp"
-              >
-                <MessageCircle className="w-4 h-4" />
-              </a>
-            </>
-          )}
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium transition-opacity hover:opacity-80 ${ageBg}`}
-              >
-                סטטוס <ChevronDown className="w-3 h-3" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-44 p-1.5">
-              <p className="text-xs text-muted-foreground font-medium px-2 py-1 mb-1">שנה סטטוס</p>
-              {statusOptions.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={async () => {
-                    const ok = await updateCallStatus(call.id, opt.value);
-                    if (ok) handleStatusChange(call.id, opt.value);
-                  }}
-                  className={`w-full text-right text-sm px-3 py-2 rounded-lg transition-colors hover:bg-accent ${
-                    call.status === opt.value ? "font-semibold bg-accent" : ""
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </PopoverContent>
-          </Popover>
-
-          <button
-            onClick={() => navigate(`/service-calls/${call.id}`)}
-            className="p-1 rounded hover:bg-accent transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
-      </div>
-    );
-  };
+  const navToCall = useCallback((id: string) => navigate(`/service-calls/${id}`), [navigate]);
 
   return (
     <AppLayout title="לוח בקרה">
@@ -368,13 +333,10 @@ const Dashboard = () => {
             הפעל התראות
           </button>
         ) : (
-          <button
-            onClick={() => notify("⏳ ממתין לאישור לקוח", "עידו רונן ממתין 5 ימים לאישור הצעת המחיר")}
-            className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 text-green-700 transition-colors shrink-0"
-          >
+          <span className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-green-200 bg-green-50 text-green-700 shrink-0">
             <Bell className="w-3.5 h-3.5 text-green-500" />
-            בדוק התראה
-          </button>
+            התראות פעילות
+          </span>
         )}
       </div>
 
@@ -496,7 +458,7 @@ const Dashboard = () => {
             </div>
           ) : pendingCalls.length === 0 ? null : (
             <div className="space-y-2">
-              {pendingCalls.map(call => <PendingRow key={call.id} call={call} />)}
+              {pendingCalls.map(call => <PendingRow key={call.id} call={call} onNavigate={navToCall} onStatusChange={handleStatusChange} updateCallStatus={updateCallStatus} />)}
             </div>
           )}
         </div>
@@ -534,7 +496,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {todayCalls.map(call => <CallRow key={call.id} call={call} />)}
+              {todayCalls.map(call => <CallRow key={call.id} call={call} onNavigate={navToCall} onStatusChange={handleStatusChange} updateCallStatus={updateCallStatus} />)}
             </div>
           )}
         </div>
@@ -565,7 +527,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {recentCalls.map(call => <CallRow key={call.id} call={call} />)}
+              {recentCalls.map(call => <CallRow key={call.id} call={call} onNavigate={navToCall} onStatusChange={handleStatusChange} updateCallStatus={updateCallStatus} />)}
             </div>
           )}
         </div>
