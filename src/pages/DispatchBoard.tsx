@@ -106,6 +106,9 @@ export default function DispatchBoard() {
     [unscheduledCalls, filterTechId]
   );
 
+  // Reset active drag when date changes
+  const dateStr = format(selectedDate, "yyyy-MM-dd");
+
   const todayLabel = isToday(selectedDate);
   const dateDisplay = isMobile
     ? format(selectedDate, "EEEE d/M", { locale: he })
@@ -249,6 +252,7 @@ export default function DispatchBoard() {
 
         {/* ── Main content ── */}
         <DndContext
+          key={dateStr}
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
