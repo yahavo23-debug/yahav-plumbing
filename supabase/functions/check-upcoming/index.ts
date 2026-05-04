@@ -7,8 +7,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // @deno-types="npm:@types/web-push"
 import webpush from "npm:web-push@3.6.7";
 
-const CRON_SECRET       = Deno.env.get("CRON_SECRET")       ?? "yahav-push-cron-k9x2m";
-const VAPID_PUBLIC_KEY  = Deno.env.get("VAPID_PUBLIC_KEY")  ?? "BGETmSsR4q4O56saqKoR93x9ETQZpED4I4AXJe5YY0rVCRcNlqPTh6XWPdP9_nUn_qAqqVechWDW0jVVP6DXoq4";
+const CRON_SECRET       = Deno.env.get("CRON_SECRET")       ?? "";
+const VAPID_PUBLIC_KEY  = Deno.env.get("VAPID_PUBLIC_KEY")  ?? "";
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") ?? "";
 
 webpush.setVapidDetails(
