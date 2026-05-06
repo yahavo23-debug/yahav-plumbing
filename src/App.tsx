@@ -16,17 +16,25 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
  */
 function PointerEventsGuard() {
   useEffect(() => {
+    let scheduled = false;
     const cleanup = () => {
+      scheduled = false;
+      if (document.body.style.pointerEvents !== "none") return;
       const hasOpenOverlay = document.querySelector(
         '[data-state="open"][role="dialog"], [data-state="open"][role="alertdialog"]'
       );
-      if (!hasOpenOverlay && document.body.style.pointerEvents === "none") {
+      if (!hasOpenOverlay) {
         document.body.style.pointerEvents = "";
       }
     };
-    const observer = new MutationObserver(cleanup);
-    observer.observe(document.body, { attributes: true, attributeFilter: ["style"], subtree: false });
-    observer.observe(document.body, { childList: true, subtree: true });
+    const schedule = () => {
+      if (scheduled) return;
+      scheduled = true;
+      // Defer past React reconciliation to avoid removeChild errors
+      setTimeout(cleanup, 100);
+    };
+    const observer = new MutationObserver(schedule);
+    observer.observe(document.body, { attributes: true, attributeFilter: ["style"] });
     return () => observer.disconnect();
   }, []);
   return null;
