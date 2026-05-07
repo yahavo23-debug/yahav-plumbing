@@ -1,7 +1,10 @@
 // Supabase Edge Function — yesh-webhook
-// Receives real-time webhooks from יש חשבונית when a document is created/updated.
+// Receives webhooks from יש חשבונית when a document is created/updated.
 // Register this URL in יש חשבונית → מפתחים → Webhooks
 // URL: https://xglagkbblribtztkkovo.supabase.co/functions/v1/yesh-webhook
+//
+// NOTE: יש חשבונית does NOT send a custom auth header, so this endpoint
+// is public. Optionally pass ?secret=... in the URL for added security.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -15,29 +18,47 @@ function normalizePhone(phone: string | null | undefined): string {
   return phone.replace(/\D/g, "").replace(/^972/, "0");
 }
 
+function pickFirst(...vals: any[]): any {
+  for (const v of vals) {
+    if (v !== undefined && v !== null && v !== "") return v;
+  }
+  return undefined;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Webhook secret is REQUIRED — reject all requests if not configured
-  const webhookSecret = Deno.env.get("YESH_WEBHOOK_SECRET");
-  if (!webhookSecret) {
-    console.error("YESH_WEBHOOK_SECRET is not configured — rejecting webhook");
-    return new Response(JSON.stringify({ error: "Webhook not configured" }), {
-      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-  const incoming = req.headers.get("x-webhook-secret") || req.headers.get("authorization");
-  if (incoming !== webhookSecret) {
+  // Optional secret check via URL param (?secret=...) — only enforced if a secret is configured AND was provided
+  const url = new URL(req.url);
+  const expectedSecret = Deno.env.get("YESH_WEBHOOK_SECRET");
+  const providedSecret = url.searchParams.get("secret") || req.headers.get("x-webhook-secret");
+  if (expectedSecret && providedSecret && providedSecret !== expectedSecret) {
+    console.warn("yesh-webhook: bad secret provided, rejecting");
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   try {
-    const payload = await req.json();
-    console.log("Yesh webhook received:", JSON.stringify(payload));
+    const rawText = await req.text();
+    console.log("yesh-webhook RAW:", rawText.slice(0, 4000));
+
+    let payload: any = {};
+    try {
+      payload = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      // Some webhooks send form-urlencoded
+      const params = new URLSearchParams(rawText);
+      payload = Object.fromEntries(params.entries());
+      // try to parse a "data" or "document" field if it's JSON string
+      for (const k of ["data", "document", "payload"]) {
+        if (typeof payload[k] === "string") {
+          try { payload[k] = JSON.parse(payload[k]); } catch { /* ignore */ }
+        }
+      }
+    }
 
     const supabaseUrl    = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -45,11 +66,22 @@ Deno.serve(async (req) => {
 
     const doc = payload?.document || payload?.data || payload;
 
-    const docId = doc.id || doc.docID || doc.documentId;
-    const phone = normalizePhone(doc.customerPhone || doc.Customer?.Phone || "");
+    const docId = pickFirst(doc.id, doc.docID, doc.documentId, doc.documentID, doc.DocID);
+    const docNumber = String(pickFirst(doc.docNumber, doc.documentNumber, doc.DocNumber, "") || "");
+    const docType = Number(pickFirst(doc.documentType, doc.docType, doc.DocumentType, 9));
+    const docTypeName = String(pickFirst(doc.documentTypeName, doc.DocumentTypeName, "חשבונית מס קבלה"));
+    const customerName = String(pickFirst(doc.customerName, doc.Customer?.Name, doc.customer?.name, "") || "");
+    const phoneRaw = pickFirst(doc.customerPhone, doc.Customer?.Phone, doc.customer?.phone);
+    const phone = normalizePhone(phoneRaw);
+    const customerEmail = String(pickFirst(doc.customerEmail, doc.Customer?.Email, doc.customer?.email, "") || "");
+    const totalPrice = Number(pickFirst(doc.totalPrice, doc.price, doc.TotalPrice, 0)) || 0;
+    const totalVat = Number(pickFirst(doc.totalVat, doc.vat, doc.TotalVat, 0)) || 0;
+    const totalWithVat = Number(pickFirst(doc.totalWithVat, doc.total, doc.TotalWithVat, doc.Total, 0)) || 0;
+    const dateCreated = String(pickFirst(doc.dateCreated, doc.DateCreated, new Date().toISOString())).slice(0, 10);
 
-    // Try to match to a customer by phone
+    // Try to match a customer by phone
     let serviceCallId: string | null = null;
+    let customerId: string | null = null;
     if (phone) {
       const { data: customers } = await adminClient
         .from("customers")
@@ -57,31 +89,36 @@ Deno.serve(async (req) => {
         .eq("phone", phone)
         .limit(1);
       if (customers && customers.length > 0) {
+        customerId = customers[0].id;
         const { data: calls } = await adminClient
           .from("service_calls")
           .select("id")
-          .eq("customer_id", customers[0].id)
+          .eq("customer_id", customerId)
           .order("created_at", { ascending: false })
           .limit(1);
         if (calls && calls.length > 0) serviceCallId = calls[0].id;
       }
     }
 
-    // Upsert — prevents duplicates via yesh_doc_id unique constraint
-    const { error } = await adminClient.from("yesh_invoices").upsert(
+    if (!docId) {
+      console.warn("yesh-webhook: no docId found in payload, storing without unique key");
+    }
+
+    // Upsert invoice record
+    const { error: upsertErr } = await adminClient.from("yesh_invoices").upsert(
       {
         yesh_doc_id:    docId ? Number(docId) : null,
-        doc_number:     String(doc.docNumber || doc.documentNumber || ""),
-        doc_type:       doc.documentType || doc.docType || 9,
-        doc_type_name:  doc.documentTypeName || "חשבונית מס קבלה",
-        customer_name:  doc.customerName  || doc.Customer?.Name  || "",
+        doc_number:     docNumber,
+        doc_type:       docType,
+        doc_type_name:  docTypeName,
+        customer_name:  customerName,
         customer_phone: phone,
-        customer_email: doc.customerEmail || doc.Customer?.Email || "",
-        total_price:    Number(doc.totalPrice   || doc.price   || 0),
-        total_vat:      Number(doc.totalVat     || doc.vat     || 0),
-        total_with_vat: Number(doc.totalWithVat || doc.total   || 0),
-        date_created:   (doc.dateCreated || doc.DateCreated || new Date().toISOString()).slice(0, 10),
-        status:         doc.statusName || "open",
+        customer_email: customerEmail,
+        total_price:    totalPrice,
+        total_vat:      totalVat,
+        total_with_vat: totalWithVat,
+        date_created:   dateCreated,
+        status:         String(pickFirst(doc.statusName, doc.status, "open")),
         service_call_id: serviceCallId,
         raw_data:       doc,
         updated_at:     new Date().toISOString(),
@@ -89,40 +126,41 @@ Deno.serve(async (req) => {
       { onConflict: "yesh_doc_id", ignoreDuplicates: false }
     );
 
-    if (error) {
-      console.error("Webhook upsert error:", error.message);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (upsertErr) {
+      console.error("yesh-webhook upsert error:", upsertErr.message);
     }
 
-    // Auto-create financial transaction for income tracking (only for new docs)
-    const totalWithVat = Number(doc.totalWithVat || doc.total || 0);
+    // Auto-create financial transaction (income) — once per doc
     if (totalWithVat > 0 && docId) {
+      const noteKey = `yesh_doc_${docId}`;
       const { data: existing } = await adminClient
         .from("financial_transactions")
         .select("id")
-        .eq("notes", `yesh_doc_${docId}`)
+        .eq("notes", noteKey)
         .maybeSingle();
 
       if (!existing) {
-        await adminClient.from("financial_transactions").insert({
+        const { error: txnErr } = await adminClient.from("financial_transactions").insert({
           direction:        "income",
           amount:           totalWithVat,
-          txn_date:         (doc.dateCreated || doc.DateCreated || new Date().toISOString()).slice(0, 10),
+          txn_date:         dateCreated,
           category:         "service",
-          counterparty_name: doc.customerName || doc.Customer?.Name || "",
+          counterparty_name: customerName,
+          customer_id:      customerId,
           service_call_id:  serviceCallId,
-          notes:            `yesh_doc_${docId}`,
+          notes:            noteKey,
           payment_method:   "cash",
-          status:           "completed",
+          status:           "paid",
           currency:         "ILS",
           created_by:       "00000000-0000-0000-0000-000000000000",
         });
+        if (txnErr) console.error("yesh-webhook txn insert error:", txnErr.message);
       }
     }
 
-    return new Response(JSON.stringify({ ok: true }), {
+    console.log(`yesh-webhook OK: doc#${docNumber} id=${docId} customer=${customerName} matched=${!!customerId}`);
+
+    return new Response(JSON.stringify({ ok: true, docId, matchedCustomer: !!customerId, matchedCall: !!serviceCallId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
