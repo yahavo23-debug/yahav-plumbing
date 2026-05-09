@@ -87,6 +87,9 @@ export function QuickCallDialog({ open, onClose }: Props) {
     }
     if (!user) return;
     setLoading(true);
+    const scheduledAt = scheduledDate
+      ? new Date(`${scheduledDate}T09:00:00`).toISOString()
+      : new Date().toISOString();
     const { data, error } = await (supabase
       .from("service_calls")
       .insert({
@@ -94,6 +97,7 @@ export function QuickCallDialog({ open, onClose }: Props) {
         job_type: jobType,
         priority,
         scheduled_date: scheduledDate || null,
+        scheduled_at: scheduledAt,
         description: description || null,
         status: "open",
         created_by: user.id,
