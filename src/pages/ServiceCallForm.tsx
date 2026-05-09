@@ -76,7 +76,16 @@ const ServiceCallForm = () => {
     setLoading(true);
 
     try {
-      const payload = {
+      // Auto-schedule so the call appears in the calendar (יומן).
+      // Use chosen date at 09:00 local, or today at current time if none provided.
+      const computeScheduledAt = (): string => {
+        if (form.scheduled_date) {
+          return new Date(`${form.scheduled_date}T09:00:00`).toISOString();
+        }
+        return new Date().toISOString();
+      };
+
+      const payload: any = {
         customer_id: form.customer_id,
         job_type: resolvedJobType,
         description: form.description.trim() || null,
@@ -87,14 +96,15 @@ const ServiceCallForm = () => {
       };
 
       if (isEdit) {
-        const { error } = await supabase.from("service_calls").update(payload as any).eq("id", id!);
+        const { error } = await supabase.from("service_calls").update(payload).eq("id", id!);
         if (error) throw error;
         toast({ title: "עודכן", description: "הקריאה עודכנה בהצלחה" });
         navigate(`/service-calls/${id}`);
       } else {
+        const insertPayload = { ...payload, created_by: user.id, scheduled_at: computeScheduledAt() };
         const { data, error } = await supabase
           .from("service_calls")
-          .insert({ ...payload, created_by: user.id } as any)
+          .insert(insertPayload as any)
           .select()
           .single();
         if (error) throw error;
