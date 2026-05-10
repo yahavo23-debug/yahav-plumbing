@@ -152,30 +152,35 @@ const ServiceCallForm = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Service details */}
+            <div className="space-y-2">
+              <Label>סוג שירות * <span className="text-xs text-muted-foreground font-normal">(ניתן לבחור יותר מאחד)</span></Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {serviceTypes.map((t) => {
+                  const checked = selectedTypes.includes(t.value);
+                  return (
+                    <label
+                      key={t.value}
+                      className={`flex items-center gap-2 rounded-lg border p-3 cursor-pointer transition-colors ${
+                        checked ? "border-primary bg-primary/5" : "border-border hover:bg-accent"
+                      }`}
+                    >
+                      <Checkbox checked={checked} onCheckedChange={() => toggleType(t.value)} />
+                      <span className="text-sm">{t.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <Input
+                value={customJobType}
+                onChange={(e) => setCustomJobType(e.target.value)}
+                placeholder="או הוסף סוג מותאם (כתיבה חופשית)..."
+                className="mt-2"
+                maxLength={200}
+              />
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>סוג שירות *</Label>
-                <Select value={form.job_type} onValueChange={(v) => {
-                  setForm((f) => ({ ...f, job_type: v }));
-                  if (v !== "other") setCustomJobType("");
-                }}>
-                  <SelectTrigger><SelectValue placeholder="בחר סוג שירות" /></SelectTrigger>
-                  <SelectContent>
-                    {serviceTypes.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {form.job_type === "other" && isAdmin && (
-                  <Input
-                    value={customJobType}
-                    onChange={(e) => setCustomJobType(e.target.value)}
-                    placeholder="הקלד סוג שירות מותאם..."
-                    className="mt-2"
-                    maxLength={100}
-                  />
-                )}
-              </div>
               <div className="space-y-2">
                 <Label>עדיפות</Label>
                 <Select value={form.priority} onValueChange={(v) => setForm((f) => ({ ...f, priority: v }))}>
