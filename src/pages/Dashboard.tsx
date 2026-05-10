@@ -145,6 +145,12 @@ const PendingRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: Pend
             </a>
           </>
         )}
+        {wazeUrl(call.customers?.address, call.customers?.city) && (
+          <a href={wazeUrl(call.customers?.address, call.customers?.city)!} target="_blank" rel="noopener noreferrer"
+            className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors" title="נווט בוויז">
+            <Navigation className="w-4 h-4" />
+          </a>
+        )}
         <Popover>
           <PopoverTrigger asChild>
             <button className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium transition-opacity hover:opacity-80 ${ageBg}`}>
