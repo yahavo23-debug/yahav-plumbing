@@ -2,7 +2,10 @@ export const serviceTypes = [
   { value: "leak_detection", label: "איתור נזילה" },
   { value: "sewer_camera", label: "צילום קו ביוב" },
   { value: "pressure_test", label: "בדיקת לחץ" },
-  { value: "other", label: "אחר" },
+  { value: "faucet_replacement", label: "החלפת ברז" },
+  { value: "unblocking", label: "פתיחת סתימה" },
+  { value: "arrival_check", label: "בדיקת הגעה" },
+  { value: "other", label: "אחר (כתיבה חופשית)" },
 ];
 
 export const serviceTypeLabels: Record<string, string> = Object.fromEntries(
