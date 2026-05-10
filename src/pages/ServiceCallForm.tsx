@@ -21,11 +21,11 @@ const ServiceCallForm = () => {
   const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [customerName, setCustomerName] = useState("");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [customJobType, setCustomJobType] = useState("");
 
   const [form, setForm] = useState({
     customer_id: customerId || "",
-    job_type: "",
     description: "",
     scheduled_date: "",
     status: "open",
