@@ -88,6 +88,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
   const [shareMode, setShareMode] = useState<"view" | "sign">("sign");
   const [shareQuoteNumber, setShareQuoteNumber] = useState<number>(0);
   const [copied, setCopied] = useState(false);
+  const [filter, setFilter] = useState<QuoteFilter>("all");
   const { user, isAdmin } = useAuth();
 
   const loadQuotes = useCallback(async () => {
