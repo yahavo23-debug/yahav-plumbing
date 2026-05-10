@@ -655,6 +655,7 @@ export type Database = {
           pdf_hash: string | null
           pdf_path: string | null
           quote_number: number
+          rejection_reason: string | null
           scope_of_work: Json | null
           service_call_id: string
           signature_path: string | null
@@ -678,6 +679,7 @@ export type Database = {
           pdf_hash?: string | null
           pdf_path?: string | null
           quote_number?: number
+          rejection_reason?: string | null
           scope_of_work?: Json | null
           service_call_id: string
           signature_path?: string | null
@@ -701,6 +703,7 @@ export type Database = {
           pdf_hash?: string | null
           pdf_path?: string | null
           quote_number?: number
+          rejection_reason?: string | null
           scope_of_work?: Json | null
           service_call_id?: string
           signature_path?: string | null
