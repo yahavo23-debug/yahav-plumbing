@@ -317,6 +317,21 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
     return <p className="text-center py-8 text-muted-foreground">טוען...</p>;
   }
 
+  const counts = {
+    all: quotes.length,
+    open: quotes.filter((q) => q.status === "draft" || q.status === "sent").length,
+    approved: quotes.filter((q) => q.status === "approved").length,
+    rejected: quotes.filter((q) => q.status === "rejected").length,
+  };
+
+  const filteredQuotes = quotes.filter((q) => {
+    if (filter === "all") return true;
+    if (filter === "open") return q.status === "draft" || q.status === "sent";
+    if (filter === "approved") return q.status === "approved";
+    if (filter === "rejected") return q.status === "rejected";
+    return true;
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -327,6 +342,28 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
           </Button>
         )}
       </div>
+
+      {quotes.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap border-b border-border pb-2">
+          {filterTabs.map((tab) => (
+            <Button
+              key={tab.value}
+              size="sm"
+              variant={filter === tab.value ? "default" : "outline"}
+              className="h-7 text-xs gap-1.5"
+              onClick={() => setFilter(tab.value)}
+            >
+              {tab.label}
+              <Badge
+                variant="secondary"
+                className="h-4 px-1.5 text-[10px] bg-background/40"
+              >
+                {counts[tab.value]}
+              </Badge>
+            </Button>
+          ))}
+        </div>
+      )}
 
       {quotes.length === 0 ? (
         <Card>
@@ -340,9 +377,15 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
             )}
           </CardContent>
         </Card>
+      ) : filteredQuotes.length === 0 ? (
+        <Card>
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            אין הצעות בקטגוריה זו
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-3">
-          {quotes.map((quote) => {
+          {filteredQuotes.map((quote) => {
             const isSigned = !!quote.signature_path;
             return (
             <Card
