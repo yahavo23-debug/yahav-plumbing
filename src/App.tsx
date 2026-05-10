@@ -63,6 +63,7 @@ import PublicQuote from "./pages/PublicQuote";
 import NotFound from "./pages/NotFound";
 import CalendarPage from "./pages/CalendarPage";
 import Invoices from "./pages/Invoices";
+import Quotes from "./pages/Quotes";
 
 const queryClient = new QueryClient();
 
