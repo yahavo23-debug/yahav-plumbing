@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "@/hooks/use-toast";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Bell } from "lucide-react";
+import { OpenQuotesPanel } from "@/components/dashboard/OpenQuotesPanel";
 
 interface DashboardStats {
   totalCustomers: number;
