@@ -28,6 +28,7 @@ interface YeshInvoice {
   total_vat: number;
   total_with_vat: number;
   date_created: string;
+  raw_data?: any;
   status: string;
   service_call_id: string | null;
   created_at: string;
@@ -45,8 +46,8 @@ const Invoices = () => {
     try {
       const { data, error } = await supabase
         .from("yesh_invoices")
-        .select("*")
-        .order("date_created", { ascending: false });
+        .select("*, raw_data")
+        .order("created_at", { ascending: false });
 
       if (!error && data) setInvoices(data as YeshInvoice[]);
     } catch (err) {
@@ -200,6 +201,16 @@ const Invoices = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* DEBUG: show raw webhook payload of latest record */}
+        {invoices.length > 0 && invoices[0].raw_data && (
+          <div className="mt-6 rounded-xl border border-yellow-300 bg-yellow-50 dark:bg-yellow-900/10 p-4">
+            <p className="text-sm font-bold text-yellow-800 mb-2">🔍 DEBUG — Raw Webhook Payload (רשומה אחרונה)</p>
+            <pre className="text-xs overflow-x-auto whitespace-pre-wrap break-all text-yellow-900 dark:text-yellow-200 max-h-64 overflow-y-auto">
+              {JSON.stringify(invoices[0].raw_data, null, 2)}
+            </pre>
           </div>
         )}
 

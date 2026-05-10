@@ -148,6 +148,25 @@ Deno.serve(async (req) => {
 
     console.log("yesh-webhook payload keys:", Object.keys(payload).join(", "));
 
+    // ── Save a full diagnostic record so we can inspect what יש חשבונית sent ──
+    // This saves the complete raw payload before any parsing
+    await adminClient.from("yesh_invoices").insert({
+      yesh_doc_id:    null,
+      doc_number:     "__debug__",
+      doc_type:       0,
+      doc_type_name:  "DEBUG - raw webhook payload",
+      customer_name:  `method:${req.method} url:${url.search}`,
+      customer_phone: "",
+      customer_email: "",
+      total_price:    0,
+      total_vat:      0,
+      total_with_vat: 0,
+      date_created:   new Date().toISOString().slice(0, 10),
+      status:         "debug",
+      raw_data:       { rawText: rawText.slice(0, 5000), payloadKeys: Object.keys(payload), urlParams: Object.fromEntries(url.searchParams.entries()), fullPayload: payload },
+      updated_at:     new Date().toISOString(),
+    }).then(({ error }) => { if (error) console.log("debug insert error (ok):", error.message); });
+
     // ── Extract doc wrapper ──
     let doc = payload?.document || payload?.Document || payload?.doc || payload?.invoice || payload?.data || payload;
 
