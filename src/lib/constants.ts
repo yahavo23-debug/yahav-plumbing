@@ -50,7 +50,12 @@ export const statusColors: Record<string, string> = {
  */
 export function getJobTypeLabel(jobType: string | null | undefined): string {
   if (!jobType) return "—";
-  return serviceTypeLabels[jobType] || jobType;
+  return jobType
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => serviceTypeLabels[p] || p)
+    .join(" • ");
 }
 
 /** Lead source options for customers */
