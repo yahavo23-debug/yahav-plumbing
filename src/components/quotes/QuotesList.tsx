@@ -423,6 +423,11 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                         </span>
                       )}
                     </div>
+                    {quote.status === "rejected" && quote.rejection_reason && (
+                      <p className="mt-2 text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded px-2 py-1">
+                        סיבת ביטול: {quote.rejection_reason}
+                      </p>
+                    )}
                   </div>
                   {!readOnly && isSigned && (
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
