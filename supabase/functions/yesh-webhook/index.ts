@@ -181,28 +181,51 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Step 4: Upsert invoice ──
-    const { error: upsertErr } = await adminClient.from("yesh_invoices").upsert(
-      {
-        yesh_doc_id:    docId,
-        doc_number:     docNumber,
-        doc_type:       docType,
-        doc_type_name:  docTypeName,
-        customer_name:  customerName,
-        customer_phone: phone,
-        customer_email: customerEmail,
-        total_price:    totalPrice,
-        total_vat:      totalVat,
-        total_with_vat: totalWithVat,
-        date_created:   dateCreated,
-        status,
-        service_call_id: serviceCallId,
-        raw_data:       doc,
-        updated_at:     new Date().toISOString(),
-      },
-      { onConflict: "yesh_doc_id", ignoreDuplicates: false }
-    );
-    if (upsertErr) console.error("yesh-webhook upsert error:", upsertErr.message);
+    // ── Step 4: Upsert invoice — never overwrite good data with empty data ──
+    // Check if a valid record already exists (saved by create-yesh-invoice in the app)
+    let skipUpsert = false;
+    if (docId) {
+      const { data: existing } = await adminClient
+        .from("yesh_invoices")
+        .select("id, customer_name, total_with_vat")
+        .eq("yesh_doc_id", docId)
+        .maybeSingle();
+
+      if (existing && existing.customer_name && Number(existing.total_with_vat) > 0) {
+        // Record already has valid data — only update status if it changed, don't wipe fields
+        console.log(`yesh-webhook: record ${docId} already has valid data, skipping overwrite`);
+        skipUpsert = true;
+        if (status && status !== "open") {
+          await adminClient.from("yesh_invoices")
+            .update({ status, updated_at: new Date().toISOString() })
+            .eq("yesh_doc_id", docId);
+        }
+      }
+    }
+
+    if (!skipUpsert) {
+      const { error: upsertErr } = await adminClient.from("yesh_invoices").upsert(
+        {
+          yesh_doc_id:    docId,
+          doc_number:     docNumber,
+          doc_type:       docType,
+          doc_type_name:  docTypeName,
+          customer_name:  customerName,
+          customer_phone: phone,
+          customer_email: customerEmail,
+          total_price:    totalPrice,
+          total_vat:      totalVat,
+          total_with_vat: totalWithVat,
+          date_created:   dateCreated,
+          status,
+          service_call_id: serviceCallId,
+          raw_data:       doc,
+          updated_at:     new Date().toISOString(),
+        },
+        { onConflict: "yesh_doc_id", ignoreDuplicates: false }
+      );
+      if (upsertErr) console.error("yesh-webhook upsert error:", upsertErr.message);
+    }
 
     // ── Step 5: Auto-create financial transaction ──
     if (totalWithVat > 0 && docId) {
