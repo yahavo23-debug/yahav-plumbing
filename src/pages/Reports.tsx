@@ -30,18 +30,24 @@ const Reports = () => {
   }, [user]);
 
   const loadReports = async () => {
-    const { data, error } = await supabase
-      .from("reports")
-      .select("*, service_calls(*, customers(name, phone))")
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("reports")
+        .select("*, service_calls(*, customers(name, phone))")
+        .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Load reports error:", error);
+      if (error) {
+        console.error("Load reports error:", error);
+        toast({ title: "שגיאה", description: "לא ניתן לטעון דוחות", variant: "destructive" });
+      } else {
+        setReports(data || []);
+      }
+    } catch (err) {
+      console.error("loadReports error:", err);
       toast({ title: "שגיאה", description: "לא ניתן לטעון דוחות", variant: "destructive" });
-    } else {
-      setReports(data || []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const filteredReports = filter === "all" ? reports : reports.filter(r => r.status === filter);
@@ -82,7 +88,9 @@ const Reports = () => {
       </div>
 
       {loading ? (
-        <p className="text-center text-muted-foreground py-8">טוען...</p>
+        <div className="space-y-3">
+          {[1,2,3,4].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}
+        </div>
       ) : filteredReports.length === 0 ? (
         <div className="text-center py-16">
           <FileText className="w-16 h-16 mx-auto text-muted-foreground/40 mb-4" />

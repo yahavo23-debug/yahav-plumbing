@@ -54,16 +54,6 @@ const priorityColors: Record<string, string> = {
 };
 import { getJobTypeLabel } from "@/lib/constants";
 
-// serviceTypeLabels kept for backward compat reference — prefer getJobTypeLabel
-const serviceTypeLabels: Record<string, string> = {
-  leak_detection: "איתור נזילה",
-  sewer_camera: "צילום קו ביוב",
-  pressure_test: "בדיקת לחץ",
-  other: "אחר",
-  "תיקון": "תיקון", "התקנה": "התקנה", "תחזוקה": "תחזוקה",
-  "בדיקה": "בדיקה", "ייעוץ": "ייעוץ", "אחר": "אחר",
-};
-
 const ServiceCallDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -95,34 +85,40 @@ const ServiceCallDetail = () => {
   }, [user, id]);
 
   const loadData = async () => {
-    const [callRes, photosRes, videosRes] = await Promise.all([
-      supabase.from("service_calls").select("*, customers(*)").eq("id", id!).single(),
-      supabase.from("service_call_photos").select("*").eq("service_call_id", id!).order("created_at"),
-      supabase.from("service_call_videos").select("*").eq("service_call_id", id!).order("created_at"),
-    ]);
+    try {
+      const [callRes, photosRes, videosRes] = await Promise.all([
+        supabase.from("service_calls").select("*, customers(*)").eq("id", id!).single(),
+        supabase.from("service_call_photos").select("*").eq("service_call_id", id!).order("created_at"),
+        supabase.from("service_call_videos").select("*").eq("service_call_id", id!).order("created_at"),
+      ]);
 
-    if (callRes.error) {
+      if (callRes.error) {
+        toast({ title: "שגיאה", description: "לא ניתן לטעון את הקריאה", variant: "destructive" });
+        navigate("/service-calls");
+        return;
+      }
+
+      const data = callRes.data;
+      setCall(data);
+      setFindings(data.findings || "");
+      setRecommendations(data.recommendations || "");
+      setPhotos(photosRes.data || []);
+      setVideos(videosRes.data || []);
+
+      const customerName = (data.customers as any)?.name || "";
+      logAction({
+        action: "view_service_call",
+        resource_type: "service_call",
+        resource_id: id!,
+        resource_label: `#${data.call_number} - ${customerName}`,
+      });
+    } catch (err) {
+      console.error("loadData error:", err);
       toast({ title: "שגיאה", description: "לא ניתן לטעון את הקריאה", variant: "destructive" });
       navigate("/service-calls");
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    const data = callRes.data;
-    setCall(data);
-    setFindings(data.findings || "");
-    setRecommendations(data.recommendations || "");
-    setPhotos(photosRes.data || []);
-    setVideos(videosRes.data || []);
-    setLoading(false);
-
-    // Audit log for contractor views
-    const customerName = (data.customers as any)?.name || "";
-    logAction({
-      action: "view_service_call",
-      resource_type: "service_call",
-      resource_id: id!,
-      resource_label: `#${data.call_number} - ${customerName}`,
-    });
   };
 
   const refreshPhotos = useCallback(async () => {

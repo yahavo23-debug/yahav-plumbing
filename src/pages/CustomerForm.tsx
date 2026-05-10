@@ -75,7 +75,7 @@ const CustomerForm = () => {
         lead_source: form.lead_source || null,
         lead_source_note: form.lead_source_note || null,
         source_contractor_id: form.source_contractor_id || null,
-        lead_cost: form.lead_cost ? parseFloat(form.lead_cost) : null,
+        lead_cost: (() => { const v = parseFloat(form.lead_cost); return form.lead_cost !== "" && !isNaN(v) ? v : null; })(),
       };
 
       if (isEdit) {

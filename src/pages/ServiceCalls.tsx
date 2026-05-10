@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -36,19 +36,25 @@ const ServiceCalls = () => {
   useEffect(() => { if (!user) return; loadCalls(); }, [user]);
 
   const loadCalls = async () => {
-    const { data, error } = await supabase
-      .from("service_calls")
-      .select("*, customers(name, phone)")
-      .order("created_at", { ascending: false });
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from("service_calls")
+        .select("*, customers(name, phone)")
+        .order("created_at", { ascending: false });
+      if (error) {
+        toast({ title: "שגיאה", description: "לא ניתן לטעון את הקריאות", variant: "destructive" });
+      } else {
+        setCalls(data || []);
+      }
+    } catch (err) {
+      console.error("loadCalls error:", err);
       toast({ title: "שגיאה", description: "לא ניתן לטעון את הקריאות", variant: "destructive" });
-    } else {
-      setCalls(data || []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const filtered = calls.filter((c) => {
+  const filtered = useMemo(() => calls.filter((c) => {
     const q = search.toLowerCase();
     const matchesSearch = !q ||
       (c.customers as any)?.name?.toLowerCase().includes(q) ||
@@ -56,7 +62,7 @@ const ServiceCalls = () => {
       c.description?.toLowerCase().includes(q);
     const matchesFilter = filter === "all" || c.status === filter;
     return matchesSearch && matchesFilter;
-  });
+  }), [calls, search, filter]);
 
   return (
     <AppLayout title="קריאות שירות">
