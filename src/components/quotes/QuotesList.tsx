@@ -42,7 +42,17 @@ interface Quote {
   include_vat: boolean;
   signature_path: string | null;
   signed_at: string | null;
+  rejection_reason: string | null;
 }
+
+type QuoteFilter = "all" | "open" | "approved" | "rejected";
+
+const filterTabs: { value: QuoteFilter; label: string }[] = [
+  { value: "all", label: "הכל" },
+  { value: "open", label: "פתוחות / בביצוע" },
+  { value: "approved", label: "אושרו" },
+  { value: "rejected", label: "מבוטלות" },
+];
 
 const statusLabels: Record<string, string> = {
   draft: "טיוטה",
@@ -78,6 +88,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
   const [shareMode, setShareMode] = useState<"view" | "sign">("sign");
   const [shareQuoteNumber, setShareQuoteNumber] = useState<number>(0);
   const [copied, setCopied] = useState(false);
+  const [filter, setFilter] = useState<QuoteFilter>("all");
   const { user, isAdmin } = useAuth();
 
   const loadQuotes = useCallback(async () => {
@@ -130,6 +141,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
           include_vat: false,
           signature_path: q.signature_path || null,
           signed_at: q.signed_at || null,
+          rejection_reason: q.rejection_reason || null,
         };
       })
     );
@@ -305,6 +317,21 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
     return <p className="text-center py-8 text-muted-foreground">טוען...</p>;
   }
 
+  const counts = {
+    all: quotes.length,
+    open: quotes.filter((q) => q.status === "draft" || q.status === "sent").length,
+    approved: quotes.filter((q) => q.status === "approved").length,
+    rejected: quotes.filter((q) => q.status === "rejected").length,
+  };
+
+  const filteredQuotes = quotes.filter((q) => {
+    if (filter === "all") return true;
+    if (filter === "open") return q.status === "draft" || q.status === "sent";
+    if (filter === "approved") return q.status === "approved";
+    if (filter === "rejected") return q.status === "rejected";
+    return true;
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -315,6 +342,28 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
           </Button>
         )}
       </div>
+
+      {quotes.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap border-b border-border pb-2">
+          {filterTabs.map((tab) => (
+            <Button
+              key={tab.value}
+              size="sm"
+              variant={filter === tab.value ? "default" : "outline"}
+              className="h-7 text-xs gap-1.5"
+              onClick={() => setFilter(tab.value)}
+            >
+              {tab.label}
+              <Badge
+                variant="secondary"
+                className="h-4 px-1.5 text-[10px] bg-background/40"
+              >
+                {counts[tab.value]}
+              </Badge>
+            </Button>
+          ))}
+        </div>
+      )}
 
       {quotes.length === 0 ? (
         <Card>
@@ -328,9 +377,15 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
             )}
           </CardContent>
         </Card>
+      ) : filteredQuotes.length === 0 ? (
+        <Card>
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            אין הצעות בקטגוריה זו
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-3">
-          {quotes.map((quote) => {
+          {filteredQuotes.map((quote) => {
             const isSigned = !!quote.signature_path;
             return (
             <Card
@@ -368,6 +423,11 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
                         </span>
                       )}
                     </div>
+                    {quote.status === "rejected" && quote.rejection_reason && (
+                      <p className="mt-2 text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded px-2 py-1">
+                        סיבת ביטול: {quote.rejection_reason}
+                      </p>
+                    )}
                   </div>
                   {!readOnly && isSigned && (
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
