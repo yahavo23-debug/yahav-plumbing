@@ -33,6 +33,7 @@ const navGroups: NavGroup[] = [
       { icon: Users,    label: "לקוחות",       path: "/customers",     roles: "all" },
       { icon: Wrench,   label: "קריאות שירות", path: "/service-calls", roles: ["admin", "technician", "secretary", "contractor"] },
       { icon: FileText, label: "דוחות",        path: "/reports",       roles: ["admin", "technician", "secretary"] },
+      { icon: Receipt,  label: "הצעות מחיר",   path: "/quotes",        roles: ["admin", "technician", "secretary"] },
     ],
   },
   {
