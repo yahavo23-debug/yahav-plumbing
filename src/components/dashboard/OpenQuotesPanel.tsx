@@ -28,7 +28,7 @@ function getDaysOpen(createdAt: string) {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-export function DispatchOpenQuotesPanel() {
+export function OpenQuotesPanel() {
   const [quotes, setQuotes] = useState<OpenQuote[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(true);
@@ -86,7 +86,7 @@ export function DispatchOpenQuotesPanel() {
   if (loading || quotes.length === 0) return null;
 
   return (
-    <div className="shrink-0 border-b border-border bg-amber-500/5">
+    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 mb-6 overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}

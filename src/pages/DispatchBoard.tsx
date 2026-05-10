@@ -19,7 +19,6 @@ import { DispatchDayView } from "@/components/dispatch/DispatchDayView";
 import { UnscheduledSidebar } from "@/components/dispatch/UnscheduledSidebar";
 import { DispatchCard } from "@/components/dispatch/DispatchCard";
 import { TechnicianStatsPanel } from "@/components/dispatch/TechnicianStatsPanel";
-import { DispatchOpenQuotesPanel } from "@/components/dispatch/DispatchOpenQuotesPanel";
 import { useDispatchCalls, type DispatchCall } from "@/hooks/useDispatchCalls";
 import { useTechnicians } from "@/hooks/useTechnicians";
 import { getTechnicianColor } from "@/lib/dispatch-constants";
@@ -210,9 +209,6 @@ export default function DispatchBoard() {
             );
           })}
         </div>
-
-        {/* ── Open quotes panel ── */}
-        <DispatchOpenQuotesPanel />
 
 
         {isMobile && (
