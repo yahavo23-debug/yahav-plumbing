@@ -42,7 +42,17 @@ interface Quote {
   include_vat: boolean;
   signature_path: string | null;
   signed_at: string | null;
+  rejection_reason: string | null;
 }
+
+type QuoteFilter = "all" | "open" | "approved" | "rejected";
+
+const filterTabs: { value: QuoteFilter; label: string }[] = [
+  { value: "all", label: "הכל" },
+  { value: "open", label: "פתוחות / בביצוע" },
+  { value: "approved", label: "אושרו" },
+  { value: "rejected", label: "מבוטלות" },
+];
 
 const statusLabels: Record<string, string> = {
   draft: "טיוטה",
