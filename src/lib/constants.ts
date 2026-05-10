@@ -1,11 +1,9 @@
 export const serviceTypes = [
   { value: "leak_detection", label: "איתור נזילה" },
   { value: "sewer_camera", label: "צילום קו ביוב" },
-  { value: "pressure_test", label: "בדיקת לחץ" },
+  { value: "visit", label: "ביקור" },
   { value: "faucet_replacement", label: "החלפת ברז" },
   { value: "unblocking", label: "פתיחת סתימה" },
-  { value: "arrival_check", label: "בדיקת הגעה" },
-  { value: "other", label: "אחר (כתיבה חופשית)" },
 ];
 
 export const serviceTypeLabels: Record<string, string> = Object.fromEntries(
@@ -52,7 +50,12 @@ export const statusColors: Record<string, string> = {
  */
 export function getJobTypeLabel(jobType: string | null | undefined): string {
   if (!jobType) return "—";
-  return serviceTypeLabels[jobType] || jobType;
+  return jobType
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => serviceTypeLabels[p] || p)
+    .join(" • ");
 }
 
 /** Lead source options for customers */

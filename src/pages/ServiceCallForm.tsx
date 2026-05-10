@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -20,11 +21,11 @@ const ServiceCallForm = () => {
   const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [customerName, setCustomerName] = useState("");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [customJobType, setCustomJobType] = useState("");
 
   const [form, setForm] = useState({
     customer_id: customerId || "",
-    job_type: "",
     description: "",
     scheduled_date: "",
     status: "open",
@@ -49,26 +50,36 @@ const ServiceCallForm = () => {
       toast({ title: "שגיאה", description: "לא ניתן לטעון את הקריאה", variant: "destructive" });
       navigate("/service-calls");
     } else if (data) {
-      const isKnownType = knownServiceTypeKeys.has(data.job_type);
+      const parts = (data.job_type || "")
+        .split(",")
+        .map((p: string) => p.trim())
+        .filter(Boolean);
+      const known = parts.filter((p: string) => knownServiceTypeKeys.has(p));
+      const unknown = parts.filter((p: string) => !knownServiceTypeKeys.has(p));
+      setSelectedTypes(known);
+      setCustomJobType(unknown.join(", "));
       setForm({
         customer_id: data.customer_id,
-        job_type: isKnownType ? data.job_type : "other",
         description: data.description || "",
         scheduled_date: data.scheduled_date || "",
         status: data.status,
         priority: (data as any).priority || "medium",
         notes: (data as any).notes || "",
       });
-      if (!isKnownType) {
-        setCustomJobType(data.job_type);
-      }
       setCustomerName((data as any).customers?.name || "");
     }
   };
 
-  const resolvedJobType = form.job_type === "other" && isAdmin && customJobType.trim()
-    ? customJobType.trim()
-    : form.job_type;
+  const resolvedJobType = [
+    ...selectedTypes,
+    ...(customJobType.trim() ? [customJobType.trim()] : []),
+  ].join(", ");
+
+  const toggleType = (value: string) => {
+    setSelectedTypes((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +132,7 @@ const ServiceCallForm = () => {
 
   const backPath = isEdit ? `/service-calls/${id}` : "/service-calls/new";
 
-  const isFormValid = form.customer_id && (form.job_type !== "other" || !isAdmin || customJobType.trim()) && form.job_type;
+  const isFormValid = !!form.customer_id && (selectedTypes.length > 0 || customJobType.trim().length > 0);
 
   return (
     <AppLayout title={isEdit ? "עריכת קריאה" : "קריאת שירות חדשה"}>
@@ -141,45 +152,47 @@ const ServiceCallForm = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Service details */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>סוג שירות *</Label>
-                <Select value={form.job_type} onValueChange={(v) => {
-                  setForm((f) => ({ ...f, job_type: v }));
-                  if (v !== "other") setCustomJobType("");
-                }}>
-                  <SelectTrigger><SelectValue placeholder="בחר סוג שירות" /></SelectTrigger>
-                  <SelectContent>
-                    {serviceTypes.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {form.job_type === "other" && isAdmin && (
-                  <Input
-                    value={customJobType}
-                    onChange={(e) => setCustomJobType(e.target.value)}
-                    placeholder="הקלד סוג שירות מותאם..."
-                    className="mt-2"
-                    maxLength={100}
-                  />
-                )}
+            <div className="space-y-2">
+              <Label>סוג שירות * <span className="text-xs text-muted-foreground font-normal">(ניתן לבחור יותר מאחד)</span></Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {serviceTypes.map((t) => {
+                  const checked = selectedTypes.includes(t.value);
+                  return (
+                    <label
+                      key={t.value}
+                      className={`flex items-center gap-2 rounded-lg border p-3 cursor-pointer transition-colors ${
+                        checked ? "border-primary bg-primary/5" : "border-border hover:bg-accent"
+                      }`}
+                    >
+                      <Checkbox checked={checked} onCheckedChange={() => toggleType(t.value)} />
+                      <span className="text-sm">{t.label}</span>
+                    </label>
+                  );
+                })}
               </div>
-              <div className="space-y-2">
-                <Label>עדיפות</Label>
-                <Select value={form.priority} onValueChange={(v) => setForm((f) => ({ ...f, priority: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {priorities.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>
-                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${priorityColors[p.value]}`}>
-                          {p.label}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Input
+                value={customJobType}
+                onChange={(e) => setCustomJobType(e.target.value)}
+                placeholder="או הוסף סוג מותאם (כתיבה חופשית)..."
+                className="mt-2"
+                maxLength={200}
+              />
+            </div>
+
+            <div className="space-y-2 max-w-xs">
+              <Label>עדיפות</Label>
+              <Select value={form.priority} onValueChange={(v) => setForm((f) => ({ ...f, priority: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {priorities.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${priorityColors[p.value]}`}>
+                        {p.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Scheduled date */}
