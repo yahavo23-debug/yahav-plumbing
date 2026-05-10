@@ -86,7 +86,7 @@ export function OpenQuotesPanel() {
   if (loading || quotes.length === 0) return null;
 
   return (
-    <div className="shrink-0 border-b border-border bg-amber-500/5">
+    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 mb-6 overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
