@@ -132,7 +132,7 @@ const ServiceCallForm = () => {
 
   const backPath = isEdit ? `/service-calls/${id}` : "/service-calls/new";
 
-  const isFormValid = form.customer_id && (form.job_type !== "other" || !isAdmin || customJobType.trim()) && form.job_type;
+  const isFormValid = !!form.customer_id && (selectedTypes.length > 0 || customJobType.trim().length > 0);
 
   return (
     <AppLayout title={isEdit ? "עריכת קריאה" : "קריאת שירות חדשה"}>
