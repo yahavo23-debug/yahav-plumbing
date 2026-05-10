@@ -59,14 +59,15 @@ const Invoices = () => {
 
   useEffect(() => { loadInvoices(); }, []);
 
-  const filtered = invoices.filter(inv => {
+  const realInvoices  = invoices.filter(i => i.status !== "debug" && i.doc_number !== "__debug__");
+  const unlinkedCount = realInvoices.filter(i => !i.service_call_id).length;
+  const totalAmount   = realInvoices.reduce((s, i) => s + (Number(i.total_with_vat) || 0), 0);
+
+  const filtered = realInvoices.filter(inv => {
     if (filter === "linked")   return !!inv.service_call_id;
     if (filter === "unlinked") return !inv.service_call_id;
     return true;
   });
-
-  const unlinkedCount = invoices.filter(i => !i.service_call_id).length;
-  const totalAmount   = invoices.reduce((s, i) => s + (i.total_with_vat || 0), 0);
 
   return (
     <AppLayout title="קבלות וחשבוניות">
@@ -95,7 +96,7 @@ const Invoices = () => {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="rounded-xl border bg-card p-4 text-center">
-            <p className="text-2xl font-bold">{invoices.length}</p>
+            <p className="text-2xl font-bold">{realInvoices.length}</p>
             <p className="text-xs text-muted-foreground">סה"כ מסמכים</p>
           </div>
           <div className="rounded-xl border bg-red-50 dark:bg-red-900/10 p-4 text-center">
@@ -120,15 +121,15 @@ const Invoices = () => {
                   : "bg-muted text-muted-foreground hover:bg-accent"
               }`}
             >
-              {f === "all" ? `הכל (${invoices.length})` :
+              {f === "all" ? `הכל (${realInvoices.length})` :
                f === "unlinked" ? `לא משויך (${unlinkedCount})` :
-               `משויך (${invoices.length - unlinkedCount})`}
+               `משויך (${realInvoices.length - unlinkedCount})`}
             </button>
           ))}
         </div>
 
         {/* Empty state */}
-        {!loading && invoices.length === 0 && (
+        {!loading && realInvoices.length === 0 && (
           <div className="text-center py-16 border border-dashed rounded-xl">
             <Receipt className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
             <p className="font-medium">אין חשבוניות עדיין</p>

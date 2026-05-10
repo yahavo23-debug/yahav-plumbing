@@ -75,36 +75,91 @@ async function fetchDocFromYesh(docId: number): Promise<any | null> {
   return null;
 }
 
+/** Sum items array if present — used when top-level total is missing */
+function sumItems(items: any[]): number {
+  if (!Array.isArray(items)) return 0;
+  return items.reduce((acc, item) => {
+    const price = Number(pickFirst(
+      item["מחיר"], item["מחיר כולל מע\"מ"], item["סכום"],
+      item.Price, item.price, item.Total, item.total, 0
+    )) || 0;
+    const qty = Number(pickFirst(item["כמות"], item.Quantity, item.quantity, 1)) || 1;
+    return acc + price * qty;
+  }, 0);
+}
+
 function extractFields(doc: any) {
+  // יש חשבונית webhook sends HEBREW field names when triggered by their system
+  // Also try English/PascalCase for backwards compatibility
   const customerName = String(pickFirst(
+    // Hebrew field names (real webhook from יש חשבונית)
+    doc["שם לקוח"], doc["לקוח"], doc["שם"],
+    // English variants
     doc.CustomerName, doc.customerName,
     doc.Customer?.Name, doc.Customer?.name, doc.customer?.name, ""
   ) || "");
+
   const phoneRaw = pickFirst(
+    doc["טלפון"], doc["נייד"], doc["פלאפון"],
     doc.CustomerPhone, doc.customerPhone,
     doc.Customer?.Phone, doc.Customer?.phone, doc.customer?.phone,
   );
   const phone = normalizePhone(phoneRaw);
+
   const customerEmail = String(pickFirst(
+    doc["אימייל"], doc["מייל"], doc["דואר אלקטרוני"],
     doc.CustomerEmail, doc.customerEmail,
     doc.Customer?.Email, doc.Customer?.email, doc.customer?.email, ""
   ) || "");
+
   const docNumber = String(pickFirst(
+    doc["מספר מסמך"], doc["מספר"], doc["מסמך"],
     doc.DocNumber, doc.docNumber, doc.DocumentNumber, doc.documentNumber, ""
   ) || "");
-  const docType = Number(pickFirst(doc.DocumentType, doc.documentType, doc.DocType, doc.docType, 9));
-  const docTypeName = String(pickFirst(doc.DocumentTypeName, doc.documentTypeName, "חשבונית מס קבלה"));
-  const totalPrice = Number(pickFirst(doc.TotalPrice, doc.totalPrice, doc.Price, doc.price, 0)) || 0;
-  const totalVat = Number(pickFirst(doc.TotalVAT, doc.TotalVat, doc.totalVat, doc.VAT, doc.vat, 0)) || 0;
-  const totalWithVat = Number(pickFirst(
-    doc.TotalWithVAT, doc.totalWithVAT, doc.TotalWithVat, doc.totalWithVat,
-    doc.GrandTotal, doc.grandTotal, doc.Total, doc.total, 0
+
+  const docType = Number(pickFirst(
+    doc["סוג מסמך"], doc["סוג"],
+    doc.DocumentType, doc.documentType, doc.DocType, doc.docType, 9
+  ));
+
+  const docTypeName = String(pickFirst(
+    doc["שם סוג מסמך"], doc["סוג מסמך שם"],
+    doc.DocumentTypeName, doc.documentTypeName, "חשבונית מס קבלה"
+  ));
+
+  const totalPrice = Number(pickFirst(
+    doc["סכום לפני מע\"מ"], doc["מחיר"], doc["סכום"],
+    doc.TotalPrice, doc.totalPrice, doc.Price, doc.price, 0
   )) || 0;
+
+  const totalVat = Number(pickFirst(
+    doc["מע\"מ"], doc["סכום מע\"מ"],
+    doc.TotalVAT, doc.TotalVat, doc.totalVat, doc.VAT, doc.vat, 0
+  )) || 0;
+
+  // Try all Hebrew and English total fields; fall back to summing items array
+  const items = doc["פריטים"] || doc["מוצרים"] || doc.Items || doc.items || [];
+  const itemsTotal = sumItems(items);
+
+  const totalWithVat = Number(pickFirst(
+    doc["סכום כולל מע\"מ"], doc["סה\"כ לתשלום"], doc["סה\"כ"],
+    doc["סכום סופי"], doc["סכום כולל"], doc["מחיר סופי"],
+    doc.TotalWithVAT, doc.totalWithVAT, doc.TotalWithVat, doc.totalWithVat,
+    doc.GrandTotal, doc.grandTotal, doc.Total, doc.total,
+    itemsTotal > 0 ? itemsTotal : 0
+  )) || 0;
+
   const dateCreated = String(pickFirst(
+    doc["תאריך"], doc["תאריך יצירה"], doc["תאריך הפקה"],
     doc.DateCreated, doc.dateCreated, doc.Date, doc.date,
     doc.InvoiceDate, doc.invoiceDate, new Date().toISOString()
   )).slice(0, 10);
-  const status = String(pickFirst(doc.StatusName, doc.statusName, doc.status, "open"));
+
+  const status = String(pickFirst(
+    doc["סטטוס"], doc["מצב"],
+    doc.StatusName, doc.statusName, doc.status, "open"
+  ));
+
   return { customerName, phone, customerEmail, docNumber, docType, docTypeName, totalPrice, totalVat, totalWithVat, dateCreated, status };
 }
 
@@ -168,13 +223,19 @@ Deno.serve(async (req) => {
     }).then(({ error }) => { if (error) console.log("debug insert error (ok):", error.message); });
 
     // ── Extract doc wrapper ──
-    let doc = payload?.document || payload?.Document || payload?.doc || payload?.invoice || payload?.data || payload;
+    // יש חשבונית may wrap the document in a "ערך חזרה" (return value) key or send flat
+    let doc = payload?.["ערך חזרה"] || payload?.document || payload?.Document || payload?.doc || payload?.invoice || payload?.data || payload;
+    // If "ערך חזרה" is empty object {}, fall back to the whole payload
+    if (doc && typeof doc === "object" && Object.keys(doc).length === 0) {
+      doc = payload;
+    }
 
     // ── Get DocID ──
     let docId: number | null = null;
     const rawDocId = pickFirst(
+      doc["מזהה מסמך"], doc["מספר מסמך פנימי"],
       doc.DocID, doc.docID, doc.DocumentID, doc.documentID, doc.id,
-      payload.DocID, payload.docID, payload.DocumentID,
+      payload["מזהה מסמך"], payload.DocID, payload.docID, payload.DocumentID,
       url.searchParams.get("DocID"), url.searchParams.get("docID"), url.searchParams.get("id"),
     );
     if (rawDocId) docId = Number(rawDocId);
