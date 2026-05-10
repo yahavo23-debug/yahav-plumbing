@@ -591,7 +591,7 @@ const ServiceCallDetail = () => {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">סכום לפני מע"מ (₪)</label>
+              <label className="text-sm font-medium mb-1 block">סכום (₪) — ללא מע"מ (עוסק פטור)</label>
               <Input
                 type="number"
                 value={invoiceAmount}
@@ -602,7 +602,7 @@ const ServiceCallDetail = () => {
               />
               {invoiceAmount && !isNaN(Number(invoiceAmount)) && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  סה"כ כולל מע"מ: ₪{(Number(invoiceAmount) * 1.18).toFixed(2)}
+                  סה"כ לתשלום: ₪{Number(invoiceAmount).toFixed(2)}
                 </p>
               )}
             </div>
