@@ -50,26 +50,36 @@ const ServiceCallForm = () => {
       toast({ title: "שגיאה", description: "לא ניתן לטעון את הקריאה", variant: "destructive" });
       navigate("/service-calls");
     } else if (data) {
-      const isKnownType = knownServiceTypeKeys.has(data.job_type);
+      const parts = (data.job_type || "")
+        .split(",")
+        .map((p: string) => p.trim())
+        .filter(Boolean);
+      const known = parts.filter((p: string) => knownServiceTypeKeys.has(p));
+      const unknown = parts.filter((p: string) => !knownServiceTypeKeys.has(p));
+      setSelectedTypes(known);
+      setCustomJobType(unknown.join(", "));
       setForm({
         customer_id: data.customer_id,
-        job_type: isKnownType ? data.job_type : "other",
         description: data.description || "",
         scheduled_date: data.scheduled_date || "",
         status: data.status,
         priority: (data as any).priority || "medium",
         notes: (data as any).notes || "",
       });
-      if (!isKnownType) {
-        setCustomJobType(data.job_type);
-      }
       setCustomerName((data as any).customers?.name || "");
     }
   };
 
-  const resolvedJobType = form.job_type === "other" && isAdmin && customJobType.trim()
-    ? customJobType.trim()
-    : form.job_type;
+  const resolvedJobType = [
+    ...selectedTypes,
+    ...(customJobType.trim() ? [customJobType.trim()] : []),
+  ].join(", ");
+
+  const toggleType = (value: string) => {
+    setSelectedTypes((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
