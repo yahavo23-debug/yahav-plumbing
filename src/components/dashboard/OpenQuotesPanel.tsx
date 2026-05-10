@@ -43,7 +43,7 @@ export function OpenQuotesPanel() {
     const { data, error } = await supabase
       .from("quotes")
       .select(
-        "id, quote_number, title, status, created_at, service_call_id, service_calls!inner(customers!inner(name, phone))"
+        "id, quote_number, title, status, created_at, service_call_id, service_calls!quotes_service_call_id_fkey!inner(customers!inner(name, phone))"
       )
       .in("status", ["draft", "sent"])
       .order("created_at", { ascending: true });
