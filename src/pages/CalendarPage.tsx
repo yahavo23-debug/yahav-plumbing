@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -270,14 +270,19 @@ const CalendarPage = () => {
   const loadCalls = useCallback(async (fromDate: Date, toDate: Date) => {
     if (!user) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from("service_calls")
-      .select("id, scheduled_at, status, job_type, notes, customers(name)")
-      .not("scheduled_at", "is", null)
-      .gte("scheduled_at", fromDate.toISOString())
-      .lte("scheduled_at", toDate.toISOString());
-    if (!error && data) setCalls(data as ServiceCall[]);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from("service_calls")
+        .select("id, scheduled_at, status, job_type, notes, customers(name)")
+        .not("scheduled_at", "is", null)
+        .gte("scheduled_at", fromDate.toISOString())
+        .lte("scheduled_at", toDate.toISOString());
+      if (!error && data) setCalls(data as ServiceCall[]);
+    } catch (err) {
+      console.error("CalendarPage loadCalls error:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   // ── Initial load ─────────────────────────────────────────────────────────────
@@ -409,16 +414,16 @@ const CalendarPage = () => {
 
   // ── Derived data ─────────────────────────────────────────────────────────────
 
-  const callsByDate = calls.reduce<Record<string, ServiceCall[]>>((acc, c) => {
+  const callsByDate = useMemo(() => calls.reduce<Record<string, ServiceCall[]>>((acc, c) => {
     const key = c.scheduled_at.slice(0, 10);
     (acc[key] ??= []).push(c);
     return acc;
-  }, {});
+  }, {}), [calls]);
 
-  const eventsByDate = events.reduce<Record<string, PersonalEvent[]>>((acc, e) => {
+  const eventsByDate = useMemo(() => events.reduce<Record<string, PersonalEvent[]>>((acc, e) => {
     (acc[e.date] ??= []).push(e);
     return acc;
-  }, {});
+  }, {}), [events]);
 
   const selectedKey    = selectedDay ? getDateKey(selectedDay) : "";
   const selectedCalls  = selectedKey ? (callsByDate[selectedKey] || []).sort((a,b) => a.scheduled_at.localeCompare(b.scheduled_at)) : [];

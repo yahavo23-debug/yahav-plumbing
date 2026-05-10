@@ -121,39 +121,49 @@ const Settings = () => {
   }, [user]);
 
   const loadProfile = async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("full_name, phone, id_number")
-      .eq("user_id", user!.id)
-      .single();
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name, phone, id_number")
+        .eq("user_id", user!.id)
+        .single();
 
-    if (data) {
-      setFullName(data.full_name || "");
-      setPhone(data.phone || "");
-      setIdNumber((data as any).id_number || "");
+      if (data) {
+        setFullName(data.full_name || "");
+        setPhone(data.phone || "");
+        setIdNumber((data as any).id_number || "");
+      }
+    } catch (err) {
+      console.error("loadProfile error:", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: fullName.trim() || null,
+          phone: phone.trim() || null,
+          id_number: idNumber.trim() || null,
+        } as any)
+        .eq("user_id", user.id);
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        full_name: fullName.trim() || null,
-        phone: phone.trim() || null,
-        id_number: idNumber.trim() || null,
-      } as any)
-      .eq("user_id", user.id);
-
-    if (error) {
+      if (error) {
+        toast({ title: "שגיאה", description: "לא ניתן לשמור", variant: "destructive" });
+      } else {
+        toast({ title: "נשמר", description: "הפרופיל עודכן בהצלחה" });
+      }
+    } catch (err: any) {
+      console.error("handleSave error:", err);
       toast({ title: "שגיאה", description: "לא ניתן לשמור", variant: "destructive" });
-    } else {
-      toast({ title: "נשמר", description: "הפרופיל עודכן בהצלחה" });
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   if (loading) {
