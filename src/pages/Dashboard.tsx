@@ -200,26 +200,26 @@ const Dashboard = () => {
         supabase.from("service_calls").select("status, priority"),
         supabase
           .from("service_calls")
-          .select("*, customers(name, phone)")
+          .select("*, customers(name, phone, address, city)")
           .eq("scheduled_date", today)
           .in("status", ["open", "in_progress"])
           .order("scheduled_date"),
         supabase
           .from("service_calls")
-          .select("*, customers(name, phone)")
+          .select("*, customers(name, phone, address, city)")
           .in("priority", ["urgent", "high"])
           .in("status", ["open", "in_progress"])
           .order("created_at", { ascending: false })
           .limit(5),
         supabase
           .from("service_calls")
-          .select("*, customers(name, phone)")
+          .select("*, customers(name, phone, address, city)")
           .in("status", ["open", "in_progress"])
           .order("created_at", { ascending: false })
           .limit(8),
         supabase
           .from("service_calls")
-          .select("*, customers(name, phone)")
+          .select("*, customers(name, phone, address, city)")
           .eq("status", "pending_customer")
           .order("updated_at", { ascending: true }),
       ]);
