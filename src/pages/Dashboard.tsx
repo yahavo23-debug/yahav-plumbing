@@ -69,8 +69,14 @@ const CallRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: CallRow
     </button>
     <div className="flex items-center gap-2 shrink-0">
       {call.customers?.phone && (
-        <a href={`tel:${call.customers.phone}`} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors">
+        <a href={`tel:${call.customers.phone}`} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="התקשר">
           <PhoneCall className="w-4 h-4" />
+        </a>
+      )}
+      {wazeUrl(call.customers?.address, call.customers?.city) && (
+        <a href={wazeUrl(call.customers?.address, call.customers?.city)!} target="_blank" rel="noopener noreferrer"
+          className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors" title="נווט בוויז">
+          <Navigation className="w-4 h-4" />
         </a>
       )}
       <Popover>
