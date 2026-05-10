@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   Users, Wrench, AlertCircle, Plus, CheckCircle2, Clock,
   PhoneCall, ChevronLeft, CalendarClock, Flame, ChevronDown,
-  MessageCircle, HourglassIcon,
+  MessageCircle, HourglassIcon, Navigation,
 } from "lucide-react";
 import { getJobTypeLabel, statusColors, statusLabels } from "@/lib/constants";
 import { format } from "date-fns";
@@ -69,8 +69,14 @@ const CallRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: CallRow
     </button>
     <div className="flex items-center gap-2 shrink-0">
       {call.customers?.phone && (
-        <a href={`tel:${call.customers.phone}`} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors">
+        <a href={`tel:${call.customers.phone}`} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="התקשר">
           <PhoneCall className="w-4 h-4" />
+        </a>
+      )}
+      {wazeUrl(call.customers?.address, call.customers?.city) && (
+        <a href={wazeUrl(call.customers?.address, call.customers?.city)!} target="_blank" rel="noopener noreferrer"
+          className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors" title="נווט בוויז">
+          <Navigation className="w-4 h-4" />
         </a>
       )}
       <Popover>
@@ -139,6 +145,12 @@ const PendingRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: Pend
             </a>
           </>
         )}
+        {wazeUrl(call.customers?.address, call.customers?.city) && (
+          <a href={wazeUrl(call.customers?.address, call.customers?.city)!} target="_blank" rel="noopener noreferrer"
+            className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors" title="נווט בוויז">
+            <Navigation className="w-4 h-4" />
+          </a>
+        )}
         <Popover>
           <PopoverTrigger asChild>
             <button className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium transition-opacity hover:opacity-80 ${ageBg}`}>
@@ -167,6 +179,12 @@ function toWhatsApp(phone: string) {
   const digits = phone.replace(/\D/g, "");
   const intl = digits.startsWith("0") ? "972" + digits.slice(1) : digits;
   return `https://wa.me/${intl}`;
+}
+
+function wazeUrl(address?: string | null, city?: string | null) {
+  const q = [address, city].filter(Boolean).join(", ").trim();
+  if (!q) return null;
+  return `https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
 }
 
 const Dashboard = () => {
@@ -200,26 +218,26 @@ const Dashboard = () => {
         supabase.from("service_calls").select("status, priority"),
         supabase
           .from("service_calls")
-          .select("*, customers(name, phone)")
+          .select("*, customers(name, phone, address, city)")
           .eq("scheduled_date", today)
           .in("status", ["open", "in_progress"])
           .order("scheduled_date"),
         supabase
           .from("service_calls")
-          .select("*, customers(name, phone)")
+          .select("*, customers(name, phone, address, city)")
           .in("priority", ["urgent", "high"])
           .in("status", ["open", "in_progress"])
           .order("created_at", { ascending: false })
           .limit(5),
         supabase
           .from("service_calls")
-          .select("*, customers(name, phone)")
+          .select("*, customers(name, phone, address, city)")
           .in("status", ["open", "in_progress"])
           .order("created_at", { ascending: false })
           .limit(8),
         supabase
           .from("service_calls")
-          .select("*, customers(name, phone)")
+          .select("*, customers(name, phone, address, city)")
           .eq("status", "pending_customer")
           .order("updated_at", { ascending: true }),
       ]);
