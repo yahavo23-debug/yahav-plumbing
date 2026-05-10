@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   Users, Wrench, AlertCircle, Plus, CheckCircle2, Clock,
   PhoneCall, ChevronLeft, CalendarClock, Flame, ChevronDown,
-  MessageCircle, HourglassIcon,
+  MessageCircle, HourglassIcon, Navigation,
 } from "lucide-react";
 import { getJobTypeLabel, statusColors, statusLabels } from "@/lib/constants";
 import { format } from "date-fns";
