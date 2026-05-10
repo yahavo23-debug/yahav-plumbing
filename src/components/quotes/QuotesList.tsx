@@ -140,6 +140,7 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
           include_vat: false,
           signature_path: q.signature_path || null,
           signed_at: q.signed_at || null,
+          rejection_reason: q.rejection_reason || null,
         };
       })
     );
