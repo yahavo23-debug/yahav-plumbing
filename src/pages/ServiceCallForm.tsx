@@ -179,23 +179,20 @@ const ServiceCallForm = () => {
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-              <div className="space-y-2">
-                <Label>עדיפות</Label>
-                <Select value={form.priority} onValueChange={(v) => setForm((f) => ({ ...f, priority: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {priorities.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>
-                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${priorityColors[p.value]}`}>
-                          {p.label}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2 max-w-xs">
+              <Label>עדיפות</Label>
+              <Select value={form.priority} onValueChange={(v) => setForm((f) => ({ ...f, priority: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {priorities.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${priorityColors[p.value]}`}>
+                        {p.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Scheduled date */}
