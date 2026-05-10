@@ -121,7 +121,7 @@ function AppRoutes() {
       <Route path="/calendar" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><CalendarPage /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><Finance /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/invoices" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><Invoices /></ErrorBoundary></ProtectedRoute>} />
-      <Route path="/profitability" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><ProfitabilityReport /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/profitability" element={<ProtectedRoute allowedRoles={["admin"]}><ErrorBoundary><ProfitabilityReport /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute allowedRoles={["admin"]}><ErrorBoundary><Settings /></ErrorBoundary></ProtectedRoute>} />
 
       <Route path="*" element={<NotFound />} />

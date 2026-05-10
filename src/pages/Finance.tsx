@@ -38,6 +38,7 @@ const HEBREW_MONTHS = ["ינואר", "פברואר", "מרץ", "אפריל", "מ
 export default function Finance() {
   const { isAdmin, role } = useAuth();
   const canEdit = isAdmin || role === "secretary";
+  const canDelete = isAdmin; // מחיקה — אדמין בלבד
 
   const [period, setPeriod] = useState<FinancePeriod>("all");
   const [month, setMonth] = useState(getMonthDefault);
@@ -430,23 +431,25 @@ export default function Finance() {
                             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditTxn(t); setShowForm(true); }}>
                               <Pencil className="w-3.5 h-3.5" />
                             </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive">
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>מחיקת רשומה</AlertDialogTitle>
-                                  <AlertDialogDescription>האם למחוק רשומה זו? לא ניתן לשחזר.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>ביטול</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(t.id)}>מחק</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                            {canDelete && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>מחיקת רשומה</AlertDialogTitle>
+                                    <AlertDialogDescription>האם למחוק רשומה זו? לא ניתן לשחזר.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>ביטול</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(t.id)}>מחק</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
                           </div>
                         </td>
                       )}
