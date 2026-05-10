@@ -169,6 +169,12 @@ function toWhatsApp(phone: string) {
   return `https://wa.me/${intl}`;
 }
 
+function wazeUrl(address?: string | null, city?: string | null) {
+  const q = [address, city].filter(Boolean).join(", ").trim();
+  if (!q) return null;
+  return `https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
+}
+
 const Dashboard = () => {
   const [stats, setStats] = useState<DashboardStats>({
     totalCustomers: 0, openCalls: 0, inProgressCalls: 0, completedCalls: 0, urgentCalls: 0,
