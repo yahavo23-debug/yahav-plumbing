@@ -28,7 +28,7 @@ function getDaysOpen(createdAt: string) {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-export function DispatchOpenQuotesPanel() {
+export function OpenQuotesPanel() {
   const [quotes, setQuotes] = useState<OpenQuote[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(true);
