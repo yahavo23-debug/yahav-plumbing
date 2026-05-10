@@ -179,7 +179,7 @@ const ServiceCallDetail = () => {
           serviceCallId: id,
           amount: Number(invoiceAmount),
           description: invoiceDesc || call?.job_type || "שירות אינסטלציה",
-          includeVat: true,
+          includeVat: false,
         },
       });
       if (error) throw error;
