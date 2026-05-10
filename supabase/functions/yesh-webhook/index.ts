@@ -64,20 +64,68 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient    = createClient(supabaseUrl, serviceRoleKey);
 
-    const doc = payload?.document || payload?.data || payload;
+    // יש חשבונית may wrap the document or send it flat
+    const doc = payload?.document || payload?.doc || payload?.invoice || payload?.data || payload;
 
-    const docId = pickFirst(doc.id, doc.docID, doc.documentId, doc.documentID, doc.DocID);
-    const docNumber = String(pickFirst(doc.docNumber, doc.documentNumber, doc.DocNumber, "") || "");
-    const docType = Number(pickFirst(doc.documentType, doc.docType, doc.DocumentType, 9));
-    const docTypeName = String(pickFirst(doc.documentTypeName, doc.DocumentTypeName, "חשבונית מס קבלה"));
-    const customerName = String(pickFirst(doc.customerName, doc.Customer?.Name, doc.customer?.name, "") || "");
-    const phoneRaw = pickFirst(doc.customerPhone, doc.Customer?.Phone, doc.customer?.phone);
+    console.log("yesh-webhook DOC keys:", Object.keys(doc || {}).join(", "));
+
+    // Doc ID — יש חשבונית commonly uses DocID or docID
+    const docId = pickFirst(
+      doc.DocID, doc.docID, doc.DocumentID, doc.documentID, doc.documentId, doc.id,
+    );
+
+    // Doc number
+    const docNumber = String(pickFirst(
+      doc.DocNumber, doc.docNumber, doc.DocumentNumber, doc.documentNumber,
+      doc.invoiceNumber, doc.InvoiceNumber, ""
+    ) || "");
+
+    // Doc type
+    const docType = Number(pickFirst(doc.DocumentType, doc.documentType, doc.docType, doc.DocType, 9));
+    const docTypeName = String(pickFirst(
+      doc.DocumentTypeName, doc.documentTypeName, doc.DocTypeName, "חשבונית מס קבלה"
+    ));
+
+    // Customer — try flat fields first, then nested Customer object
+    const customerName = String(pickFirst(
+      doc.CustomerName, doc.customerName,
+      doc.Customer?.Name, doc.Customer?.name, doc.customer?.name, doc.customer?.Name,
+      ""
+    ) || "");
+
+    const phoneRaw = pickFirst(
+      doc.CustomerPhone, doc.customerPhone,
+      doc.Customer?.Phone, doc.Customer?.phone, doc.customer?.phone, doc.customer?.Phone,
+    );
     const phone = normalizePhone(phoneRaw);
-    const customerEmail = String(pickFirst(doc.customerEmail, doc.Customer?.Email, doc.customer?.email, "") || "");
-    const totalPrice = Number(pickFirst(doc.totalPrice, doc.price, doc.TotalPrice, 0)) || 0;
-    const totalVat = Number(pickFirst(doc.totalVat, doc.vat, doc.TotalVat, 0)) || 0;
-    const totalWithVat = Number(pickFirst(doc.totalWithVat, doc.total, doc.TotalWithVat, doc.Total, 0)) || 0;
-    const dateCreated = String(pickFirst(doc.dateCreated, doc.DateCreated, new Date().toISOString())).slice(0, 10);
+
+    const customerEmail = String(pickFirst(
+      doc.CustomerEmail, doc.customerEmail,
+      doc.Customer?.Email, doc.Customer?.email, doc.customer?.email, doc.customer?.Email,
+      ""
+    ) || "");
+
+    // Amounts — יש חשבונית uses TotalPrice / TotalVAT / TotalWithVAT (capital VAT)
+    const totalPrice = Number(pickFirst(
+      doc.TotalPrice, doc.totalPrice, doc.Price, doc.price, doc.NetPrice, doc.netPrice, 0
+    )) || 0;
+
+    const totalVat = Number(pickFirst(
+      doc.TotalVAT, doc.TotalVat, doc.totalVat, doc.VAT, doc.vat, 0
+    )) || 0;
+
+    const totalWithVat = Number(pickFirst(
+      doc.TotalWithVAT, doc.totalWithVAT, doc.TotalWithVat, doc.totalWithVat,
+      doc.GrandTotal, doc.grandTotal, doc.Total, doc.total, 0
+    )) || 0;
+
+    // Date — יש חשבונית commonly DateCreated or Date
+    const dateCreated = String(pickFirst(
+      doc.DateCreated, doc.dateCreated, doc.Date, doc.date,
+      doc.InvoiceDate, doc.invoiceDate, new Date().toISOString()
+    )).slice(0, 10);
+
+    console.log(`yesh-webhook parsed: docId=${docId} customer="${customerName}" total=${totalWithVat}`);
 
     // Try to match a customer by phone
     let serviceCallId: string | null = null;
