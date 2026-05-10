@@ -211,9 +211,6 @@ export default function DispatchBoard() {
           })}
         </div>
 
-        {/* ── Open quotes panel ── */}
-        <DispatchOpenQuotesPanel />
-
 
         {isMobile && (
           <div className="shrink-0 flex border-b border-border bg-card">
