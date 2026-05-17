@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Search, AlertTriangle, TrendingUp, Package2, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, AlertTriangle, TrendingUp, Package2, Edit, Trash2, Check, ShoppingCart, Minus } from "lucide-react";
 import { InventoryImage } from "@/components/inventory/InventoryImage";
 import { ItemEditorDialog, InventoryItemRow, CategoryRow } from "@/components/inventory/ItemEditorDialog";
 import {
@@ -117,7 +117,7 @@ export default function InventoryPage() {
           </TabsList>
 
           <TabsContent value="__low" className="mt-4">
-            <ItemGrid items={lowStock} categories={categories} usage={usageStats} onEdit={openEdit} onDelete={isAdmin ? setDeleteId : undefined} />
+            <PurchaseList items={lowStock} categories={categories} onDone={load} />
           </TabsContent>
           <TabsContent value={activeCat} className="mt-4">
             {loading ? (
@@ -211,6 +211,133 @@ function ItemGrid({
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+function PurchaseList({
+  items, categories, onDone,
+}: {
+  items: InventoryItemRow[];
+  categories: CategoryRow[];
+  onDone: () => void;
+}) {
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [saving, setSaving] = useState(false);
+
+  if (items.length === 0) {
+    return <p className="text-center text-muted-foreground py-8">אין מוצרים שצריך לקנות</p>;
+  }
+
+  function toggle(id: string) {
+    setCart(c => {
+      const next = { ...c };
+      if (next[id]) delete next[id]; else next[id] = 1;
+      return next;
+    });
+  }
+  function setQty(id: string, q: number) {
+    if (q < 1) { const n = { ...cart }; delete n[id]; setCart(n); return; }
+    setCart(c => ({ ...c, [id]: q }));
+  }
+
+  const totalItems = Object.keys(cart).length;
+  const totalUnits = Object.values(cart).reduce((a, b) => a + b, 0);
+
+  async function confirmPurchase() {
+    setSaving(true);
+    const entries = Object.entries(cart);
+    let ok = 0;
+    for (const [id, qty] of entries) {
+      const item = items.find(i => i.id === id);
+      if (!item) continue;
+      const { error: upErr } = await supabase
+        .from("inventory_items")
+        .update({ quantity_in_stock: Number(item.quantity_in_stock) + qty })
+        .eq("id", id);
+      if (upErr) continue;
+      await supabase.from("inventory_movements").insert({
+        inventory_item_id: id, movement_type: "restock", quantity: qty,
+      });
+      ok++;
+    }
+    setSaving(false);
+    setCart({});
+    toast({ title: `עודכנו ${ok} מוצרים במלאי` });
+    onDone();
+  }
+
+  return (
+    <div className="space-y-3 pb-24">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {items.map(i => {
+          const cat = categories.find(c => c.id === i.category_id);
+          const inCart = cart[i.id];
+          const qty = inCart || 0;
+          return (
+            <Card
+              key={i.id}
+              onClick={() => toggle(i.id)}
+              className={`cursor-pointer transition-all relative ${inCart ? "border-primary border-2 bg-primary/5" : "border-warning/60"}`}
+            >
+              {inCart && (
+                <div className="absolute top-2 left-2 z-10 bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center shadow-md">
+                  <Check className="w-4 h-4" />
+                </div>
+              )}
+              <CardContent className="p-3 space-y-2">
+                <div className="aspect-square w-full rounded-lg overflow-hidden bg-muted">
+                  <InventoryImage path={i.image_path} alt={i.name} className="w-full h-full" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm leading-tight line-clamp-2 min-h-[2.5rem]">{i.name}</h4>
+                  {cat && <span className="inline-block text-[10px] px-2 py-0.5 rounded-full mt-1" style={{ background: cat.color + "22", color: cat.color }}>{cat.name}</span>}
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-base text-warning">{i.quantity_in_stock}</span>
+                  <span className="text-muted-foreground">מינ׳ {i.minimum_stock}</span>
+                </div>
+                {inCart ? (
+                  <div className="flex items-center gap-1 pt-1" onClick={e => e.stopPropagation()}>
+                    <Button size="sm" variant="outline" className="h-9 w-9 p-0" onClick={() => setQty(i.id, qty - 1)}>
+                      <Minus className="w-4 h-4" />
+                    </Button>
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      value={qty}
+                      onChange={e => setQty(i.id, parseInt(e.target.value) || 0)}
+                      className="h-9 text-center px-1"
+                    />
+                    <Button size="sm" variant="outline" className="h-9 w-9 p-0" onClick={() => setQty(i.id, qty + 1)}>
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-center text-muted-foreground pt-1">לחץ להוספה לסל</div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {totalItems > 0 && (
+        <div className="fixed bottom-4 left-4 right-4 z-40 max-w-2xl mx-auto">
+          <Card className="shadow-2xl border-primary border-2">
+            <CardContent className="p-3 flex items-center gap-3">
+              <ShoppingCart className="w-6 h-6 text-primary shrink-0" />
+              <div className="flex-1 text-sm">
+                <div className="font-bold">{totalItems} מוצרים · {totalUnits} יחידות</div>
+                <div className="text-xs text-muted-foreground">לעדכן את המלאי?</div>
+              </div>
+              <Button onClick={confirmPurchase} disabled={saving} className="h-11 px-5 gap-2">
+                <Check className="w-5 h-5" />קניתי
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
