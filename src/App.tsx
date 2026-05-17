@@ -64,6 +64,7 @@ import NotFound from "./pages/NotFound";
 import CalendarPage from "./pages/CalendarPage";
 import Invoices from "./pages/Invoices";
 import Quotes from "./pages/Quotes";
+import Inventory from "./pages/Inventory";
 
 const queryClient = new QueryClient();
 
@@ -118,6 +119,7 @@ function AppRoutes() {
       <Route path="/service-calls/:id/edit" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><ServiceCallForm /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><Reports /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/quotes" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><Quotes /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/inventory" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><Inventory /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><ReportEditor /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/dispatch" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><DispatchBoard /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><CalendarPage /></ErrorBoundary></ProtectedRoute>} />
