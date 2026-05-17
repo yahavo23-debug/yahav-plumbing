@@ -461,6 +461,127 @@ export type Database = {
           },
         ]
       }
+      inventory_categories: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      inventory_items: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          image_path: string | null
+          is_archived: boolean
+          minimum_stock: number
+          name: string
+          notes: string | null
+          purchase_price: number
+          quantity_in_stock: number
+          recommended_sale_price: number
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          image_path?: string | null
+          is_archived?: boolean
+          minimum_stock?: number
+          name: string
+          notes?: string | null
+          purchase_price?: number
+          quantity_in_stock?: number
+          recommended_sale_price?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          image_path?: string | null
+          is_archived?: boolean
+          minimum_stock?: number
+          name?: string
+          notes?: string | null
+          purchase_price?: number
+          quantity_in_stock?: number
+          recommended_sale_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          inventory_item_id: string
+          movement_type: string
+          quantity: number
+          service_call_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          inventory_item_id: string
+          movement_type: string
+          quantity: number
+          service_call_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          inventory_item_id?: string
+          movement_type?: string
+          quantity?: number
+          service_call_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personal_events: {
         Row: {
           color: string
@@ -842,6 +963,65 @@ export type Database = {
             columns: ["service_call_id"]
             isOneToOne: false
             referencedRelation: "service_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_call_materials: {
+        Row: {
+          added_to_inventory: boolean
+          created_at: string
+          created_by: string
+          customer_price: number
+          id: string
+          image_path: string | null
+          inventory_item_id: string | null
+          is_one_off: boolean
+          name: string
+          notes: string | null
+          purchase_price: number
+          quantity: number
+          receipt_path: string | null
+          service_call_id: string
+        }
+        Insert: {
+          added_to_inventory?: boolean
+          created_at?: string
+          created_by?: string
+          customer_price?: number
+          id?: string
+          image_path?: string | null
+          inventory_item_id?: string | null
+          is_one_off?: boolean
+          name: string
+          notes?: string | null
+          purchase_price?: number
+          quantity?: number
+          receipt_path?: string | null
+          service_call_id: string
+        }
+        Update: {
+          added_to_inventory?: boolean
+          created_at?: string
+          created_by?: string
+          customer_price?: number
+          id?: string
+          image_path?: string | null
+          inventory_item_id?: string | null
+          is_one_off?: boolean
+          name?: string
+          notes?: string | null
+          purchase_price?: number
+          quantity?: number
+          receipt_path?: string | null
+          service_call_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_call_materials_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
             referencedColumns: ["id"]
           },
         ]
