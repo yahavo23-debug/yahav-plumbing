@@ -110,7 +110,9 @@ export function ItemEditorDialog({ open, onOpenChange, item, categories, onSaved
             <div className="w-32 h-32 rounded-xl overflow-hidden border">
               <InventoryImage path={form.image_path} alt="" className="w-full h-full" />
             </div>
-            <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden"
+            <input ref={fileRef} type="file" accept="image/*" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) pickImage(f); }} />
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) pickImage(f); }} />
             <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
