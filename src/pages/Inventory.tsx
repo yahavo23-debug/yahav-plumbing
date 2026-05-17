@@ -278,10 +278,11 @@ function PurchaseList({
             <Card
               key={i.id}
               onClick={() => toggle(i.id)}
-              className={`cursor-pointer transition-all relative ${inCart ? "border-primary border-2 bg-primary/5" : "border-warning/60"}`}
+              className={`cursor-pointer transition-all relative ${inCart ? "border-2 bg-success/10" : "border-warning/60"}`}
+              style={inCart ? { borderColor: "hsl(var(--success))" } : undefined}
             >
               {inCart && (
-                <div className="absolute top-2 left-2 z-10 bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center shadow-md">
+                <div className="absolute top-2 left-2 z-10 rounded-full w-7 h-7 flex items-center justify-center shadow-md text-white" style={{ background: "hsl(var(--success))" }}>
                   <Check className="w-4 h-4" />
                 </div>
               )}
