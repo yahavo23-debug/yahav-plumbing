@@ -117,7 +117,7 @@ export default function InventoryPage() {
           </TabsList>
 
           <TabsContent value="__low" className="mt-4">
-            <ItemGrid items={lowStock} categories={categories} usage={usageStats} onEdit={openEdit} onDelete={isAdmin ? setDeleteId : undefined} />
+            <PurchaseList items={lowStock} categories={categories} onDone={load} />
           </TabsContent>
           <TabsContent value={activeCat} className="mt-4">
             {loading ? (
