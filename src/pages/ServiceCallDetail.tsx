@@ -29,6 +29,7 @@ import {
 import { QuotesList } from "@/components/quotes/QuotesList";
 import { DiagnosisTab } from "@/components/diagnosis/DiagnosisTab";
 import { ShareButton } from "@/components/sharing/ShareButton";
+import { MaterialsTab } from "@/components/inventory/MaterialsTab";
 
 type Photo = Tables<"service_call_photos">;
 type Video = Tables<"service_call_videos">;
@@ -395,9 +396,14 @@ const ServiceCallDetail = () => {
           <TabsTrigger value="media" className="text-base px-5 h-10">
             מדיה ({photos.length + videos.length})
           </TabsTrigger>
+          <TabsTrigger value="materials" className="text-base px-5 h-10">חומרים</TabsTrigger>
           <TabsTrigger value="quotes" className="text-base px-5 h-10">הצעות מחיר</TabsTrigger>
           <TabsTrigger value="reports" className="text-base px-5 h-10">דוחות</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="materials">
+          <MaterialsTab serviceCallId={id!} readOnly={isContractor} />
+        </TabsContent>
 
         {/* 1. Call Details */}
         <TabsContent value="details">
