@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Search, AlertTriangle, TrendingUp, Package2, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, AlertTriangle, TrendingUp, Package2, Edit, Trash2, Check, ShoppingCart, Minus } from "lucide-react";
 import { InventoryImage } from "@/components/inventory/InventoryImage";
 import { ItemEditorDialog, InventoryItemRow, CategoryRow } from "@/components/inventory/ItemEditorDialog";
 import {
