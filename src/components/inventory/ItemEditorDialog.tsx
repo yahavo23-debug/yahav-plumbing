@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Camera, Loader2 } from "lucide-react";
+import { Camera, ImageIcon, Loader2 } from "lucide-react";
 import { InventoryImage } from "./InventoryImage";
 
 export interface InventoryItemRow {
@@ -33,6 +33,7 @@ interface Props {
 
 export function ItemEditorDialog({ open, onOpenChange, item, categories, onSaved }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
@@ -114,10 +115,16 @@ export function ItemEditorDialog({ open, onOpenChange, item, categories, onSaved
               onChange={e => { const f = e.target.files?.[0]; if (f) pickImage(f); }} />
             <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) pickImage(f); }} />
-            <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-              {form.image_path ? "החלף תמונה" : "הוסף תמונה"}
-            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => cameraRef.current?.click()} disabled={uploading}>
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                מצלמה
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                <ImageIcon className="w-4 h-4" />
+                גלריה
+              </Button>
+            </div>
           </div>
 
           <div>
