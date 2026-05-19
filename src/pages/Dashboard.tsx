@@ -212,6 +212,8 @@ const Dashboard = () => {
   const loadDashboard = async () => {
     try {
       const today = new Date().toISOString().split("T")[0];
+      const dayStart = new Date(`${today}T00:00:00`).toISOString();
+      const dayEnd = new Date(`${today}T23:59:59.999`).toISOString();
 
       const [customersRes, callsRes, todayRes, urgentRes, recentRes, pendingRes] = await Promise.all([
         supabase.from("customers").select("id", { count: "exact", head: true }),
@@ -219,9 +221,9 @@ const Dashboard = () => {
         supabase
           .from("service_calls")
           .select("*, customers(name, phone, address, city)")
-          .eq("scheduled_date", today)
+          .or(`scheduled_date.eq.${today},and(scheduled_at.gte.${dayStart},scheduled_at.lte.${dayEnd})`)
           .in("status", ["open", "in_progress"])
-          .order("scheduled_date"),
+          .order("scheduled_at", { ascending: true, nullsFirst: false }),
         supabase
           .from("service_calls")
           .select("*, customers(name, phone, address, city)")
