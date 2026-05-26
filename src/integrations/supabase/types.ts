@@ -1183,6 +1183,9 @@ export type Database = {
           quote_id: string | null
           recommendations: string | null
           resolution_text: string | null
+          restore_reason: string | null
+          restored_at: string | null
+          restored_by: string | null
           scheduled_at: string | null
           scheduled_date: string | null
           status: string
@@ -1219,6 +1222,9 @@ export type Database = {
           quote_id?: string | null
           recommendations?: string | null
           resolution_text?: string | null
+          restore_reason?: string | null
+          restored_at?: string | null
+          restored_by?: string | null
           scheduled_at?: string | null
           scheduled_date?: string | null
           status?: string
@@ -1255,6 +1261,9 @@ export type Database = {
           quote_id?: string | null
           recommendations?: string | null
           resolution_text?: string | null
+          restore_reason?: string | null
+          restored_at?: string | null
+          restored_by?: string | null
           scheduled_at?: string | null
           scheduled_date?: string | null
           status?: string
