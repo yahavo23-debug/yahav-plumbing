@@ -215,6 +215,93 @@ const ServiceCallDetail = () => {
     }
   };
 
+  const handleCompleteCall = async () => {
+    if (!user || !id || !call) return;
+    const amt = parseFloat(completeAmount);
+    if (!completeAmount || isNaN(amt) || amt <= 0) {
+      toast({ title: "חסר סכום", description: "יש להזין סכום שנגבה", variant: "destructive" });
+      return;
+    }
+    if (!completeDesc.trim()) {
+      toast({ title: "חסר פירוט", description: "יש לפרט על מה נגבה הסכום", variant: "destructive" });
+      return;
+    }
+    if (!completeMethod) {
+      toast({ title: "חסר אמצעי תשלום", description: "יש לבחור אמצעי תשלום", variant: "destructive" });
+      return;
+    }
+    if (!completeReceipt) {
+      toast({ title: "חובה לצרף קבלה", description: "לא ניתן לסגור קריאה ללא קבלה", variant: "destructive" });
+      return;
+    }
+
+    setCompleting(true);
+    try {
+      // 1) Upload extra completion photos (if any)
+      for (const file of completePhotos) {
+        const ext = file.name.split(".").pop() || "jpg";
+        const path = `${id}/complete-${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("photos").upload(path, file, { contentType: file.type });
+        if (upErr) throw upErr;
+        await supabase.from("service_call_photos").insert({
+          service_call_id: id,
+          storage_path: path,
+          tag: "after",
+          uploaded_by: user.id,
+          caption: "תיעוד סיום קריאה",
+        });
+      }
+
+      // 2) Create ledger payment entry
+      const { error: ledgerErr } = await (supabase as any).from("customer_ledger").insert({
+        customer_id: call.customer_id,
+        service_call_id: id,
+        entry_date: new Date().toISOString().slice(0, 10),
+        entry_type: "payment",
+        amount: amt,
+        description: completeDesc.trim(),
+        receipt_path: completeReceipt,
+        payment_method: completeMethod,
+        created_by: user.id,
+      });
+      if (ledgerErr) throw ledgerErr;
+
+      // 3) Auto-create income transaction
+      await (supabase as any).from("financial_transactions").insert({
+        direction: "income",
+        amount: amt,
+        txn_date: new Date().toISOString().slice(0, 10),
+        category: "service_income",
+        payment_method: completeMethod,
+        customer_id: call.customer_id,
+        service_call_id: id,
+        notes: completeDesc.trim(),
+        status: "paid",
+        created_by: user.id,
+      });
+
+      // 4) Mark call completed
+      const { error: callErr } = await supabase
+        .from("service_calls")
+        .update({ status: "completed", completed_at: new Date().toISOString() } as any)
+        .eq("id", id);
+      if (callErr) throw callErr;
+
+      toast({ title: "הקריאה הושלמה", description: `נגבו ₪${amt.toLocaleString()} ונשמרה קבלה` });
+      setCall({ ...call, status: "completed" });
+      setShowCompleteDialog(false);
+      setCompleteAmount(""); setCompleteDesc(""); setCompleteMethod("");
+      setCompleteReceipt(null); setCompletePhotos([]);
+      refreshPhotos();
+    } catch (err: any) {
+      console.error("Complete call error:", err);
+      toast({ title: "שגיאה בסגירת קריאה", description: err.message, variant: "destructive" });
+    } finally {
+      setCompleting(false);
+    }
+  };
+
+
   if (loading) {
     return <AppLayout title="טוען..."><p className="text-center py-8">טוען...</p></AppLayout>;
   }
