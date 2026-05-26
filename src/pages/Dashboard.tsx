@@ -259,8 +259,8 @@ const Dashboard = () => {
         supabase
           .from("service_calls")
           .select("*, customers(name, phone, address, city)")
-          .in("priority", ["urgent", "high"])
           .in("status", ["open", "in_progress", "pending_customer"])
+          .order("priority", { ascending: true })
           .order("scheduled_at", { ascending: true, nullsFirst: false }),
         supabase
           .from("service_calls")
@@ -557,12 +557,12 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Urgent / open calls */}
+        {/* Active open calls */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold flex items-center gap-2">
               <Flame className="w-4 h-4 text-destructive" />
-              דחוף ופתוח
+              קריאות פתוחות
               {urgentCalls.length > 0 && (
                 <span className="text-xs bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center font-bold">
                   {urgentCalls.length}
@@ -584,7 +584,7 @@ const Dashboard = () => {
           ) : urgentCalls.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border p-8 text-center">
               <CheckCircle2 className="w-8 h-8 text-success mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">אין קריאות דחופות פעילות</p>
+              <p className="text-sm text-muted-foreground">אין קריאות פתוחות</p>
             </div>
           ) : (
             <div className="space-y-2">
