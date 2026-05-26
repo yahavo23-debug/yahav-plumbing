@@ -89,8 +89,12 @@ function sortCallsByTime(a: any, b: any): number {
 
 const CallRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: CallRowProps) => {
   const hourLabel = callHourLabel(call);
+  const dateLabel = callDateLabel(call);
+  const overdue = isCallOverdue(call);
   return (
-    <div className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/60 transition-colors text-right">
+    <div className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-right ${
+      overdue ? "border-destructive/40 bg-destructive/5" : "border-border hover:bg-accent/60"
+    }`}>
       {/* Hour badge */}
       {hourLabel && (
         <div className="shrink-0 flex flex-col items-center justify-center gap-0.5 w-12">
@@ -102,8 +106,17 @@ const CallRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: CallRow
         onClick={() => onNavigate(call.id)}
         className="flex-1 min-w-0 text-right"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-sm truncate">{call.customers?.name}</span>
+          {dateLabel && (
+            <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+              overdue
+                ? "bg-destructive text-destructive-foreground animate-pulse"
+                : "bg-muted text-muted-foreground"
+            }`}>
+              {overdue ? "⚠ " : ""}{dateLabel}
+            </span>
+          )}
           {call.priority === "urgent" && (
             <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium shrink-0">דחוף</span>
           )}
