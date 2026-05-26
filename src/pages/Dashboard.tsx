@@ -19,6 +19,7 @@ import { toast } from "@/hooks/use-toast";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Bell } from "lucide-react";
 import { OpenQuotesPanel } from "@/components/dashboard/OpenQuotesPanel";
+import { CompleteCallDialog } from "@/components/service-calls/CompleteCallDialog";
 
 interface DashboardStats {
   totalCustomers: number;
@@ -260,6 +261,7 @@ const Dashboard = () => {
   const [pendingCalls, setPendingCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [quickCallOpen, setQuickCallOpen] = useState(false);
+  const [completeDialogCall, setCompleteDialogCall] = useState<any | null>(null);
   const navigate = useNavigate();
   const { user, isAdmin, role } = useAuth();
   const { requestPermission, notify, permission } = useNotifications();
@@ -354,6 +356,16 @@ const Dashboard = () => {
   const todayStr = format(new Date(), "EEEE, d בMMMM yyyy", { locale: he });
 
   const updateCallStatus = async (callId: string, newStatus: string) => {
+    if (newStatus === "completed") {
+      // Open the complete-call dialog instead of updating directly
+      const allCalls = [...todayCalls, ...recentCalls, ...urgentCalls, ...pendingCalls];
+      const call = allCalls.find(c => c.id === callId);
+      if (call) {
+        setCompleteDialogCall(call);
+      }
+      return false; // prevent row from updating optimistically
+    }
+
     const { error } = await supabase
       .from("service_calls")
       .update({ status: newStatus })
@@ -624,6 +636,17 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      <CompleteCallDialog
+        open={!!completeDialogCall}
+        onOpenChange={(o) => { if (!o) setCompleteDialogCall(null); }}
+        call={completeDialogCall}
+        onCompleted={() => {
+          if (completeDialogCall) handleStatusChange(completeDialogCall.id, "completed");
+          setCompleteDialogCall(null);
+          loadDashboard();
+        }}
+      />
     </AppLayout>
   );
 };
