@@ -96,8 +96,11 @@ export function CompleteCallDialog({ open, onOpenChange, call, onCompleted }: Co
         payment_method: method,
         customer_id: call.customer_id,
         service_call_id: call.id,
+        counterparty_name: call.customers?.name || null,
         notes: desc.trim(),
         status: "paid",
+        doc_type: "receipt",
+        doc_path: receipt,
         created_by: user.id,
       });
 
