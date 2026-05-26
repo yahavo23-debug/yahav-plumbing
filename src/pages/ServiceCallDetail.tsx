@@ -30,6 +30,10 @@ import { QuotesList } from "@/components/quotes/QuotesList";
 import { DiagnosisTab } from "@/components/diagnosis/DiagnosisTab";
 import { ShareButton } from "@/components/sharing/ShareButton";
 import { MaterialsTab } from "@/components/inventory/MaterialsTab";
+import { ReceiptUpload } from "@/components/billing/ReceiptUpload";
+import { financePaymentMethods } from "@/lib/finance-constants";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MediaUploader as _MU } from "@/components/media/MediaUploader";
 
 type Photo = Tables<"service_call_photos">;
 type Video = Tables<"service_call_videos">;
