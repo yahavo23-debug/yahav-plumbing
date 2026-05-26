@@ -259,8 +259,8 @@ const Dashboard = () => {
         supabase
           .from("service_calls")
           .select("*, customers(name, phone, address, city)")
-          .in("priority", ["urgent", "high"])
           .in("status", ["open", "in_progress", "pending_customer"])
+          .order("priority", { ascending: true })
           .order("scheduled_at", { ascending: true, nullsFirst: false }),
         supabase
           .from("service_calls")
