@@ -66,6 +66,7 @@ const ServiceCallForm = () => {
         status: data.status,
         priority: (data as any).priority || "medium",
         notes: (data as any).notes || "",
+        scheduled_at: (data as any).scheduled_at || "",
       });
       setCustomerName((data as any).customers?.name || "");
     }
