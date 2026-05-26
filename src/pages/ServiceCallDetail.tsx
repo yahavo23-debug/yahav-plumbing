@@ -719,6 +719,82 @@ const ServiceCallDetail = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Complete call dialog */}
+      <Dialog open={showCompleteDialog} onOpenChange={(o) => { if (!completing) setShowCompleteDialog(o); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>סגירת קריאה - גביית תשלום</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1.5 block">סכום שנגבה (₪) <span className="text-destructive">*</span></Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={completeAmount}
+                  onChange={(e) => setCompleteAmount(e.target.value)}
+                  placeholder="0"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <Label className="mb-1.5 block">אמצעי תשלום <span className="text-destructive">*</span></Label>
+                <Select value={completeMethod} onValueChange={setCompleteMethod}>
+                  <SelectTrigger><SelectValue placeholder="בחר אמצעי" /></SelectTrigger>
+                  <SelectContent>
+                    {financePaymentMethods.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block">על מה נגבה <span className="text-destructive">*</span></Label>
+              <Textarea
+                value={completeDesc}
+                onChange={(e) => setCompleteDesc(e.target.value)}
+                rows={3}
+                placeholder="פירוט העבודה / החלקים שהוחלפו..."
+              />
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block">קבלה <span className="text-destructive">*</span></Label>
+              <ReceiptUpload
+                customerId={call?.customer_id}
+                currentPath={completeReceipt}
+                onUploaded={(p) => setCompleteReceipt(p)}
+                onRemoved={() => setCompleteReceipt(null)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">חובה לצרף קבלה - לא ניתן לסגור קריאה ללא קבלה.</p>
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block">תמונות סיום (אופציונלי)</Label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => setCompletePhotos(Array.from(e.target.files || []))}
+                className="block w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-md file:border file:border-input file:bg-background file:text-sm file:font-medium hover:file:bg-accent"
+              />
+              {completePhotos.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">{completePhotos.length} תמונות נבחרו</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowCompleteDialog(false)} disabled={completing}>ביטול</Button>
+            <Button onClick={handleCompleteCall} disabled={completing || !completeReceipt} className="gap-2">
+              {completing ? "שומר..." : "סגור קריאה"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };
