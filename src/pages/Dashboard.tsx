@@ -282,7 +282,7 @@ const Dashboard = () => {
         openCalls: calls.filter(c => c.status === "open").length,
         inProgressCalls: calls.filter(c => c.status === "in_progress").length,
         completedCalls: calls.filter(c => c.status === "completed").length,
-        urgentCalls: calls.filter(c => c.priority === "urgent" || c.priority === "high").length,
+        urgentCalls: calls.filter(c => (c.priority === "urgent" || c.priority === "high") && ["open", "in_progress", "pending_customer"].includes(c.status)).length,
       });
       // Sort today's calls client-side by time so scheduled_date-only calls interleave correctly
       const todaySorted = (todayRes.data || []).sort(sortCallsByTime);
