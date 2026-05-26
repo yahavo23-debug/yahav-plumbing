@@ -281,7 +281,7 @@ const Dashboard = () => {
       const dayStart = new Date(`${today}T00:00:00`).toISOString();
       const dayEnd = new Date(`${today}T23:59:59.999`).toISOString();
 
-      const [customersRes, callsRes, todayRes, urgentRes, recentRes, pendingRes] = await Promise.all([
+      const [customersRes, callsRes, todayRes, urgentRes, recentRes, pendingRes, inProgRes] = await Promise.all([
         supabase.from("customers").select("id", { count: "exact", head: true }),
         supabase.from("service_calls").select("status, priority"),
         supabase
@@ -307,6 +307,11 @@ const Dashboard = () => {
           .select("*, customers(name, phone, address, city)")
           .eq("status", "pending_customer")
           .order("updated_at", { ascending: true }),
+        supabase
+          .from("service_calls")
+          .select("*, customers(name, phone, address, city)")
+          .eq("status", "in_progress")
+          .order("updated_at", { ascending: false }),
       ]);
 
       const calls = callsRes.data || [];
