@@ -579,6 +579,34 @@ const Dashboard = () => {
         </div>
       )}
 
+      {/* בטיפול — active in_progress section */}
+      {(loading || inProgressList.length > 0) && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-yellow-600" />
+              לקוחות בטיפול
+              {inProgressList.length > 0 && (
+                <span className="text-xs bg-yellow-500 text-white rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {inProgressList.length}
+                </span>
+              )}
+            </h2>
+          </div>
+          {loading ? (
+            <div className="space-y-2">
+              {[1, 2].map(i => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}
+            </div>
+          ) : inProgressList.length === 0 ? null : (
+            <div className="space-y-2">
+              {inProgressList.map(call => (
+                <CallRow key={call.id} call={call} onNavigate={navToCall} onStatusChange={handleStatusChange} updateCallStatus={updateCallStatus} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <OpenQuotesPanel />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
