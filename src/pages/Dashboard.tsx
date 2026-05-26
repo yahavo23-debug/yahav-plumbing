@@ -19,6 +19,7 @@ import { toast } from "@/hooks/use-toast";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Bell } from "lucide-react";
 import { OpenQuotesPanel } from "@/components/dashboard/OpenQuotesPanel";
+import { CompleteCallDialog } from "@/components/service-calls/CompleteCallDialog";
 
 interface DashboardStats {
   totalCustomers: number;
