@@ -261,6 +261,7 @@ const Dashboard = () => {
   const [pendingCalls, setPendingCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [quickCallOpen, setQuickCallOpen] = useState(false);
+  const [completeDialogCall, setCompleteDialogCall] = useState<any | null>(null);
   const navigate = useNavigate();
   const { user, isAdmin, role } = useAuth();
   const { requestPermission, notify, permission } = useNotifications();
