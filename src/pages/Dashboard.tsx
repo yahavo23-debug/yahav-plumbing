@@ -259,6 +259,7 @@ const Dashboard = () => {
   const [urgentCalls, setUrgentCalls] = useState<any[]>([]);
   const [recentCalls, setRecentCalls] = useState<any[]>([]);
   const [pendingCalls, setPendingCalls] = useState<any[]>([]);
+  const [inProgressList, setInProgressList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [quickCallOpen, setQuickCallOpen] = useState(false);
   const [completeDialogCall, setCompleteDialogCall] = useState<any | null>(null);
@@ -280,7 +281,7 @@ const Dashboard = () => {
       const dayStart = new Date(`${today}T00:00:00`).toISOString();
       const dayEnd = new Date(`${today}T23:59:59.999`).toISOString();
 
-      const [customersRes, callsRes, todayRes, urgentRes, recentRes, pendingRes] = await Promise.all([
+      const [customersRes, callsRes, todayRes, urgentRes, recentRes, pendingRes, inProgRes] = await Promise.all([
         supabase.from("customers").select("id", { count: "exact", head: true }),
         supabase.from("service_calls").select("status, priority"),
         supabase
@@ -306,6 +307,11 @@ const Dashboard = () => {
           .select("*, customers(name, phone, address, city)")
           .eq("status", "pending_customer")
           .order("updated_at", { ascending: true }),
+        supabase
+          .from("service_calls")
+          .select("*, customers(name, phone, address, city)")
+          .eq("status", "in_progress")
+          .order("updated_at", { ascending: false }),
       ]);
 
       const calls = callsRes.data || [];
@@ -323,6 +329,7 @@ const Dashboard = () => {
       setRecentCalls(recentRes.data || []);
       const pending = pendingRes.data || [];
       setPendingCalls(pending);
+      setInProgressList(inProgRes.data || []);
 
       // Send notification if there are stale pending calls
       if (Notification.permission === "granted" && pending.length > 0) {
@@ -358,7 +365,7 @@ const Dashboard = () => {
   const updateCallStatus = async (callId: string, newStatus: string) => {
     if (newStatus === "completed") {
       // Open the complete-call dialog instead of updating directly
-      const allCalls = [...todayCalls, ...recentCalls, ...urgentCalls, ...pendingCalls];
+      const allCalls = [...todayCalls, ...recentCalls, ...urgentCalls, ...pendingCalls, ...inProgressList];
       const call = allCalls.find(c => c.id === callId);
       if (call) {
         setCompleteDialogCall(call);
@@ -388,10 +395,10 @@ const Dashboard = () => {
     setRecentCalls(prev => updateList(prev));
     setUrgentCalls(prev => updateList(prev));
 
+    const allCalls = [...todayCalls, ...recentCalls, ...urgentCalls, ...pendingCalls, ...inProgressList];
+    const call = allCalls.find(c => c.id === id);
+
     if (status === "pending_customer") {
-      // Find the call and add to pending list
-      const allCalls = [...todayCalls, ...recentCalls, ...urgentCalls, ...pendingCalls];
-      const call = allCalls.find(c => c.id === id);
       if (call) {
         const updated = { ...call, status, updated_at: updatedAt };
         setPendingCalls(prev => {
@@ -404,8 +411,19 @@ const Dashboard = () => {
         });
       }
     } else {
-      // Remove from pending list if no longer pending
       setPendingCalls(prev => prev.filter(c => c.id !== id));
+    }
+
+    if (status === "in_progress") {
+      if (call) {
+        const updated = { ...call, status, updated_at: updatedAt };
+        setInProgressList(prev => {
+          const exists = prev.some(c => c.id === id);
+          return exists ? updateList(prev) : [updated, ...prev];
+        });
+      }
+    } else {
+      setInProgressList(prev => prev.filter(c => c.id !== id));
     }
   };
 
@@ -556,6 +574,34 @@ const Dashboard = () => {
           ) : pendingCalls.length === 0 ? null : (
             <div className="space-y-2">
               {pendingCalls.map(call => <PendingRow key={call.id} call={call} onNavigate={navToCall} onStatusChange={handleStatusChange} updateCallStatus={updateCallStatus} />)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* בטיפול — active in_progress section */}
+      {(loading || inProgressList.length > 0) && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-yellow-600" />
+              לקוחות בטיפול
+              {inProgressList.length > 0 && (
+                <span className="text-xs bg-yellow-500 text-white rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {inProgressList.length}
+                </span>
+              )}
+            </h2>
+          </div>
+          {loading ? (
+            <div className="space-y-2">
+              {[1, 2].map(i => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}
+            </div>
+          ) : inProgressList.length === 0 ? null : (
+            <div className="space-y-2">
+              {inProgressList.map(call => (
+                <CallRow key={call.id} call={call} onNavigate={navToCall} onStatusChange={handleStatusChange} updateCallStatus={updateCallStatus} />
+              ))}
             </div>
           )}
         </div>
