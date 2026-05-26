@@ -31,6 +31,7 @@ const ServiceCallForm = () => {
     status: "open",
     priority: "medium",
     notes: "",
+    scheduled_at: "",
   });
 
   useEffect(() => {
