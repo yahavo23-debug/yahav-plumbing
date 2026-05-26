@@ -34,8 +34,41 @@ const ServiceCalls = () => {
   const { user, isAdmin, role } = useAuth();
   const isContractor = role === "contractor";
   const canCreate = isAdmin || role === "technician" || role === "secretary";
+  const canRestore = isAdmin || role === "secretary";
+  const [restoreCall, setRestoreCall] = useState<any | null>(null);
+  const [restoreReason, setRestoreReason] = useState("");
+  const [restoring, setRestoring] = useState(false);
 
   useEffect(() => { if (!user) return; loadCalls(); }, [user]);
+
+  const handleRestore = async () => {
+    if (!restoreCall) return;
+    if (!restoreReason.trim()) {
+      toast({ title: "חובה למלא סיבה", description: "יש לציין מדוע הקריאה מוחזרת ללוח", variant: "destructive" });
+      return;
+    }
+    setRestoring(true);
+    const { error } = await supabase
+      .from("service_calls")
+      .update({
+        status: "open",
+        completed_at: null,
+        completed_date: null,
+        restore_reason: restoreReason.trim(),
+        restored_at: new Date().toISOString(),
+        restored_by: user?.id,
+      })
+      .eq("id", restoreCall.id);
+    setRestoring(false);
+    if (error) {
+      toast({ title: "שגיאה בהחזרה", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "הקריאה הוחזרה ללוח", description: `${(restoreCall.customers as any)?.name || ""} חזר לסטטוס פתוח` });
+    setRestoreCall(null);
+    setRestoreReason("");
+    loadCalls();
+  };
 
   const loadCalls = async () => {
     try {
