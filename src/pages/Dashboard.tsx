@@ -259,6 +259,7 @@ const Dashboard = () => {
   const [urgentCalls, setUrgentCalls] = useState<any[]>([]);
   const [recentCalls, setRecentCalls] = useState<any[]>([]);
   const [pendingCalls, setPendingCalls] = useState<any[]>([]);
+  const [inProgressList, setInProgressList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [quickCallOpen, setQuickCallOpen] = useState(false);
   const [completeDialogCall, setCompleteDialogCall] = useState<any | null>(null);
