@@ -80,6 +80,15 @@ const ServiceCallDetail = () => {
   const [invoiceDesc, setInvoiceDesc] = useState("");
   const [invoiceLoading, setInvoiceLoading] = useState(false);
 
+  // Complete-call dialog state
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [completeAmount, setCompleteAmount] = useState("");
+  const [completeDesc, setCompleteDesc] = useState("");
+  const [completeMethod, setCompleteMethod] = useState("");
+  const [completeReceipt, setCompleteReceipt] = useState<string | null>(null);
+  const [completePhotos, setCompletePhotos] = useState<File[]>([]);
+  const [completing, setCompleting] = useState(false);
+
   // Keep findings/recommendations for report creation
   const [findings, setFindings] = useState("");
   const [recommendations, setRecommendations] = useState("");
