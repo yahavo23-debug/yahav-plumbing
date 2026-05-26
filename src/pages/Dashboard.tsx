@@ -59,6 +59,24 @@ function callHourLabel(call: any): string | null {
   return null;
 }
 
+/** Date label (dd/mm) from scheduled_at or scheduled_date */
+function callDateLabel(call: any): string | null {
+  const src = call.scheduled_at || (call.scheduled_date ? `${call.scheduled_date}T09:00:00` : null);
+  if (!src) return null;
+  const d = new Date(src);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Is the scheduled time in the past? */
+function isCallOverdue(call: any): boolean {
+  if (call.scheduled_at) return new Date(call.scheduled_at).getTime() < Date.now();
+  if (call.scheduled_date) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return new Date(`${call.scheduled_date}T00:00:00`).getTime() < today.getTime();
+  }
+  return false;
+}
+
 /** Sort comparator for today's calls: earliest hour first, nulls at end */
 function sortCallsByTime(a: any, b: any): number {
   const getTime = (c: any): number => {
