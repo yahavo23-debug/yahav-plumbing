@@ -343,17 +343,9 @@ const ServiceCallDetail = () => {
                 <Button
                   variant="outline"
                   className="gap-2 text-success hover:bg-success hover:text-success-foreground"
-                  onClick={async () => {
-                    const { error } = await supabase
-                      .from("service_calls")
-                      .update({ status: "completed", completed_at: new Date().toISOString() } as any)
-                      .eq("id", id!);
-                    if (error) {
-                      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
-                    } else {
-                      toast({ title: "טופל", description: "הקריאה סומנה כטופלה" });
-                      setCall({ ...call, status: "completed" });
-                    }
+                  onClick={() => {
+                    setCompleteDesc(call?.job_type ? `שירות: ${call.job_type}` : "");
+                    setShowCompleteDialog(true);
                   }}
                 >
                   טופל
