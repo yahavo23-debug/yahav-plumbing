@@ -329,6 +329,7 @@ const Dashboard = () => {
       setRecentCalls(recentRes.data || []);
       const pending = pendingRes.data || [];
       setPendingCalls(pending);
+      setInProgressList(inProgRes.data || []);
 
       // Send notification if there are stale pending calls
       if (Notification.permission === "granted" && pending.length > 0) {
