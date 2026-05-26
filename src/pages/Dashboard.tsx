@@ -395,10 +395,10 @@ const Dashboard = () => {
     setRecentCalls(prev => updateList(prev));
     setUrgentCalls(prev => updateList(prev));
 
+    const allCalls = [...todayCalls, ...recentCalls, ...urgentCalls, ...pendingCalls, ...inProgressList];
+    const call = allCalls.find(c => c.id === id);
+
     if (status === "pending_customer") {
-      // Find the call and add to pending list
-      const allCalls = [...todayCalls, ...recentCalls, ...urgentCalls, ...pendingCalls];
-      const call = allCalls.find(c => c.id === id);
       if (call) {
         const updated = { ...call, status, updated_at: updatedAt };
         setPendingCalls(prev => {
@@ -411,8 +411,19 @@ const Dashboard = () => {
         });
       }
     } else {
-      // Remove from pending list if no longer pending
       setPendingCalls(prev => prev.filter(c => c.id !== id));
+    }
+
+    if (status === "in_progress") {
+      if (call) {
+        const updated = { ...call, status, updated_at: updatedAt };
+        setInProgressList(prev => {
+          const exists = prev.some(c => c.id === id);
+          return exists ? updateList(prev) : [updated, ...prev];
+        });
+      }
+    } else {
+      setInProgressList(prev => prev.filter(c => c.id !== id));
     }
   };
 
