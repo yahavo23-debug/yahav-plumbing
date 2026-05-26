@@ -284,7 +284,9 @@ const Dashboard = () => {
         completedCalls: calls.filter(c => c.status === "completed").length,
         urgentCalls: calls.filter(c => c.priority === "urgent" || c.priority === "high").length,
       });
-      setTodayCalls(todayRes.data || []);
+      // Sort today's calls client-side by time so scheduled_date-only calls interleave correctly
+      const todaySorted = (todayRes.data || []).sort(sortCallsByTime);
+      setTodayCalls(todaySorted);
       setUrgentCalls(urgentRes.data || []);
       setRecentCalls(recentRes.data || []);
       const pending = pendingRes.data || [];
