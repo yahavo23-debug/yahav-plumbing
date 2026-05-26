@@ -636,6 +636,17 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      <CompleteCallDialog
+        open={!!completeDialogCall}
+        onOpenChange={(o) => { if (!o) setCompleteDialogCall(null); }}
+        call={completeDialogCall}
+        onCompleted={() => {
+          if (completeDialogCall) handleStatusChange(completeDialogCall.id, "completed");
+          setCompleteDialogCall(null);
+          loadDashboard();
+        }}
+      />
     </AppLayout>
   );
 };
