@@ -31,6 +31,7 @@ const ServiceCallForm = () => {
     status: "open",
     priority: "medium",
     notes: "",
+    scheduled_at: "",
   });
 
   useEffect(() => {
@@ -65,6 +66,7 @@ const ServiceCallForm = () => {
         status: data.status,
         priority: (data as any).priority || "medium",
         notes: (data as any).notes || "",
+        scheduled_at: (data as any).scheduled_at || "",
       });
       setCustomerName((data as any).customers?.name || "");
     }
@@ -87,13 +89,17 @@ const ServiceCallForm = () => {
     setLoading(true);
 
     try {
-      // Auto-schedule so the call appears in the calendar (יומן).
-      // Use chosen date at 09:00 local, or today at current time if none provided.
-      const computeScheduledAt = (): string => {
-        if (form.scheduled_date) {
-          return new Date(`${form.scheduled_date}T09:00:00`).toISOString();
+      /** Build scheduled_at from scheduled_date while preserving existing hour when editing */
+      const computeScheduledAt = (): string | null => {
+        if (!form.scheduled_date) return null;
+        // Editing: keep the original hour if one exists
+        if (isEdit && form.scheduled_at) {
+          const existing = new Date(form.scheduled_at);
+          const h = String(existing.getHours()).padStart(2, "0");
+          const m = String(existing.getMinutes()).padStart(2, "0");
+          return new Date(`${form.scheduled_date}T${h}:${m}:00`).toISOString();
         }
-        return new Date().toISOString();
+        return new Date(`${form.scheduled_date}T09:00:00`).toISOString();
       };
 
       const payload: any = {
@@ -104,6 +110,7 @@ const ServiceCallForm = () => {
         status: form.status,
         priority: form.priority,
         notes: form.notes.trim() || null,
+        scheduled_at: computeScheduledAt(),
       };
 
       if (isEdit) {
@@ -112,7 +119,7 @@ const ServiceCallForm = () => {
         toast({ title: "עודכן", description: "הקריאה עודכנה בהצלחה" });
         navigate(`/service-calls/${id}`);
       } else {
-        const insertPayload = { ...payload, created_by: user.id, scheduled_at: computeScheduledAt() };
+        const insertPayload = { ...payload, created_by: user.id };
         const { data, error } = await supabase
           .from("service_calls")
           .insert(insertPayload as any)

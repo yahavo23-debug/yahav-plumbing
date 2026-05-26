@@ -47,60 +47,92 @@ interface CallRowProps {
   updateCallStatus: (id: string, status: string) => Promise<boolean>;
 }
 
-const CallRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: CallRowProps) => (
-  <div className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/60 transition-colors text-right">
-    <button
-      onClick={() => onNavigate(call.id)}
-      className="flex-1 min-w-0 text-right"
-    >
-      <div className="flex items-center gap-2">
-        <span className="font-semibold text-sm truncate">{call.customers?.name}</span>
-        {call.priority === "urgent" && (
-          <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium shrink-0">דחוף</span>
-        )}
-        {call.priority === "high" && (
-          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium shrink-0">גבוהה</span>
-        )}
-      </div>
-      <p className="text-xs text-muted-foreground truncate mt-0.5">
-        {getJobTypeLabel(call.job_type)}
-        {call.description && ` • ${call.description.slice(0, 40)}`}
-      </p>
-    </button>
-    <div className="flex items-center gap-2 shrink-0">
-      {call.customers?.phone && (
-        <a href={`tel:${call.customers.phone}`} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="התקשר">
-          <PhoneCall className="w-4 h-4" />
-        </a>
+/** Extract display hour from a call (scheduled_at takes precedence, else 09:00 from scheduled_date, else fallback) */
+function callHourLabel(call: any): string | null {
+  if (call.scheduled_at) {
+    const d = new Date(call.scheduled_at);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+  if (call.scheduled_date) {
+    return "09:00";
+  }
+  return null;
+}
+
+/** Sort comparator for today's calls: earliest hour first, nulls at end */
+function sortCallsByTime(a: any, b: any): number {
+  const getTime = (c: any): number => {
+    if (c.scheduled_at) return new Date(c.scheduled_at).getTime();
+    if (c.scheduled_date) return new Date(`${c.scheduled_date}T09:00:00`).getTime();
+    return Infinity;
+  };
+  return getTime(a) - getTime(b);
+}
+
+const CallRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: CallRowProps) => {
+  const hourLabel = callHourLabel(call);
+  return (
+    <div className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/60 transition-colors text-right">
+      {/* Hour badge */}
+      {hourLabel && (
+        <div className="shrink-0 flex flex-col items-center justify-center gap-0.5 w-12">
+          <span className="text-[11px] font-bold text-primary leading-none">{hourLabel}</span>
+          <Clock className="w-3 h-3 text-primary/70" />
+        </div>
       )}
-      {wazeUrl(call.customers?.address, call.customers?.city) && (
-        <a href={wazeUrl(call.customers?.address, call.customers?.city)!} target="_blank" rel="noopener noreferrer"
-          className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors" title="נווט בוויז">
-          <Navigation className="w-4 h-4" />
-        </a>
-      )}
-      <Popover>
-        <PopoverTrigger asChild>
-          <button className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium transition-opacity hover:opacity-80 ${statusColors[call.status]}`}>
-            {statusLabels[call.status]}<ChevronDown className="w-3 h-3" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-44 p-1.5">
-          <p className="text-xs text-muted-foreground font-medium px-2 py-1 mb-1">שנה סטטוס</p>
-          {STATUS_OPTIONS.map(opt => (
-            <button key={opt.value} onClick={async () => { const ok = await updateCallStatus(call.id, opt.value); if (ok) onStatusChange(call.id, opt.value); }}
-              className={`w-full text-right text-sm px-3 py-2 rounded-lg transition-colors hover:bg-accent ${call.status === opt.value ? "font-semibold bg-accent" : ""}`}>
-              {opt.label}
-            </button>
-          ))}
-        </PopoverContent>
-      </Popover>
-      <button onClick={() => onNavigate(call.id)} className="p-1 rounded hover:bg-accent transition-colors">
-        <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+      <button
+        onClick={() => onNavigate(call.id)}
+        className="flex-1 min-w-0 text-right"
+      >
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-sm truncate">{call.customers?.name}</span>
+          {call.priority === "urgent" && (
+            <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium shrink-0">דחוף</span>
+          )}
+          {call.priority === "high" && (
+            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium shrink-0">גבוהה</span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground truncate mt-0.5">
+          {getJobTypeLabel(call.job_type)}
+          {call.description && ` • ${call.description.slice(0, 40)}`}
+        </p>
       </button>
+      <div className="flex items-center gap-2 shrink-0">
+        {call.customers?.phone && (
+          <a href={`tel:${call.customers.phone}`} className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors" title="התקשר">
+            <PhoneCall className="w-4 h-4" />
+          </a>
+        )}
+        {wazeUrl(call.customers?.address, call.customers?.city) && (
+          <a href={wazeUrl(call.customers?.address, call.customers?.city)!} target="_blank" rel="noopener noreferrer"
+            className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors" title="נווט בוויז">
+            <Navigation className="w-4 h-4" />
+          </a>
+        )}
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium transition-opacity hover:opacity-80 ${statusColors[call.status]}`}>
+              {statusLabels[call.status]}<ChevronDown className="w-3 h-3" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-44 p-1.5">
+            <p className="text-xs text-muted-foreground font-medium px-2 py-1 mb-1">שנה סטטוס</p>
+            {STATUS_OPTIONS.map(opt => (
+              <button key={opt.value} onClick={async () => { const ok = await updateCallStatus(call.id, opt.value); if (ok) onStatusChange(call.id, opt.value); }}
+                className={`w-full text-right text-sm px-3 py-2 rounded-lg transition-colors hover:bg-accent ${call.status === opt.value ? "font-semibold bg-accent" : ""}`}>
+                {opt.label}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+        <button onClick={() => onNavigate(call.id)} className="p-1 rounded hover:bg-accent transition-colors">
+          <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 interface PendingRowProps {
   call: any;
@@ -252,7 +284,9 @@ const Dashboard = () => {
         completedCalls: calls.filter(c => c.status === "completed").length,
         urgentCalls: calls.filter(c => c.priority === "urgent" || c.priority === "high").length,
       });
-      setTodayCalls(todayRes.data || []);
+      // Sort today's calls client-side by time so scheduled_date-only calls interleave correctly
+      const todaySorted = (todayRes.data || []).sort(sortCallsByTime);
+      setTodayCalls(todaySorted);
       setUrgentCalls(urgentRes.data || []);
       setRecentCalls(recentRes.data || []);
       const pending = pendingRes.data || [];
