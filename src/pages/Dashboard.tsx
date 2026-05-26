@@ -365,7 +365,7 @@ const Dashboard = () => {
   const updateCallStatus = async (callId: string, newStatus: string) => {
     if (newStatus === "completed") {
       // Open the complete-call dialog instead of updating directly
-      const allCalls = [...todayCalls, ...recentCalls, ...urgentCalls, ...pendingCalls];
+      const allCalls = [...todayCalls, ...recentCalls, ...urgentCalls, ...pendingCalls, ...inProgressList];
       const call = allCalls.find(c => c.id === callId);
       if (call) {
         setCompleteDialogCall(call);
