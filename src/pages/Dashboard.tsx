@@ -356,6 +356,16 @@ const Dashboard = () => {
   const todayStr = format(new Date(), "EEEE, d בMMMM yyyy", { locale: he });
 
   const updateCallStatus = async (callId: string, newStatus: string) => {
+    if (newStatus === "completed") {
+      // Open the complete-call dialog instead of updating directly
+      const allCalls = [...todayCalls, ...recentCalls, ...urgentCalls, ...pendingCalls];
+      const call = allCalls.find(c => c.id === callId);
+      if (call) {
+        setCompleteDialogCall(call);
+      }
+      return false; // prevent row from updating optimistically
+    }
+
     const { error } = await supabase
       .from("service_calls")
       .update({ status: newStatus })
