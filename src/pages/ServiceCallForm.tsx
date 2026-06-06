@@ -99,14 +99,8 @@ const ServiceCallForm = () => {
       /** Build scheduled_at from scheduled_date while preserving existing hour when editing */
       const computeScheduledAt = (): string | null => {
         if (!form.scheduled_date) return null;
-        // Editing: keep the original hour if one exists
-        if (isEdit && form.scheduled_at) {
-          const existing = new Date(form.scheduled_at);
-          const h = String(existing.getHours()).padStart(2, "0");
-          const m = String(existing.getMinutes()).padStart(2, "0");
-          return new Date(`${form.scheduled_date}T${h}:${m}:00`).toISOString();
-        }
-        return new Date(`${form.scheduled_date}T09:00:00`).toISOString();
+        const t = scheduledTime || "09:00";
+        return new Date(`${form.scheduled_date}T${t}:00`).toISOString();
       };
 
       const payload: any = {
