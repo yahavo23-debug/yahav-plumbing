@@ -203,16 +203,25 @@ const ServiceCallForm = () => {
               </Select>
             </div>
 
-            {/* Scheduled date */}
+            {/* Scheduled date + time */}
             <div className="space-y-2">
-              <Label>תאריך מתוכנן</Label>
-              <Input
-                type="date"
-                value={form.scheduled_date}
-                onChange={(e) => setForm((f) => ({ ...f, scheduled_date: e.target.value }))}
-                dir="ltr"
-                className="max-w-xs"
-              />
+              <Label>תאריך ושעת הגעה</Label>
+              <div className="flex gap-2 max-w-md">
+                <Input
+                  type="date"
+                  value={form.scheduled_date}
+                  onChange={(e) => setForm((f) => ({ ...f, scheduled_date: e.target.value }))}
+                  dir="ltr"
+                  className="flex-1"
+                />
+                <Input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  dir="ltr"
+                  className="w-32"
+                />
+              </div>
             </div>
 
             {/* Description */}
