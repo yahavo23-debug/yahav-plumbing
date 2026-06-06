@@ -23,6 +23,7 @@ const ServiceCallForm = () => {
   const [customerName, setCustomerName] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [customJobType, setCustomJobType] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("09:00");
 
   const [form, setForm] = useState({
     customer_id: customerId || "",
