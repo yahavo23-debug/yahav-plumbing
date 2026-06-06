@@ -153,10 +153,12 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       {/* Collapse toggle */}
       <button
         onClick={onToggle}
+        aria-label={collapsed ? "הרחב תפריט צד" : "כווץ תפריט צד"}
         className="absolute top-1/2 -left-3 w-6 h-6 bg-card border border-border rounded-full flex items-center justify-center shadow-sm hover:bg-accent transition-colors"
       >
         <ChevronRight
           className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", !collapsed && "rotate-180")}
+          aria-hidden="true"
         />
       </button>
     </aside>
