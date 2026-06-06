@@ -219,6 +219,7 @@ const CustomerForm = () => {
           </form>
         </CardContent>
       </Card>
+      <RetroactiveCustomerDialog open={retroOpen} onOpenChange={setRetroOpen} />
     </AppLayout>
   );
 };
