@@ -47,7 +47,7 @@ export function QuickCallDialog({ open, onClose }: Props) {
       setTimeout(() => inputRef.current?.focus(), 80);
       setCustomerQuery(""); setCustomerHits([]); setSelectedCustomer(null);
       setJobType("leak_detection"); setPriority("medium");
-      setScheduledDate(""); setDescription("");
+      setScheduledDate(""); setScheduledTime("09:00"); setDescription("");
     }
   }, [open]);
 
