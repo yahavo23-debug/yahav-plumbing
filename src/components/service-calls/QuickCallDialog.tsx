@@ -35,6 +35,7 @@ export function QuickCallDialog({ open, onClose }: Props) {
   const [jobType, setJobType] = useState("leak_detection");
   const [priority, setPriority] = useState("medium");
   const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("09:00");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
 
