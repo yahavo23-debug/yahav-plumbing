@@ -102,7 +102,7 @@ const PublicReport = () => {
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center gap-4 mb-4">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-14 max-w-[160px] rounded-xl object-contain bg-primary-foreground/10 p-1" />
+              <img src={logoUrl} alt="לוגו יהב אוחנה אינסטלציה" className="h-14 max-w-[160px] rounded-xl object-contain bg-primary-foreground/10 p-1" />
             ) : (
               <div className="w-12 h-12 bg-primary-foreground/20 rounded-xl flex items-center justify-center">
                 <Wrench className="w-6 h-6" />
