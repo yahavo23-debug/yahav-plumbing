@@ -442,9 +442,10 @@ const Dashboard = () => {
         {permission !== "granted" ? (
           <button
             onClick={handleEnableNotifications}
+            aria-label="הפעל התראות דחיפה"
             className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-border bg-background hover:bg-accent transition-colors shrink-0"
           >
-            <Bell className="w-3.5 h-3.5 text-primary" />
+            <Bell className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
             הפעל התראות
           </button>
         ) : (
