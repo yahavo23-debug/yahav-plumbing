@@ -62,15 +62,21 @@ export function getJobTypeLabel(jobType: string | null | undefined): string {
 export const leadSources = [
   { value: "facebook", label: "פייסבוק", color: "bg-blue-500" },
   { value: "instagram", label: "אינסטגרם", color: "bg-pink-500" },
+  { value: "tiktok", label: "טיקטוק", color: "bg-black dark:bg-white" },
+  { value: "google", label: "גוגל / GBP", color: "bg-red-600" },
   { value: "madrag", label: "מדרג", color: "bg-purple-700" },
   { value: "easy", label: "איזי", color: "bg-amber-700" },
-  { value: "shapatz", label: "שפץ", color: "bg-black dark:bg-white" },
+  { value: "shapatz", label: "שפץ", color: "bg-zinc-700" },
   { value: "alufim", label: "אלופים", color: "bg-yellow-500" },
   { value: "organic", label: "אורגני", color: "bg-emerald-500" },
   { value: "lead", label: "ליד", color: "bg-red-500" },
+  { value: "recommendation", label: "המלצה", color: "bg-teal-500" },
+  { value: "referral", label: "המלצה (referral)", color: "bg-teal-600" },
   { value: "word_of_mouth", label: "פה לאוזן", color: "bg-green-500" },
-  { value: "referral", label: "המלצה", color: "bg-teal-500" },
   { value: "contractor", label: "קבלן", color: "bg-orange-500" },
+  { value: "returning", label: "לקוח חוזר", color: "bg-indigo-500" },
+  { value: "sign", label: "שלט / רכב", color: "bg-cyan-600" },
+  { value: "other", label: "אחר", color: "bg-slate-500" },
 ];
 
 export const leadSourceLabels: Record<string, string> = Object.fromEntries(
