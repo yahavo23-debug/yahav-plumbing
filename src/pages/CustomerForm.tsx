@@ -122,10 +122,13 @@ const CustomerForm = () => {
               type="button"
               variant="outline"
               onClick={() => setRetroOpen(true)}
-              className="w-full h-12 mb-4 gap-2 border-dashed"
+              className="w-full h-14 mb-4 gap-2 border-2 border-dashed border-amber-300 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-700 dark:text-amber-400"
             >
-              <History className="w-4 h-4" />
-              לקוח רטרואקטיבי — עבודה שכבר בוצעה (כולל תשלום, קבלה וחומרים)
+              <History className="w-5 h-5" />
+              <div className="flex flex-col items-start">
+                <span className="font-semibold">לקוח רטרואקטיבי</span>
+                <span className="text-xs font-normal text-muted-foreground">עבודה שכבר בוצעה — כולל תשלום, קבלה, חומרים</span>
+              </div>
             </Button>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
