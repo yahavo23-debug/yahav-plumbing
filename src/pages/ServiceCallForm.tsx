@@ -69,6 +69,12 @@ const ServiceCallForm = () => {
         notes: (data as any).notes || "",
         scheduled_at: (data as any).scheduled_at || "",
       });
+      if ((data as any).scheduled_at) {
+        const d = new Date((data as any).scheduled_at);
+        setScheduledTime(
+          `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+        );
+      }
       setCustomerName((data as any).customers?.name || "");
     }
   };
