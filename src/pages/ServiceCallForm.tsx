@@ -23,6 +23,7 @@ const ServiceCallForm = () => {
   const [customerName, setCustomerName] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [customJobType, setCustomJobType] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("09:00");
 
   const [form, setForm] = useState({
     customer_id: customerId || "",
@@ -68,6 +69,12 @@ const ServiceCallForm = () => {
         notes: (data as any).notes || "",
         scheduled_at: (data as any).scheduled_at || "",
       });
+      if ((data as any).scheduled_at) {
+        const d = new Date((data as any).scheduled_at);
+        setScheduledTime(
+          `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+        );
+      }
       setCustomerName((data as any).customers?.name || "");
     }
   };
@@ -92,14 +99,8 @@ const ServiceCallForm = () => {
       /** Build scheduled_at from scheduled_date while preserving existing hour when editing */
       const computeScheduledAt = (): string | null => {
         if (!form.scheduled_date) return null;
-        // Editing: keep the original hour if one exists
-        if (isEdit && form.scheduled_at) {
-          const existing = new Date(form.scheduled_at);
-          const h = String(existing.getHours()).padStart(2, "0");
-          const m = String(existing.getMinutes()).padStart(2, "0");
-          return new Date(`${form.scheduled_date}T${h}:${m}:00`).toISOString();
-        }
-        return new Date(`${form.scheduled_date}T09:00:00`).toISOString();
+        const t = scheduledTime || "09:00";
+        return new Date(`${form.scheduled_date}T${t}:00`).toISOString();
       };
 
       const payload: any = {
@@ -202,16 +203,25 @@ const ServiceCallForm = () => {
               </Select>
             </div>
 
-            {/* Scheduled date */}
+            {/* Scheduled date + time */}
             <div className="space-y-2">
-              <Label>תאריך מתוכנן</Label>
-              <Input
-                type="date"
-                value={form.scheduled_date}
-                onChange={(e) => setForm((f) => ({ ...f, scheduled_date: e.target.value }))}
-                dir="ltr"
-                className="max-w-xs"
-              />
+              <Label>תאריך ושעת הגעה</Label>
+              <div className="flex gap-2 max-w-md">
+                <Input
+                  type="date"
+                  value={form.scheduled_date}
+                  onChange={(e) => setForm((f) => ({ ...f, scheduled_date: e.target.value }))}
+                  dir="ltr"
+                  className="flex-1"
+                />
+                <Input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  dir="ltr"
+                  className="w-32"
+                />
+              </div>
             </div>
 
             {/* Description */}

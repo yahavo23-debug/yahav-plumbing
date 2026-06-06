@@ -35,6 +35,7 @@ export function QuickCallDialog({ open, onClose }: Props) {
   const [jobType, setJobType] = useState("leak_detection");
   const [priority, setPriority] = useState("medium");
   const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("09:00");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -46,7 +47,7 @@ export function QuickCallDialog({ open, onClose }: Props) {
       setTimeout(() => inputRef.current?.focus(), 80);
       setCustomerQuery(""); setCustomerHits([]); setSelectedCustomer(null);
       setJobType("leak_detection"); setPriority("medium");
-      setScheduledDate(""); setDescription("");
+      setScheduledDate(""); setScheduledTime("09:00"); setDescription("");
     }
   }, [open]);
 
@@ -87,8 +88,9 @@ export function QuickCallDialog({ open, onClose }: Props) {
     }
     if (!user) return;
     setLoading(true);
+    const timeStr = scheduledTime || "09:00";
     const scheduledAt = scheduledDate
-      ? new Date(`${scheduledDate}T09:00:00`).toISOString()
+      ? new Date(`${scheduledDate}T${timeStr}:00`).toISOString()
       : new Date().toISOString();
     const { data, error } = await (supabase
       .from("service_calls")
@@ -236,12 +238,20 @@ export function QuickCallDialog({ open, onClose }: Props) {
             </div>
             <div className="space-y-1.5">
               <Label>תאריך מתוכנן</Label>
-              <Input
-                type="date"
-                value={scheduledDate}
-                onChange={e => setScheduledDate(e.target.value)}
-                className="text-sm"
-              />
+              <div className="flex gap-1.5">
+                <Input
+                  type="date"
+                  value={scheduledDate}
+                  onChange={e => setScheduledDate(e.target.value)}
+                  className="text-sm flex-1"
+                />
+                <Input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={e => setScheduledTime(e.target.value)}
+                  className="text-sm w-24"
+                />
+              </div>
             </div>
           </div>
 
