@@ -9,9 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, History } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { leadSources } from "@/lib/constants";
+import { RetroactiveCustomerDialog } from "@/components/customers/RetroactiveCustomerDialog";
 
 const CustomerForm = () => {
   const { id } = useParams();
@@ -19,6 +20,7 @@ const CustomerForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [retroOpen, setRetroOpen] = useState(false);
   const [contractors, setContractors] = useState<{ user_id: string; full_name: string }[]>([]);
   const [form, setForm] = useState({
     name: "", phone: "", email: "", address: "", city: "", notes: "",
@@ -115,6 +117,17 @@ const CustomerForm = () => {
           <CardTitle>{isEdit ? "עריכת פרטי לקוח" : "הוספת לקוח חדש"}</CardTitle>
         </CardHeader>
         <CardContent>
+          {!isEdit && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRetroOpen(true)}
+              className="w-full h-12 mb-4 gap-2 border-dashed"
+            >
+              <History className="w-4 h-4" />
+              לקוח רטרואקטיבי — עבודה שכבר בוצעה (כולל תשלום, קבלה וחומרים)
+            </Button>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -206,6 +219,7 @@ const CustomerForm = () => {
           </form>
         </CardContent>
       </Card>
+      <RetroactiveCustomerDialog open={retroOpen} onOpenChange={setRetroOpen} />
     </AppLayout>
   );
 };
