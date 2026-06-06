@@ -71,7 +71,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       {/* Header */}
       <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
         {logoUrl ? (
-          <img src={logoUrl} alt="Logo" className="w-10 h-10 rounded-xl object-contain shrink-0" />
+          <img src={logoUrl} alt="לוגו יהב אוחנה אינסטלציה" className="w-10 h-10 rounded-xl object-contain shrink-0" />
         ) : (
           <div className="w-10 h-10 bg-sidebar-primary rounded-xl flex items-center justify-center shrink-0">
             <Wrench className="w-5 h-5 text-sidebar-primary-foreground" />
@@ -153,10 +153,12 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       {/* Collapse toggle */}
       <button
         onClick={onToggle}
+        aria-label={collapsed ? "הרחב תפריט צד" : "כווץ תפריט צד"}
         className="absolute top-1/2 -left-3 w-6 h-6 bg-card border border-border rounded-full flex items-center justify-center shadow-sm hover:bg-accent transition-colors"
       >
         <ChevronRight
           className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", !collapsed && "rotate-180")}
+          aria-hidden="true"
         />
       </button>
     </aside>

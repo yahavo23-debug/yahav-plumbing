@@ -36,8 +36,8 @@ export function AppLayout({ children, title }: AppLayoutProps) {
         <header className="sticky top-0 z-30 h-14 bg-card border-b border-border flex items-center px-4 gap-3">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="w-5 h-5" />
+              <Button variant="ghost" size="icon" aria-label="פתח תפריט ניווט">
+                <Menu className="w-5 h-5" aria-hidden="true" />
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="p-0 w-64 bg-sidebar">

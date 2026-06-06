@@ -104,19 +104,19 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <main className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center space-y-4">
           {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="mx-auto max-h-24 max-w-[200px] rounded-2xl object-contain" />
+            <img src={logoUrl} alt="לוגו יהב אוחנה אינסטלציה" className="mx-auto max-h-24 max-w-[200px] rounded-2xl object-contain" />
           ) : (
-            <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
+            <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center" aria-hidden="true">
               <Wrench className="w-8 h-8 text-primary-foreground" />
             </div>
           )}
-          <CardTitle className="text-2xl font-bold">
+          <h1 className="text-2xl font-bold leading-none tracking-tight">
             {forgotMode ? "שחזור סיסמה" : isLogin ? "כניסה למערכת" : "הרשמה"}
-          </CardTitle>
+          </h1>
           <CardDescription>
             {forgotMode
               ? "הזן את כתובת האימייל שלך ונשלח לך קישור לאיפוס הסיסמה"
@@ -229,7 +229,7 @@ const Auth = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 };
 
