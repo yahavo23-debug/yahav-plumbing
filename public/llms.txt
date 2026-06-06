@@ -1,0 +1,15 @@
+# יהב אוחנה אינסטלציה (Yahav Plumbing)
+
+> Hebrew-language service-management CRM for Yahav Ohana — a plumbing business specializing in water-leak detection and sewer-line camera inspections in Israel.
+
+The public website is the login surface for the CRM used by the business owner, technicians, secretaries, and contractors. End-customers receive private, token-based links to view or sign individual reports and quotes; those links are not listed here because they are per-document and unguessable.
+
+## Pages
+
+- [Login](/auth): Sign in to the Yahav plumbing CRM.
+
+## Contact
+
+- Business: יהב אוחנה אינסטלציה
+- Phone: 054-212-1204
+- Services: איתור נזילות מים, צילום קווי ביוב, אינסטלציה כללית
