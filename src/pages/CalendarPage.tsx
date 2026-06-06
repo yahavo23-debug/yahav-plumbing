@@ -415,7 +415,8 @@ const CalendarPage = () => {
   // ── Derived data ─────────────────────────────────────────────────────────────
 
   const callsByDate = useMemo(() => calls.reduce<Record<string, ServiceCall[]>>((acc, c) => {
-    const key = c.scheduled_at.slice(0, 10);
+    // Use LOCAL date so the calendar day matches the dispatch board (which uses local-time boundaries)
+    const key = getDateKey(new Date(c.scheduled_at));
     (acc[key] ??= []).push(c);
     return acc;
   }, {}), [calls]);
