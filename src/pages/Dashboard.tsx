@@ -436,7 +436,7 @@ const Dashboard = () => {
       <div className="flex items-start justify-between mb-6">
         <div>
           <p className="text-muted-foreground text-sm">{todayStr}</p>
-          <h1 className="text-2xl font-bold mt-1">שלום, בוא נראה מה קורה היום 👋</h1>
+          <p className="text-2xl font-bold mt-1">שלום, בוא נראה מה קורה היום 👋</p>
         </div>
         {/* Notification toggle */}
         {permission !== "granted" ? (
