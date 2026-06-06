@@ -65,6 +65,7 @@ export const leadSources = [
   { value: "madrag", label: "מדרג", color: "bg-purple-700" },
   { value: "easy", label: "איזי", color: "bg-amber-700" },
   { value: "shapatz", label: "שפץ", color: "bg-black dark:bg-white" },
+  { value: "alufim", label: "אלופים", color: "bg-yellow-500" },
   { value: "organic", label: "אורגני", color: "bg-emerald-500" },
   { value: "lead", label: "ליד", color: "bg-red-500" },
   { value: "word_of_mouth", label: "פה לאוזן", color: "bg-green-500" },

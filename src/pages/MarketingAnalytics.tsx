@@ -59,6 +59,7 @@ const SOURCE_CONFIG: Record<string, { label: string; color: string }> = {
   madrag:        { label: "מדרג",       color: "#7c3aed" },
   easy:          { label: "איזי",       color: "#92400e" },
   shapatz:       { label: "שפץ",        color: "#111827" },
+  alufim:        { label: "אלופים",    color: "#eab308" },
   word_of_mouth: { label: "פה לאוזן", color: "#16a34a" },
   contractor:    { label: "קבלן",       color: "#ea580c" },
   organic:       { label: "אורגני",    color: "#059669" },
