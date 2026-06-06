@@ -20,6 +20,7 @@ const CustomerForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [retroOpen, setRetroOpen] = useState(false);
   const [contractors, setContractors] = useState<{ user_id: string; full_name: string }[]>([]);
   const [form, setForm] = useState({
     name: "", phone: "", email: "", address: "", city: "", notes: "",
