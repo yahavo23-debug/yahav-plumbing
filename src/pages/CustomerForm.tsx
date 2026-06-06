@@ -9,9 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, History } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { leadSources } from "@/lib/constants";
+import { RetroactiveCustomerDialog } from "@/components/customers/RetroactiveCustomerDialog";
 
 const CustomerForm = () => {
   const { id } = useParams();
