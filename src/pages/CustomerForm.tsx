@@ -117,6 +117,17 @@ const CustomerForm = () => {
           <CardTitle>{isEdit ? "עריכת פרטי לקוח" : "הוספת לקוח חדש"}</CardTitle>
         </CardHeader>
         <CardContent>
+          {!isEdit && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRetroOpen(true)}
+              className="w-full h-12 mb-4 gap-2 border-dashed"
+            >
+              <History className="w-4 h-4" />
+              לקוח רטרואקטיבי — עבודה שכבר בוצעה (כולל תשלום, קבלה וחומרים)
+            </Button>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
