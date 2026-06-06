@@ -71,7 +71,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       {/* Header */}
       <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
         {logoUrl ? (
-          <img src={logoUrl} alt="Logo" className="w-10 h-10 rounded-xl object-contain shrink-0" />
+          <img src={logoUrl} alt="לוגו יהב אוחנה אינסטלציה" className="w-10 h-10 rounded-xl object-contain shrink-0" />
         ) : (
           <div className="w-10 h-10 bg-sidebar-primary rounded-xl flex items-center justify-center shrink-0">
             <Wrench className="w-5 h-5 text-sidebar-primary-foreground" />
