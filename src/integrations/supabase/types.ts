@@ -286,6 +286,7 @@ export type Database = {
           email: string | null
           has_legal_action: boolean
           id: string
+          is_walkin: boolean
           lead_cost: number | null
           lead_source: string | null
           lead_source_note: string | null
@@ -306,6 +307,7 @@ export type Database = {
           email?: string | null
           has_legal_action?: boolean
           id?: string
+          is_walkin?: boolean
           lead_cost?: number | null
           lead_source?: string | null
           lead_source_note?: string | null
@@ -326,6 +328,7 @@ export type Database = {
           email?: string | null
           has_legal_action?: boolean
           id?: string
+          is_walkin?: boolean
           lead_cost?: number | null
           lead_source?: string | null
           lead_source_note?: string | null
