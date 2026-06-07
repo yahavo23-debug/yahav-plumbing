@@ -50,6 +50,7 @@ const Quotes = () => {
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<QuoteFilter>("open");
+  const [walkInOpen, setWalkInOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
