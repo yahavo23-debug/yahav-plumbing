@@ -27,19 +27,34 @@ export default function InventoryPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [usageStats, setUsageStats] = useState<Record<string, number>>({});
+  const [usageStats30, setUsageStats30] = useState<Record<string, number>>({});
+  const [usageStats90, setUsageStats90] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: its }, { data: cats }, { data: mv }] = await Promise.all([
       supabase.from("inventory_items").select("*").eq("is_archived", false).order("name"),
       supabase.from("inventory_categories").select("id,name,color").order("sort_order"),
-      supabase.from("inventory_movements").select("inventory_item_id, quantity, movement_type").eq("movement_type", "use"),
+      supabase.from("inventory_movements").select("inventory_item_id, quantity, movement_type, created_at").eq("movement_type", "use"),
     ]);
     setItems((its as any) || []);
     setCategories((cats as any) || []);
     const stats: Record<string, number> = {};
-    (mv || []).forEach((m: any) => { stats[m.inventory_item_id] = (stats[m.inventory_item_id] || 0) + Number(m.quantity); });
+    const stats30: Record<string, number> = {};
+    const stats90: Record<string, number> = {};
+    const now = Date.now();
+    const d30 = now - 30 * 24 * 60 * 60 * 1000;
+    const d90 = now - 90 * 24 * 60 * 60 * 1000;
+    (mv || []).forEach((m: any) => {
+      const q = Number(m.quantity);
+      const t = m.created_at ? new Date(m.created_at).getTime() : 0;
+      stats[m.inventory_item_id] = (stats[m.inventory_item_id] || 0) + q;
+      if (t >= d30) stats30[m.inventory_item_id] = (stats30[m.inventory_item_id] || 0) + q;
+      if (t >= d90) stats90[m.inventory_item_id] = (stats90[m.inventory_item_id] || 0) + q;
+    });
     setUsageStats(stats);
+    setUsageStats30(stats30);
+    setUsageStats90(stats90);
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -54,10 +69,9 @@ export default function InventoryPage() {
 
   const lowStock = items.filter(i => i.quantity_in_stock <= i.minimum_stock);
   const topUsed = [...items]
-    .map(i => ({ item: i, used: usageStats[i.id] || 0 }))
+    .map(i => ({ item: i, used: usageStats[i.id] || 0, used30: usageStats30[i.id] || 0, used90: usageStats90[i.id] || 0 }))
     .filter(x => x.used > 0)
-    .sort((a, b) => b.used - a.used)
-    .slice(0, 5);
+    .sort((a, b) => b.used - a.used);
 
   function openNew() { setEditing(null); setEditorOpen(true); }
   function openEdit(i: InventoryItemRow) { setEditing(i); setEditorOpen(true); }
