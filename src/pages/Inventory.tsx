@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Search, AlertTriangle, TrendingUp, Package2, Edit, Trash2, Check, ShoppingCart, Minus } from "lucide-react";
+import { Plus, Search, AlertTriangle, TrendingUp, Package2, Edit, Trash2, Check, ShoppingCart, Minus, Flame, Trophy, Medal } from "lucide-react";
 import { InventoryImage } from "@/components/inventory/InventoryImage";
 import { ItemEditorDialog, InventoryItemRow, CategoryRow } from "@/components/inventory/ItemEditorDialog";
 import {
@@ -27,19 +27,34 @@ export default function InventoryPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [usageStats, setUsageStats] = useState<Record<string, number>>({});
+  const [usageStats30, setUsageStats30] = useState<Record<string, number>>({});
+  const [usageStats90, setUsageStats90] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: its }, { data: cats }, { data: mv }] = await Promise.all([
       supabase.from("inventory_items").select("*").eq("is_archived", false).order("name"),
       supabase.from("inventory_categories").select("id,name,color").order("sort_order"),
-      supabase.from("inventory_movements").select("inventory_item_id, quantity, movement_type").eq("movement_type", "use"),
+      supabase.from("inventory_movements").select("inventory_item_id, quantity, movement_type, created_at").eq("movement_type", "use"),
     ]);
     setItems((its as any) || []);
     setCategories((cats as any) || []);
     const stats: Record<string, number> = {};
-    (mv || []).forEach((m: any) => { stats[m.inventory_item_id] = (stats[m.inventory_item_id] || 0) + Number(m.quantity); });
+    const stats30: Record<string, number> = {};
+    const stats90: Record<string, number> = {};
+    const now = Date.now();
+    const d30 = now - 30 * 24 * 60 * 60 * 1000;
+    const d90 = now - 90 * 24 * 60 * 60 * 1000;
+    (mv || []).forEach((m: any) => {
+      const q = Number(m.quantity);
+      const t = m.created_at ? new Date(m.created_at).getTime() : 0;
+      stats[m.inventory_item_id] = (stats[m.inventory_item_id] || 0) + q;
+      if (t >= d30) stats30[m.inventory_item_id] = (stats30[m.inventory_item_id] || 0) + q;
+      if (t >= d90) stats90[m.inventory_item_id] = (stats90[m.inventory_item_id] || 0) + q;
+    });
     setUsageStats(stats);
+    setUsageStats30(stats30);
+    setUsageStats90(stats90);
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -54,10 +69,9 @@ export default function InventoryPage() {
 
   const lowStock = items.filter(i => i.quantity_in_stock <= i.minimum_stock);
   const topUsed = [...items]
-    .map(i => ({ item: i, used: usageStats[i.id] || 0 }))
+    .map(i => ({ item: i, used: usageStats[i.id] || 0, used30: usageStats30[i.id] || 0, used90: usageStats90[i.id] || 0 }))
     .filter(x => x.used > 0)
-    .sort((a, b) => b.used - a.used)
-    .slice(0, 5);
+    .sort((a, b) => b.used - a.used);
 
   function openNew() { setEditing(null); setEditorOpen(true); }
   function openEdit(i: InventoryItemRow) { setEditing(i); setEditorOpen(true); }
@@ -104,6 +118,11 @@ export default function InventoryPage() {
         <Tabs value={activeCat} onValueChange={setActiveCat} dir="rtl">
           <TabsList className="h-11 w-full justify-start overflow-x-auto">
             <TabsTrigger value="all" className="h-9 px-4">הכל ({items.length})</TabsTrigger>
+            {topUsed.length > 0 && (
+              <TabsTrigger value="__top" className="h-9 px-4 text-orange-600 dark:text-orange-400">
+                <Flame className="w-4 h-4 ml-1" />הכי נמכרים
+              </TabsTrigger>
+            )}
             {lowStock.length > 0 && (
               <TabsTrigger value="__low" className="h-9 px-4 text-warning">
                 <AlertTriangle className="w-4 h-4 ml-1" />רשימת קנייה ({lowStock.length})
@@ -116,6 +135,9 @@ export default function InventoryPage() {
             })}
           </TabsList>
 
+          <TabsContent value="__top" className="mt-4">
+            <TopSellersList rows={topUsed} categories={categories} onEdit={openEdit} />
+          </TabsContent>
           <TabsContent value="__low" className="mt-4">
             <PurchaseList items={lowStock} categories={categories} onDone={load} />
           </TabsContent>
@@ -129,22 +151,6 @@ export default function InventoryPage() {
             )}
           </TabsContent>
         </Tabs>
-
-        {topUsed.length > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <h3 className="font-semibold mb-3 flex items-center gap-2"><TrendingUp className="w-4 h-4" />הכי בשימוש</h3>
-              <div className="space-y-2">
-                {topUsed.map(({ item, used }) => (
-                  <div key={item.id} className="flex items-center justify-between text-sm">
-                    <span>{item.name}</span>
-                    <Badge variant="secondary">{used} פעמים</Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       <ItemEditorDialog open={editorOpen} onOpenChange={setEditorOpen} item={editing} categories={categories} onSaved={load} />
@@ -162,6 +168,103 @@ export default function InventoryPage() {
         </AlertDialogContent>
       </AlertDialog>
     </AppLayout>
+  );
+}
+
+type TopRow = { item: InventoryItemRow; used: number; used30: number; used90: number };
+
+function TopSellersList({
+  rows, categories, onEdit,
+}: {
+  rows: TopRow[];
+  categories: CategoryRow[];
+  onEdit: (i: InventoryItemRow) => void;
+}) {
+  const [range, setRange] = useState<"all" | "90" | "30">("all");
+  const sorted = useMemo(() => {
+    const key = range === "30" ? "used30" : range === "90" ? "used90" : "used";
+    return [...rows]
+      .filter(r => r[key] > 0)
+      .sort((a, b) => b[key] - a[key]);
+  }, [rows, range]);
+
+  if (sorted.length === 0) {
+    return (
+      <Card><CardContent className="p-8 text-center text-muted-foreground">
+        אין עדיין נתוני שימוש בטווח הזה. ככל שתשתמש בחומרים בקריאות, הם יופיעו כאן.
+      </CardContent></Card>
+    );
+  }
+
+  const maxUsed = Math.max(...sorted.map(r => range === "30" ? r.used30 : range === "90" ? r.used90 : r.used));
+  const totalAll = sorted.reduce((a, r) => a + r.used, 0);
+
+  return (
+    <div className="space-y-3">
+      <Card>
+        <CardContent className="p-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Flame className="w-4 h-4 text-orange-500" />
+            <span className="font-semibold">מה הכי הולך?</span>
+            <span className="text-muted-foreground">— ככה תדע מה תמיד חייב להיות במלאי</span>
+          </div>
+          <div className="flex gap-1">
+            <Button size="sm" variant={range === "30" ? "default" : "outline"} className="h-8" onClick={() => setRange("30")}>30 יום</Button>
+            <Button size="sm" variant={range === "90" ? "default" : "outline"} className="h-8" onClick={() => setRange("90")}>90 יום</Button>
+            <Button size="sm" variant={range === "all" ? "default" : "outline"} className="h-8" onClick={() => setRange("all")}>הכל</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="space-y-2">
+        {sorted.map((r, idx) => {
+          const cat = categories.find(c => c.id === r.item.category_id);
+          const used = range === "30" ? r.used30 : range === "90" ? r.used90 : r.used;
+          const pct = maxUsed > 0 ? (used / maxUsed) * 100 : 0;
+          const low = r.item.quantity_in_stock <= r.item.minimum_stock;
+          const isTop3 = idx < 3;
+          const rankColor = idx === 0 ? "text-yellow-500" : idx === 1 ? "text-gray-400" : idx === 2 ? "text-amber-700" : "text-muted-foreground";
+          return (
+            <Card key={r.item.id} className={isTop3 ? "border-orange-200 dark:border-orange-900/40" : ""}>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-3">
+                  <div className={`flex flex-col items-center justify-center w-10 shrink-0 ${rankColor}`}>
+                    {isTop3 ? <Trophy className="w-5 h-5" /> : <Medal className="w-4 h-4" />}
+                    <span className="text-xs font-bold mt-0.5">#{idx + 1}</span>
+                  </div>
+                  <div className="w-12 h-12 rounded-md overflow-hidden bg-muted shrink-0">
+                    <InventoryImage path={r.item.image_path} alt={r.item.name} className="w-full h-full" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-semibold text-sm truncate">{r.item.name}</h4>
+                      {cat && <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: cat.color + "22", color: cat.color }}>{cat.name}</span>}
+                      {low && <Badge variant="outline" className="text-warning border-warning text-[10px] h-5">חסר במלאי</Badge>}
+                    </div>
+                    <div className="h-2 rounded-full bg-muted mt-1.5 overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-l from-orange-500 to-red-500" style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between mt-1 text-xs text-muted-foreground">
+                      <span>במלאי: <strong className={low ? "text-warning" : "text-foreground"}>{r.item.quantity_in_stock}</strong> · מינ׳ {r.item.minimum_stock}</span>
+                      <span className="font-bold text-sm text-foreground">{used} {range === "all" ? "שימושים" : "ב־" + range + " יום"}</span>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-9 px-2 shrink-0" onClick={() => onEdit(r.item)}>
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <Card>
+        <CardContent className="p-3 text-xs text-muted-foreground text-center">
+          סה״כ {totalAll} שימושים בכל הזמנים על פני {sorted.length} מוצרים
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
