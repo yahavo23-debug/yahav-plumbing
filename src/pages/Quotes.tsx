@@ -133,22 +133,34 @@ const Quotes = () => {
 
   return (
     <AppLayout title="הצעות מחיר">
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {filterTabs.map((f) => (
-          <Button
-            key={f.value}
-            variant={filter === f.value ? "default" : "outline"}
-            size="sm"
-            className="gap-2"
-            onClick={() => setFilter(f.value)}
-          >
-            {f.label}
-            <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-              {counts[f.value]}
-            </Badge>
-          </Button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div className="flex gap-2 flex-wrap">
+          {filterTabs.map((f) => (
+            <Button
+              key={f.value}
+              variant={filter === f.value ? "default" : "outline"}
+              size="sm"
+              className="gap-2"
+              onClick={() => setFilter(f.value)}
+            >
+              {f.label}
+              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                {counts[f.value]}
+              </Badge>
+            </Button>
+          ))}
+        </div>
+        <Button
+          size="sm"
+          className="gap-2"
+          onClick={() => setWalkInOpen(true)}
+        >
+          <UserPlus className="w-4 h-4" />
+          הצעה ללקוח מזדמן
+        </Button>
       </div>
+
+      <WalkInQuoteDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
 
       {loading ? (
         <div className="space-y-3">
