@@ -98,6 +98,7 @@ const Customers = () => {
     const { data, error } = await supabase
       .from("customers")
       .select("*")
+      .or("is_walkin.is.null,is_walkin.eq.false")
       .order("created_at", { ascending: false });
 
     if (error) {
