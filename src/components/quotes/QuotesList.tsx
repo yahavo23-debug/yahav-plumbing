@@ -91,6 +91,15 @@ export const QuotesList = ({ serviceCallId, readOnly = false }: QuotesListProps)
   const [copied, setCopied] = useState(false);
   const [filter, setFilter] = useState<QuoteFilter>("all");
   const { user, isAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (!readOnly && searchParams.get("new") === "1") {
+      setCreating(true);
+      searchParams.delete("new");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, readOnly, setSearchParams]);
 
   const loadQuotes = useCallback(async () => {
     const { data: quotesData, error } = await supabase
