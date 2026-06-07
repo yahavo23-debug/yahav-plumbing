@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { FileText, Phone } from "lucide-react";
+import { FileText, Phone, UserPlus } from "lucide-react";
+import { WalkInQuoteDialog } from "@/components/quotes/WalkInQuoteDialog";
 
 type QuoteFilter = "all" | "open" | "approved" | "rejected";
 
