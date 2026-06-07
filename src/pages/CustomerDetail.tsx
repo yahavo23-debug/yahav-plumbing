@@ -140,31 +140,58 @@ const CustomerDetail = () => {
   return (
     <AppLayout title={customer.name}>
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Button variant="ghost" onClick={() => navigate("/customers")} className="gap-2">
             <ArrowRight className="w-4 h-4" /> חזרה ללקוחות
           </Button>
           <CustomerBillingBadge summary={billing} size="md" />
+          {(customer as any).is_walkin && (
+            <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10">
+              לקוח מזדמן
+            </Badge>
+          )}
         </div>
-        {isAdmin && (
-          <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {isAdmin && (customer as any).is_walkin && (
+            <Button
+              variant="default"
+              className="gap-2"
+              onClick={async () => {
+                const { error } = await supabase
+                  .from("customers")
+                  .update({ is_walkin: false } as any)
+                  .eq("id", id!);
+                if (error) {
+                  toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+                } else {
+                  setCustomer({ ...customer, ...({ is_walkin: false } as any) });
+                  toast({ title: "נשמר", description: "הלקוח נוסף לרשימת הלקוחות הקבועים" });
+                }
+              }}
+            >
+              <Check className="w-4 h-4" /> שמור לקוח
+            </Button>
+          )}
+          {isAdmin && (
+            <>
+              <Button variant="outline" onClick={() => navigate(`/customers/${id}/edit`)} className="gap-2">
+                <Edit className="w-4 h-4" /> עריכה
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="w-4 h-4" /> מחיקה
+              </Button>
+            </>
+          )}
+          {!isAdmin && canEdit && (
             <Button variant="outline" onClick={() => navigate(`/customers/${id}/edit`)} className="gap-2">
               <Edit className="w-4 h-4" /> עריכה
             </Button>
-            <Button
-              variant="outline"
-              className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-              onClick={() => setShowDeleteDialog(true)}
-            >
-              <Trash2 className="w-4 h-4" /> מחיקה
-            </Button>
-          </div>
-        )}
-        {!isAdmin && canEdit && (
-          <Button variant="outline" onClick={() => navigate(`/customers/${id}/edit`)} className="gap-2">
-            <Edit className="w-4 h-4" /> עריכה
-          </Button>
-        )}
+          )}
+        </div>
       </div>
 
       <Tabs defaultValue="calls" dir="rtl">
