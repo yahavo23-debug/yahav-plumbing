@@ -171,6 +171,26 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
 
+    // ── Authenticate inbound webhook with shared secret ──
+    const WEBHOOK_SECRET = Deno.env.get("YESH_WEBHOOK_SECRET") ?? "";
+    if (!WEBHOOK_SECRET) {
+      console.error("yesh-webhook: YESH_WEBHOOK_SECRET not configured");
+      return new Response(JSON.stringify({ error: "Server misconfigured" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const provided =
+      req.headers.get("x-webhook-secret") ||
+      req.headers.get("x-yesh-secret") ||
+      url.searchParams.get("secret") ||
+      "";
+    if (provided !== WEBHOOK_SECRET) {
+      console.warn("yesh-webhook: rejected unauthenticated request");
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl    = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient    = createClient(supabaseUrl, serviceRoleKey);
