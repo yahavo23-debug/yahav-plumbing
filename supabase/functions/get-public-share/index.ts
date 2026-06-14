@@ -93,7 +93,6 @@ Deno.serve(async (req) => {
       responseData.details = {
         description: serviceCall.description,
         priority: serviceCall.priority,
-        priority: serviceCall.priority,
         scheduled_date: serviceCall.scheduled_date,
         completed_date: serviceCall.completed_date,
       };
