@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     if (shareType === "details") {
       responseData.details = {
         description: serviceCall.description,
-        notes: serviceCall.notes,
+        priority: serviceCall.priority,
         priority: serviceCall.priority,
         scheduled_date: serviceCall.scheduled_date,
         completed_date: serviceCall.completed_date,
