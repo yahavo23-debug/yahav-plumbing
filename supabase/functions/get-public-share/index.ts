@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     // Always load service call + customer for header info
     const { data: serviceCall } = await supabase
       .from("service_calls")
-      .select("*")
+      .select("id, customer_id, call_number, job_type, status, scheduled_date, completed_date, description, priority, findings, cause_assessment, recommendations, detection_method, water_pressure_status, property_occupied, main_valve_closed, test_limitations, diagnosis_confidence, leak_location, visible_damage, urgency_level, areas_not_inspected, customer_signature_path, customer_signature_date")
       .eq("id", scId)
       .single();
 
@@ -92,7 +92,6 @@ Deno.serve(async (req) => {
     if (shareType === "details") {
       responseData.details = {
         description: serviceCall.description,
-        notes: serviceCall.notes,
         priority: serviceCall.priority,
         scheduled_date: serviceCall.scheduled_date,
         completed_date: serviceCall.completed_date,
