@@ -1301,6 +1301,7 @@ export type Database = {
           color: string
           completed_at: string | null
           created_at: string
+          customer_id: string | null
           description: string | null
           due_at: string | null
           id: string
@@ -1317,6 +1318,7 @@ export type Database = {
           color?: string
           completed_at?: string | null
           created_at?: string
+          customer_id?: string | null
           description?: string | null
           due_at?: string | null
           id?: string
@@ -1333,6 +1335,7 @@ export type Database = {
           color?: string
           completed_at?: string | null
           created_at?: string
+          customer_id?: string | null
           description?: string | null
           due_at?: string | null
           id?: string
@@ -1345,7 +1348,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

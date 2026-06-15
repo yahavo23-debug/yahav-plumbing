@@ -8,7 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ListChecks, Plus, Bell, Repeat, Trash2, CalendarClock, Sparkles, GripVertical, CheckCircle2 } from "lucide-react";
+import { ListChecks, Plus, Bell, Repeat, Trash2, CalendarClock, Sparkles, GripVertical, CheckCircle2, User as UserIcon, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { format, parseISO, isBefore, addDays, addWeeks, addMonths, isToday, isTomorrow, differenceInMinutes } from "date-fns";
 import { he } from "date-fns/locale";
@@ -34,7 +36,11 @@ export interface Task {
   is_done: boolean;
   completed_at: string | null;
   position: number;
+  customer_id?: string | null;
+  customer?: { id: string; name: string } | null;
 }
+
+interface CustomerLite { id: string; name: string; }
 
 const PRIORITY_META: Record<Task["priority"], { label: string; color: string; ring: string; bar: string }> = {
   high:   { label: "דחוף",  color: "bg-red-100 text-red-700 border-red-300",        ring: "ring-red-400",    bar: "bg-red-500" },
@@ -129,6 +135,11 @@ function SortableTaskRow({ task, onToggle, onDelete, onEdit }: SortableTaskProps
             {task.reminder_minutes_before !== null && (
               <span className="text-[11px] text-sky-600 flex items-center gap-0.5"><Bell className="w-3 h-3" /></span>
             )}
+            {task.customer && (
+              <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 flex items-center gap-1">
+                <UserIcon className="w-3 h-3" />{task.customer.name}
+              </span>
+            )}
           </div>
         </button>
         <button onClick={() => onDelete(task.id)}
@@ -150,11 +161,14 @@ interface TaskFormState {
   dueTime: string;
   recurrence: Task["recurrence"];
   reminder_minutes_before: number | null;
+  customer_id: string | null;
+  customer_name: string | null;
 }
 
 const emptyForm = (): TaskFormState => ({
   title: "", description: "", priority: "medium", color: "#3b82f6",
   dueDate: "", dueTime: "", recurrence: "none", reminder_minutes_before: null,
+  customer_id: null, customer_name: null,
 });
 
 interface TasksBoardProps {
@@ -169,6 +183,14 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"open" | "done">("open");
   const [quickTitle, setQuickTitle] = useState("");
+  const [customers, setCustomers] = useState<CustomerLite[]>([]);
+  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("customers").select("id, name").order("name", { ascending: true })
+      .then(({ data }) => setCustomers((data as CustomerLite[]) || []));
+  }, [user]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<TaskFormState>(emptyForm());
 
@@ -182,12 +204,12 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .select("*")
+      .select("*, customer:customers(id, name)")
       .order("is_done", { ascending: true })
       .order("position", { ascending: true })
       .order("created_at", { ascending: false });
     if (error) { toast.error("שגיאה בטעינת משימות"); setLoading(false); return; }
-    const list = (data as Task[]) || [];
+    const list = (data as unknown as Task[]) || [];
     setTasks(list);
     onTasksChange?.(list);
     setLoading(false);
@@ -268,6 +290,8 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
         dueTime: due ? format(due, "HH:mm") : "",
         recurrence: t.recurrence,
         reminder_minutes_before: t.reminder_minutes_before,
+        customer_id: t.customer_id || null,
+        customer_name: t.customer?.name || null,
       });
     } else {
       setForm(emptyForm());
@@ -290,6 +314,7 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
       due_at,
       recurrence: form.recurrence,
       reminder_minutes_before: form.reminder_minutes_before,
+      customer_id: form.customer_id,
     };
     if (form.id) {
       const { error } = await supabase.from("tasks").update(payload).eq("id", form.id);
@@ -499,6 +524,41 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">לקוח מקושר (אופציונלי)</label>
+              <Popover open={customerPickerOpen} onOpenChange={setCustomerPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between font-normal" type="button">
+                    <span className="flex items-center gap-2 truncate">
+                      <UserIcon className="w-4 h-4 shrink-0" />
+                      {form.customer_name || <span className="text-muted-foreground">בחר לקוח...</span>}
+                    </span>
+                    {form.customer_id && (
+                      <X className="w-4 h-4 opacity-60 hover:opacity-100"
+                        onClick={(e) => { e.stopPropagation(); setForm(f => ({ ...f, customer_id: null, customer_name: null })); }} />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[300px]" align="start" dir="rtl">
+                  <Command>
+                    <CommandInput placeholder="חיפוש לקוח..." />
+                    <CommandList>
+                      <CommandEmpty>לא נמצאו לקוחות</CommandEmpty>
+                      <CommandGroup>
+                        {customers.map(c => (
+                          <CommandItem key={c.id} value={c.name} onSelect={() => {
+                            setForm(f => ({ ...f, customer_id: c.id, customer_name: c.name }));
+                            setCustomerPickerOpen(false);
+                          }}>
+                            <UserIcon className="w-4 h-4 ml-2" />{c.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <label className="text-xs text-muted-foreground">צבע</label>
