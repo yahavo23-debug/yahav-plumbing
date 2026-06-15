@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     }
 
     // Load related data
-    const { data: service_call } = await supabase.from("service_calls").select("id, call_number, job_type, status, scheduled_date, completed_date, description, findings, cause_assessment, recommendations, detection_method, water_pressure_status, leak_location, visible_damage, urgency_level, areas_not_inspected, customer_id, customer_signature_path, customer_signature_date").eq("id", report.service_call_id).single();
+    const { data: service_call } = await supabase.from("service_calls").select("id, call_number, job_type, status, scheduled_date, completed_date, description, findings, cause_assessment, recommendations, detection_method, water_pressure_status, property_occupied, main_valve_closed, test_limitations, diagnosis_confidence, leak_location, visible_damage, urgency_level, areas_not_inspected, customer_id, customer_signature_path, customer_signature_date").eq("id", report.service_call_id).single();
     const { data: customer } = service_call ? await supabase.from("customers").select("name, phone, city, address").eq("id", service_call.customer_id).single() : { data: null };
     const { data: photos } = await supabase.from("service_call_photos").select("*").eq("service_call_id", report.service_call_id).order("created_at");
     const { data: videos } = await supabase.from("service_call_videos").select("*").eq("service_call_id", report.service_call_id).order("created_at");
@@ -79,11 +79,6 @@ Deno.serve(async (req) => {
         id: report.id,
         service_call_id: report.service_call_id,
         title: report.title,
-        findings: report.findings,
-        recommendations: report.recommendations,
-        quote_summary: report.quote_summary,
-        invoice_number: report.invoice_number,
-        invoice_status: report.invoice_status,
         status: report.status,
         created_at: report.created_at,
         updated_at: report.updated_at,
