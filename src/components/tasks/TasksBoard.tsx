@@ -301,6 +301,7 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
       due_at,
       recurrence: form.recurrence,
       reminder_minutes_before: form.reminder_minutes_before,
+      customer_id: form.customer_id,
     };
     if (form.id) {
       const { error } = await supabase.from("tasks").update(payload).eq("id", form.id);
