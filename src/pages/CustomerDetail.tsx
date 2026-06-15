@@ -312,10 +312,22 @@ const CustomerDetail = () => {
 
         {/* Reports Tab */}
         <TabsContent value="reports">
+          {calls.length > 0 && (
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => setShowCreateReportDialog(true)} className="gap-2">
+                <Plus className="w-4 h-4" /> צור דוח חדש
+              </Button>
+            </div>
+          )}
           {reports.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
               <p>אין דוחות עבור לקוח זה עדיין</p>
+              {calls.length > 0 && (
+                <Button onClick={() => setShowCreateReportDialog(true)} variant="outline" className="mt-4 gap-2">
+                  <Plus className="w-4 h-4" /> צור דוח חדש
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-2">
