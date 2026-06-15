@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { Camera, ImagePlus, Loader2, RotateCw, Trash2, ScanLine, X, Sparkles } from "lucide-react";
+import { Camera, ImagePlus, Loader2, RotateCw, Trash2, ScanLine, X, Sparkles, ChevronLeft, ChevronRight, ArrowLeft, Check } from "lucide-react";
 import jsPDF from "jspdf";
 
 interface DocumentScannerDialogProps {
