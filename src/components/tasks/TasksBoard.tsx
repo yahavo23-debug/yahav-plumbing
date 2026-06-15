@@ -183,6 +183,14 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"open" | "done">("open");
   const [quickTitle, setQuickTitle] = useState("");
+  const [customers, setCustomers] = useState<CustomerLite[]>([]);
+  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("customers").select("id, full_name").order("full_name", { ascending: true })
+      .then(({ data }) => setCustomers((data as CustomerLite[]) || []));
+  }, [user]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<TaskFormState>(emptyForm());
 
