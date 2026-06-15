@@ -64,11 +64,12 @@ export default function Finance() {
     return `${HEBREW_MONTHS[m - 1]} ${y}`;
   }, [period, month]);
 
-  const hasActiveFilters = filterCategory !== "all" || filterStatus !== "all";
+  const hasActiveFilters = filterCategory !== "all" || filterStatus !== "all" || searchQuery.trim().length > 0;
 
   const resetFilters = () => {
     setFilterCategory("all");
     setFilterStatus("all");
+    setSearchQuery("");
     setActiveTab("expense");
   };
 
