@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
     const { data: customer } = service_call ? await supabase.from("customers").select("name, phone, city, address").eq("id", service_call.customer_id).single() : { data: null };
     const { data: photos } = await supabase.from("service_call_photos").select("*").eq("service_call_id", report.service_call_id).order("created_at");
     const { data: videos } = await supabase.from("service_call_videos").select("*").eq("service_call_id", report.service_call_id).order("created_at");
+    const { data: materials } = await supabase.from("service_call_materials").select("id, name, quantity, is_one_off").eq("service_call_id", report.service_call_id).order("created_at");
 
     // Generate signed URLs for photos and videos
     const photosWithUrls = await Promise.all((photos || []).map(async (p: any) => {
@@ -90,6 +91,7 @@ Deno.serve(async (req) => {
       },
       service_call, customer,
       photos: photosWithUrls, videos: videosWithUrls,
+      materials: materials || [],
       access_mode: share.access_mode || "sign",
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
