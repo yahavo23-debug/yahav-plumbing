@@ -26,12 +26,6 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   final: { label: "סופי", color: "bg-muted text-muted-foreground" },
 };
 
-const confidenceLabels: Record<string, string> = {
-  high: "גבוהה",
-  medium: "בינונית",
-  suspicion: "חשד בלבד",
-};
-
 const urgencyLabels: Record<string, string> = {
   immediate: "תיקון מיידי",
   soon: "מומלץ בקרוב",
@@ -48,10 +42,12 @@ const visibleDamageLabels: Record<string, string> = {
 };
 
 const SummaryField = ({ label, value }: { label: string; value?: string | number | null }) => (
-  <div className="space-y-1">
-    <p className="text-xs text-muted-foreground">{label}</p>
-    <p className="text-sm whitespace-pre-wrap">{value || "—"}</p>
-  </div>
+  value ? (
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm whitespace-pre-wrap">{value}</p>
+    </div>
+  ) : null
 );
 
 const ReportEditor = () => {
@@ -384,8 +380,6 @@ const ReportEditor = () => {
                 <SummaryField label="ממצאים" value={serviceCall?.findings} />
                 <SummaryField label="הערכת סיבה" value={serviceCall?.cause_assessment} />
                 <SummaryField label="נזקים נראים לעין" value={visibleDamageSummary} />
-                <SummaryField label="מיקום הנזילה" value={serviceCall?.leak_location} />
-                <SummaryField label="רמת ודאות" value={confidenceLabels[serviceCall?.diagnosis_confidence] || serviceCall?.diagnosis_confidence} />
                 <SummaryField label="רמת דחיפות" value={urgencyLabels[serviceCall?.urgency_level] || serviceCall?.urgency_level} />
                 <SummaryField label="המלצה" value={serviceCall?.recommendations} />
                 <SummaryField label="אזורים שלא נבדקו" value={serviceCall?.areas_not_inspected} />
