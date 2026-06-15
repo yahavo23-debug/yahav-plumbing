@@ -35,10 +35,6 @@ const quoteStatusLabels: Record<string, string> = {
   draft: "טיוטה", sent: "נשלחה", approved: "אושרה", rejected: "נדחתה",
 };
 
-const confidenceLabels: Record<string, string> = {
-  high: "גבוהה", medium: "בינונית", suspicion: "חשד בלבד",
-};
-
 const urgencyLabels: Record<string, string> = {
   immediate: "תיקון מיידי", soon: "מומלץ בקרוב", monitor: "ניטור",
 };
@@ -298,13 +294,6 @@ const DiagnosisSection = ({ data }: { data: any }) => {
         </Card>
       )}
 
-      {data.leak_location && (
-        <Card>
-          <CardHeader><CardTitle className="text-base">מיקום נזילה</CardTitle></CardHeader>
-          <CardContent><p className="text-sm">{data.leak_location}</p></CardContent>
-        </Card>
-      )}
-
       {data.cause_assessment && (
         <Card>
           <CardHeader><CardTitle className="text-base">הערכת סיבה</CardTitle></CardHeader>
@@ -323,14 +312,6 @@ const DiagnosisSection = ({ data }: { data: any }) => {
                 </Badge>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {data.diagnosis_confidence && (
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm"><strong>רמת ודאות:</strong> {confidenceLabels[data.diagnosis_confidence] || data.diagnosis_confidence}</p>
           </CardContent>
         </Card>
       )}
@@ -802,8 +783,6 @@ const ReportSection = ({
               <SummaryLine label="ממצאים" value={serviceCall?.findings} />
               <SummaryLine label="הערכת סיבה" value={serviceCall?.cause_assessment} />
               <SummaryLine label="נזקים נראים לעין" value={visibleDamageSummary} />
-              <SummaryLine label="מיקום הנזילה" value={serviceCall?.leak_location} />
-              <SummaryLine label="רמת ודאות" value={confidenceLabels[serviceCall?.diagnosis_confidence] || serviceCall?.diagnosis_confidence} />
               <SummaryLine label="רמת דחיפות" value={urgencyLabels[serviceCall?.urgency_level] || serviceCall?.urgency_level} />
               <SummaryLine label="המלצה" value={serviceCall?.recommendations} />
               <SummaryLine label="אזורים שלא נבדקו" value={serviceCall?.areas_not_inspected} />
