@@ -28,7 +28,7 @@ import {
 import { LEGAL_SECTIONS, buildLegalAnnexHtml } from "@/lib/legal-constants";
 
 export interface PdfReportGeneratorHandle {
-  generate: () => Promise<void>;
+  generate: (opts?: { skipDownload?: boolean }) => Promise<void>;
 }
 
 interface PdfReportGeneratorProps {
@@ -74,10 +74,13 @@ function PdfReportGenerator({
     const { data } = await supabase.storage
       .from("reports-pdf")
       .createSignedUrl(report.pdf_path, 3600);
-    if (data) setPdfUrl(data.signedUrl);
+    if (data) {
+      setPdfUrl(data.signedUrl);
+      onPdfReady?.(data.signedUrl);
+    }
   };
 
-  const generatePdf = async () => {
+  const generatePdf = async (opts?: { skipDownload?: boolean }) => {
     setGenerating(true);
     try {
       // Get signed URLs for photos (max 12)
@@ -194,11 +197,13 @@ function PdfReportGenerator({
         renderSinglePageCanvasToPdf(annexCanvas, pdf);
       }
 
-      // Download directly to device
-      const now2 = new Date();
-      const dateLabel = now2.toLocaleDateString("he-IL").replace(/\//g, "-");
-      const fileName = `דוח_עבודה_${customer?.name || "לקוח"}_${dateLabel}.pdf`;
-      pdf.save(fileName);
+      // Download directly to device (unless preview-only)
+      if (!opts?.skipDownload) {
+        const now2 = new Date();
+        const dateLabel = now2.toLocaleDateString("he-IL").replace(/\//g, "-");
+        const fileName = `דוח_עבודה_${customer?.name || "לקוח"}_${dateLabel}.pdf`;
+        pdf.save(fileName);
+      }
 
       // Also upload to storage for sharing
       const pdfBlob = pdf.output("blob");
@@ -279,7 +284,7 @@ function PdfReportGenerator({
             <p className="text-xs text-muted-foreground">לחץ על "שמור ויצור PDF" כדי לשמור</p>
           </div>
           <Button
-            onClick={generatePdf}
+            onClick={() => generatePdf()}
             disabled={generating}
             size="sm"
             className="h-8 gap-1.5 text-xs shrink-0"
@@ -293,7 +298,7 @@ function PdfReportGenerator({
       {/* Regenerate button when PDF exists */}
       {pdfUrl && (
         <Button
-          onClick={generatePdf}
+          onClick={() => generatePdf()}
           disabled={generating}
           variant="ghost"
           size="sm"
