@@ -46,6 +46,7 @@ const statusLabels: Record<string, string> = {
   in_progress: "בטיפול",
   completed: "הושלם",
   cancelled: "בוטל",
+  pending_customer: "ממתין לאישור לקוח",
 };
 
 // LEGAL_SECTIONS imported from @/lib/legal-constants
@@ -93,24 +94,12 @@ function PdfReportGenerator({
         })
       );
 
-      // Load quotes
-      const { data: quotes } = await supabase
-        .from("quotes")
+      // Load materials used in this service call
+      const { data: materials } = await supabase
+        .from("service_call_materials")
         .select("*")
         .eq("service_call_id", serviceCall.id)
-        .order("created_at", { ascending: false });
-
-      // Load quote items for each quote
-      const quotesWithItems = await Promise.all(
-        (quotes || []).map(async (q: any) => {
-          const { data: items } = await supabase
-            .from("quote_items")
-            .select("*")
-            .eq("quote_id", q.id)
-            .order("sort_order");
-          return { ...q, items: items || [] };
-        })
-      );
+        .order("created_at");
 
       // Get signature URL - prefer report signature, fallback to service call signature
       let signatureUrl: string | null = null;
@@ -137,7 +126,7 @@ function PdfReportGenerator({
         serviceCall,
         customer,
         photoUrls,
-        quotes: quotesWithItems,
+        materials: materials || [],
         logoUrl,
         signatureUrl,
         signatureDate: signatureDateValue,
