@@ -401,6 +401,25 @@ export default function Finance() {
         </div>
       </Tabs>
 
+      {/* Supplier summary for expense search */}
+      {supplierSummary && supplierSummary.count > 0 && (
+        <Card className="mb-4 border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-900/10">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <TrendingDown className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground">
+                סה״כ הוצאות אצל &quot;{searchQuery.trim()}&quot; ({supplierSummary.count} רשומות)
+              </p>
+              <p className="text-xl font-bold text-red-700 dark:text-red-400">
+                ₪{supplierSummary.total.toLocaleString("he-IL", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Transactions Table */}
       <Card>
         <CardContent className="p-0">
