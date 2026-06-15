@@ -23,6 +23,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 
 type Customer = Tables<"customers">;
 
@@ -74,6 +77,8 @@ const CustomerDetail = () => {
   const [editingLeadCost, setEditingLeadCost] = useState(false);
   const [leadCostInput, setLeadCostInput] = useState("");
   const [savingLeadCost, setSavingLeadCost] = useState(false);
+  const [showCreateReportDialog, setShowCreateReportDialog] = useState(false);
+  const [creatingReport, setCreatingReport] = useState(false);
   const billing = useCustomerBilling(id);
 
   useEffect(() => {
@@ -129,6 +134,40 @@ const CustomerDetail = () => {
     }
     setEditingLeadCost(false);
     setSavingLeadCost(false);
+  };
+
+  const handleCreateReportForCall = async (callId: string, callNumber?: number) => {
+    if (!user || !id) return;
+    setCreatingReport(true);
+    try {
+      const { data: existing } = await supabase.from("reports")
+        .select("id").eq("service_call_id", callId).limit(1);
+
+      if (existing && existing.length > 0) {
+        navigate(`/reports/${existing[0].id}`);
+        return;
+      }
+
+      const { data, error } = await supabase.from("reports")
+        .insert({
+          service_call_id: callId,
+          title: `דוח עבודה - ${customer?.name || ""}`,
+          created_by: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({ title: "דוח נוצר", description: `דוח עבור קריאה #${callNumber || "—"} נוצר בהצלחה` });
+      navigate(`/reports/${data.id}`);
+    } catch (err: any) {
+      console.error("Create report error:", err);
+      toast({ title: "שגיאה ביצירת דוח", description: err.message, variant: "destructive" });
+    } finally {
+      setCreatingReport(false);
+      setShowCreateReportDialog(false);
+    }
   };
 
   if (loading) {
@@ -273,10 +312,22 @@ const CustomerDetail = () => {
 
         {/* Reports Tab */}
         <TabsContent value="reports">
+          {calls.length > 0 && (
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => setShowCreateReportDialog(true)} className="gap-2">
+                <Plus className="w-4 h-4" /> צור דוח חדש
+              </Button>
+            </div>
+          )}
           {reports.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
               <p>אין דוחות עבור לקוח זה עדיין</p>
+              {calls.length > 0 && (
+                <Button onClick={() => setShowCreateReportDialog(true)} variant="outline" className="mt-4 gap-2">
+                  <Plus className="w-4 h-4" /> צור דוח חדש
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-2">
@@ -511,6 +562,45 @@ const CustomerDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Report — Select Service Call Dialog */}
+      <Dialog open={showCreateReportDialog} onOpenChange={setShowCreateReportDialog}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>צור דוח חדש</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mb-2">בחר קריאת שירות לקישור הדוח:</p>
+          {calls.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">אין קריאות שירות ללקוח זה</p>
+          ) : (
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {calls.map((call) => (
+                <button
+                  key={call.id}
+                  onClick={() => handleCreateReportForCall(call.id, (call as any).call_number)}
+                  disabled={creatingReport}
+                  className="w-full text-right flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors disabled:opacity-50"
+                >
+                  <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center shrink-0 text-xs font-bold text-muted-foreground">
+                    #{(call as any).call_number || "—"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{getJobTypeLabel(call.job_type)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {statusLabels[call.status]} · {new Date(call.created_at).toLocaleDateString("he-IL")}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          <DialogFooter className="flex-row-reverse gap-2">
+            <Button variant="ghost" onClick={() => setShowCreateReportDialog(false)} disabled={creatingReport}>
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };
