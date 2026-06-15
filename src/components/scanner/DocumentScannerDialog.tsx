@@ -202,7 +202,14 @@ export function DocumentScannerDialog({ open, onOpenChange, onComplete, filename
     }
   };
 
-  const removePage = (id: string) => setPages((p) => p.filter((x) => x.id !== id));
+  const removePage = (id: string) =>
+    setPages((p) => {
+      const next = p.filter((x) => x.id !== id);
+      setReviewIdx((idx) => Math.min(idx, Math.max(0, next.length - 1)));
+      if (next.length === 0) setMode("capture");
+      return next;
+    });
+
   const rotatePage = (id: string) =>
     setPages((p) =>
       p.map((x) =>
