@@ -2,7 +2,9 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, Loader2, X, ScanLine } from "lucide-react";
+import { DocumentScannerDialog } from "@/components/scanner/DocumentScannerDialog";
+
 
 interface ReceiptUploadProps {
   entryId?: string;
