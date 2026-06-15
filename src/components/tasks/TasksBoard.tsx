@@ -277,6 +277,8 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
         dueTime: due ? format(due, "HH:mm") : "",
         recurrence: t.recurrence,
         reminder_minutes_before: t.reminder_minutes_before,
+        customer_id: t.customer_id || null,
+        customer_name: t.customer?.full_name || null,
       });
     } else {
       setForm(emptyForm());
