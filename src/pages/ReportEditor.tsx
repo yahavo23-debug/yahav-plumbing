@@ -307,8 +307,9 @@ const ReportEditor = () => {
         </Card>
       )}
 
-      <Tabs defaultValue="details" dir="rtl">
+      <Tabs defaultValue={pdfPreviewUrl ? "preview" : "details"} dir="rtl">
         <TabsList className="mb-4 h-12">
+          <TabsTrigger value="preview" className="text-base px-6 h-10">תצוגה מקדימה</TabsTrigger>
           <TabsTrigger value="details" className="text-base px-6 h-10">פרטים</TabsTrigger>
           <TabsTrigger value="photos" className="text-base px-6 h-10">תמונות ({photos.length})</TabsTrigger>
           <TabsTrigger value="videos" className="text-base px-6 h-10">סרטונים ({videos.length})</TabsTrigger>
