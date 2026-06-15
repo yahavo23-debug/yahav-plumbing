@@ -296,126 +296,209 @@ export function DocumentScannerDialog({ open, onOpenChange, onComplete, filename
     }
   };
 
+  const current = pages[reviewIdx];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[100vw] sm:w-[95vw] sm:max-w-2xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90vh] rounded-none sm:rounded-lg p-3 sm:p-6 overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ScanLine className="w-5 h-5" />
-            סריקת מסמך
+            {mode === "capture" ? "סריקת מסמך" : `תצוגה מקדימה (${reviewIdx + 1}/${pages.length})`}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-3">
-          {/* Camera area / fallback */}
-          <div className="relative w-full bg-black/90 rounded-lg overflow-hidden" style={{ aspectRatio: "4/3" }}>
-            {cameraError ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white p-4 text-center">
-                <Camera className="w-10 h-10 opacity-60" />
-                <div className="text-sm opacity-80">{cameraError}</div>
-                <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
-                  <ImagePlus className="w-4 h-4 ml-1" /> בחר תמונה מהמכשיר
-                </Button>
-              </div>
-            ) : (
-              <>
-                <video
-                  ref={videoRef}
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-                {!cameraReady && (
-                  <div className="absolute inset-0 flex items-center justify-center text-white">
-                    <Loader2 className="w-6 h-6 animate-spin" />
+        {mode === "capture" ? (
+          <>
+            <div className="flex-1 overflow-y-auto space-y-3">
+              {/* Camera area / fallback */}
+              <div className="relative w-full bg-black/90 rounded-lg overflow-hidden" style={{ aspectRatio: "4/3" }}>
+                {cameraError ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white p-4 text-center">
+                    <Camera className="w-10 h-10 opacity-60" />
+                    <div className="text-sm opacity-80">{cameraError}</div>
+                    <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
+                      <ImagePlus className="w-4 h-4 ml-1" /> בחר תמונה מהמכשיר
+                    </Button>
                   </div>
-                )}
-                {/* Guide overlay */}
-                {cameraReady && (
-                  <div className="pointer-events-none absolute inset-4 border-2 border-white/40 rounded-md" />
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Action row */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button onClick={capture} disabled={!cameraReady || busy} size="lg" className="gap-2">
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-              צלם עמוד
-            </Button>
-            <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={busy} className="gap-2">
-              <ImagePlus className="w-4 h-4" />
-              בחר מהגלריה
-            </Button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              multiple
-              capture="environment"
-              className="hidden"
-              onChange={onFilesPicked}
-            />
-          </div>
-
-          {/* Pages strip */}
-          {pages.length > 0 && (
-            <div className="border-t pt-3">
-              <div className="text-sm text-muted-foreground mb-2">עמודים שנסרקו ({pages.length})</div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {pages.map((p, idx) => (
-                  <div key={p.id} className="relative group bg-muted rounded border overflow-hidden">
-                    <img
-                      src={p.dataUrl}
-                      alt={`page-${idx + 1}`}
-                      style={{ transform: `rotate(${p.rotation}deg)` }}
-                      className="w-full h-28 object-cover transition-transform"
-                    />
-                    <div className="absolute top-1 right-1 bg-black/60 text-white text-[10px] rounded px-1.5 py-0.5">
-                      {idx + 1}
-                    </div>
-                    {p.enhanced && (
-                      <div className="absolute top-1 left-1 bg-primary/90 text-primary-foreground text-[10px] rounded px-1.5 py-0.5 flex items-center gap-0.5">
-                        <Sparkles className="w-2.5 h-2.5" /> מעובד
+                ) : (
+                  <>
+                    <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
+                    {!cameraReady && (
+                      <div className="absolute inset-0 flex items-center justify-center text-white">
+                        <Loader2 className="w-6 h-6 animate-spin" />
                       </div>
                     )}
-                    <div className="absolute inset-x-0 bottom-0 flex justify-between bg-gradient-to-t from-black/70 to-transparent p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={() => rotatePage(p.id)}
-                        className="text-white p-1 rounded hover:bg-white/20"
-                        title="סובב"
-                      >
-                        <RotateCw className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removePage(p.id)}
-                        className="text-white p-1 rounded hover:bg-destructive/70"
-                        title="מחק"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    {cameraReady && (
+                      <div className="pointer-events-none absolute inset-4 border-2 border-white/40 rounded-md" />
+                    )}
+                  </>
+                )}
               </div>
-            </div>
-          )}
-        </div>
 
-        <DialogFooter className="flex-row gap-2 justify-between sm:justify-between">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={building}>
-            <X className="w-4 h-4 ml-1" />
-            ביטול
-          </Button>
-          <Button onClick={finish} disabled={!pages.length || building} className="gap-2">
-            {building ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanLine className="w-4 h-4" />}
-            {pages.length > 1 ? `שמור כ-PDF (${pages.length} עמ')` : "שמור"}
-          </Button>
-        </DialogFooter>
+              {/* Action row */}
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button onClick={capture} disabled={!cameraReady || busy} size="lg" className="gap-2">
+                  {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                  צלם עמוד
+                </Button>
+                <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={busy} className="gap-2">
+                  <ImagePlus className="w-4 h-4" />
+                  בחר מהגלריה
+                </Button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  capture="environment"
+                  className="hidden"
+                  onChange={onFilesPicked}
+                />
+              </div>
+
+              {/* Pages strip — quick overview */}
+              {pages.length > 0 && (
+                <div className="border-t pt-3">
+                  <div className="text-sm text-muted-foreground mb-2">עמודים שנסרקו ({pages.length})</div>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {pages.map((p, idx) => (
+                      <button
+                        type="button"
+                        key={p.id}
+                        onClick={() => { setReviewIdx(idx); setMode("review"); }}
+                        className="relative group bg-muted rounded border overflow-hidden text-left"
+                        title="פתח לעריכה"
+                      >
+                        <img
+                          src={p.dataUrl}
+                          alt={`page-${idx + 1}`}
+                          style={{ transform: `rotate(${p.rotation}deg)` }}
+                          className="w-full h-28 object-cover transition-transform"
+                        />
+                        <div className="absolute top-1 right-1 bg-black/60 text-white text-[10px] rounded px-1.5 py-0.5">
+                          {idx + 1}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex-row gap-2 justify-between sm:justify-between">
+              <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={building}>
+                <X className="w-4 h-4 ml-1" /> ביטול
+              </Button>
+              <Button
+                onClick={() => { setReviewIdx(0); setMode("review"); }}
+                disabled={!pages.length}
+                className="gap-2"
+              >
+                <Check className="w-4 h-4" />
+                המשך לתצוגה מקדימה ({pages.length})
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            {/* REVIEW MODE — large per-page preview with rotate/delete */}
+            <div className="flex-1 overflow-hidden flex flex-col gap-3 min-h-0">
+              <div className="relative flex-1 min-h-0 bg-muted/40 rounded-lg flex items-center justify-center overflow-hidden">
+                {current && (
+                  <img
+                    src={current.dataUrl}
+                    alt={`page-${reviewIdx + 1}`}
+                    style={{ transform: `rotate(${current.rotation}deg)` }}
+                    className="max-w-full max-h-full object-contain transition-transform select-none"
+                  />
+                )}
+                {/* Nav arrows */}
+                {pages.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setReviewIdx((i) => (i - 1 + pages.length) % pages.length)}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70"
+                      aria-label="הקודם"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReviewIdx((i) => (i + 1) % pages.length)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70"
+                      aria-label="הבא"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Per-page actions */}
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => current && rotatePage(current.id)}
+                  disabled={!current}
+                  className="gap-2"
+                >
+                  <RotateCw className="w-4 h-4" /> סובב
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => current && removePage(current.id)}
+                  disabled={!current}
+                  className="gap-2 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" /> מחק עמוד
+                </Button>
+              </div>
+
+              {/* Thumbnails for jump */}
+              {pages.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {pages.map((p, idx) => (
+                    <button
+                      type="button"
+                      key={p.id}
+                      onClick={() => setReviewIdx(idx)}
+                      className={
+                        "relative shrink-0 w-16 h-16 rounded border overflow-hidden " +
+                        (idx === reviewIdx ? "border-primary ring-2 ring-primary/40" : "border-input opacity-70")
+                      }
+                    >
+                      <img
+                        src={p.dataUrl}
+                        alt={`thumb-${idx + 1}`}
+                        style={{ transform: `rotate(${p.rotation}deg)` }}
+                        className="w-full h-full object-cover"
+                      />
+                      <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] px-1 rounded-tl">
+                        {idx + 1}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex-row gap-2 justify-between sm:justify-between">
+              <Button variant="outline" onClick={() => setMode("capture")} disabled={building} className="gap-2">
+                <ArrowLeft className="w-4 h-4" /> חזרה לסריקה
+              </Button>
+              <Button onClick={finish} disabled={!pages.length || building} className="gap-2">
+                {building ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanLine className="w-4 h-4" />}
+                {pages.length > 1 ? `שמור כ-PDF (${pages.length} עמ')` : "שמור"}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
 }
+
