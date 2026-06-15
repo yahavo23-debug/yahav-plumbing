@@ -197,11 +197,13 @@ function PdfReportGenerator({
         renderSinglePageCanvasToPdf(annexCanvas, pdf);
       }
 
-      // Download directly to device
-      const now2 = new Date();
-      const dateLabel = now2.toLocaleDateString("he-IL").replace(/\//g, "-");
-      const fileName = `דוח_עבודה_${customer?.name || "לקוח"}_${dateLabel}.pdf`;
-      pdf.save(fileName);
+      // Download directly to device (unless preview-only)
+      if (!opts?.skipDownload) {
+        const now2 = new Date();
+        const dateLabel = now2.toLocaleDateString("he-IL").replace(/\//g, "-");
+        const fileName = `דוח_עבודה_${customer?.name || "לקוח"}_${dateLabel}.pdf`;
+        pdf.save(fileName);
+      }
 
       // Also upload to storage for sharing
       const pdfBlob = pdf.output("blob");
