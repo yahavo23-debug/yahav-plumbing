@@ -12,8 +12,9 @@ import {
   eachMonthOfInterval,
 } from "date-fns";
 import { he } from "date-fns/locale";
-import { ChevronRight, ChevronLeft, CalendarDays, X, Plus, Wrench, Star, Trash2, Plane } from "lucide-react";
+import { ChevronRight, ChevronLeft, CalendarDays, X, Plus, Wrench, Star, Trash2, Plane, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TasksBoard, type Task } from "@/components/tasks/TasksBoard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
