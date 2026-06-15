@@ -37,10 +37,10 @@ export interface Task {
   completed_at: string | null;
   position: number;
   customer_id?: string | null;
-  customer?: { id: string; full_name: string } | null;
+  customer?: { id: string; name: string } | null;
 }
 
-interface CustomerLite { id: string; full_name: string; }
+interface CustomerLite { id: string; name: string; }
 
 const PRIORITY_META: Record<Task["priority"], { label: string; color: string; ring: string; bar: string }> = {
   high:   { label: "דחוף",  color: "bg-red-100 text-red-700 border-red-300",        ring: "ring-red-400",    bar: "bg-red-500" },
@@ -137,7 +137,7 @@ function SortableTaskRow({ task, onToggle, onDelete, onEdit }: SortableTaskProps
             )}
             {task.customer && (
               <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 flex items-center gap-1">
-                <UserIcon className="w-3 h-3" />{task.customer.full_name}
+                <UserIcon className="w-3 h-3" />{task.customer.name}
               </span>
             )}
           </div>
@@ -188,7 +188,7 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("customers").select("id, full_name").order("full_name", { ascending: true })
+    supabase.from("customers").select("id, name").order("name", { ascending: true })
       .then(({ data }) => setCustomers((data as CustomerLite[]) || []));
   }, [user]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -204,7 +204,7 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .select("*, customer:customers(id, full_name)")
+      .select("*, customer:customers(id, name)")
       .order("is_done", { ascending: true })
       .order("position", { ascending: true })
       .order("created_at", { ascending: false });
@@ -291,7 +291,7 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
         recurrence: t.recurrence,
         reminder_minutes_before: t.reminder_minutes_before,
         customer_id: t.customer_id || null,
-        customer_name: t.customer?.full_name || null,
+        customer_name: t.customer?.name || null,
       });
     } else {
       setForm(emptyForm());
