@@ -9,6 +9,7 @@ import { PublicSignaturePad } from "@/components/reports/PublicSignaturePad";
 import { Wrench, User, Phone, MapPin, Calendar, Image, Film, FileText, Play, Check } from "lucide-react";
 import { useLogo } from "@/hooks/useLogo";
 import { BUSINESS_INFO } from "@/lib/pdf-utils";
+import { getJobTypeLabel } from "@/lib/constants";
 
 const tagLabels: Record<string, string> = {
   before: "לפני", after: "אחרי", finding: "ממצא", other: "אחר",
@@ -161,7 +162,7 @@ const PublicReport = () => {
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><Wrench className="w-4 h-4" /> פרטי קריאת שירות</CardTitle></CardHeader>
           <CardContent className="text-sm space-y-1">
-            <p><strong>סוג עבודה:</strong> {serviceCall?.job_type}</p>
+            <p><strong>סוג עבודה:</strong> {getJobTypeLabel(serviceCall?.job_type)}</p>
             <p><strong>סטטוס:</strong> {serviceCall?.status === "completed" ? "הושלם" : serviceCall?.status}</p>
             {serviceCall?.scheduled_date && (
               <p className="flex items-center gap-1">
