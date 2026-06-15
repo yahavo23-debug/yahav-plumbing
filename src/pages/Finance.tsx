@@ -370,6 +370,16 @@ export default function Finance() {
             </SelectContent>
           </Select>
 
+          <div className="relative w-48">
+            <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="חיפוש לפי שם..."
+              className="pr-9 text-sm"
+            />
+          </div>
+
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1.5 text-muted-foreground">
               <RotateCcw className="w-3.5 h-3.5" /> איפוס
