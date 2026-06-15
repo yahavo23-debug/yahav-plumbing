@@ -3,7 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ImagePlus, Loader2, X, FileText, Maximize2 } from "lucide-react";
+import { ImagePlus, Loader2, X, FileText, Maximize2, ScanLine } from "lucide-react";
+import { DocumentScannerDialog } from "@/components/scanner/DocumentScannerDialog";
+
+
 
 interface FinanceDocUploadProps {
   currentPath?: string | null;
@@ -16,7 +19,9 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPdf, setIsPdf] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
 
   useEffect(() => {
     if (currentPath && !previewUrl) {
@@ -40,10 +45,7 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
     }
   }, [currentPath]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const uploadFile = async (file: File) => {
     const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
     if (!allowed.includes(file.type)) {
       toast({ title: "שגיאה", description: "ניתן להעלות תמונות או PDF בלבד", variant: "destructive" });
@@ -77,6 +79,13 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
       if (fileRef.current) fileRef.current.value = "";
     }
   };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+  };
+
 
   const handleRemove = () => {
     setPreviewUrl(null);
@@ -127,19 +136,40 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
             </button>
           </div>
         ) : (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="gap-1.5"
-          >
-            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
-            צרף מסמך
-          </Button>
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setScannerOpen(true)}
+              disabled={uploading}
+              className="gap-1.5"
+            >
+              <ScanLine className="w-3.5 h-3.5" />
+              סרוק
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="gap-1.5"
+            >
+              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
+              צרף מסמך
+            </Button>
+          </>
         )}
       </div>
+
+      <DocumentScannerDialog
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        filenameBase="finance-doc"
+        onComplete={(file) => uploadFile(file)}
+      />
+
 
       {/* Fullscreen preview dialog */}
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>

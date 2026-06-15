@@ -2,7 +2,9 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, Loader2, X, ScanLine } from "lucide-react";
+import { DocumentScannerDialog } from "@/components/scanner/DocumentScannerDialog";
+
 
 interface ReceiptUploadProps {
   entryId?: string;
@@ -21,12 +23,11 @@ export function ReceiptUpload({
 }: ReceiptUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
+  const uploadFile = async (file: File) => {
     if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
       toast({ title: "שגיאה", description: "ניתן להעלות תמונות או PDF בלבד", variant: "destructive" });
       return;
@@ -40,7 +41,7 @@ export function ReceiptUpload({
     setUploading(true);
     try {
       const ext = file.name.split(".").pop() || "jpg";
-      const path = `${customerId}/${entryId || Date.now()}.${ext}`;
+      const path = `${customerId}/${entryId || Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
 
       const { error } = await supabase.storage
         .from("receipts")
@@ -48,7 +49,6 @@ export function ReceiptUpload({
 
       if (error) throw error;
 
-      // Show local preview
       setPreviewUrl(URL.createObjectURL(file));
       onUploaded(path);
       toast({ title: "הועלה", description: "תמונת הקבלה נשמרה" });
@@ -60,6 +60,13 @@ export function ReceiptUpload({
       if (fileRef.current) fileRef.current.value = "";
     }
   };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+  };
+
 
   const handleRemove = () => {
     setPreviewUrl(null);
@@ -96,22 +103,43 @@ export function ReceiptUpload({
           </button>
         </div>
       ) : (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="gap-1.5"
-        >
-          {uploading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <ImagePlus className="w-3.5 h-3.5" />
-          )}
-          צרף קבלה
-        </Button>
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setScannerOpen(true)}
+            disabled={uploading}
+            className="gap-1.5"
+          >
+            <ScanLine className="w-3.5 h-3.5" />
+            סרוק
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="gap-1.5"
+          >
+            {uploading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <ImagePlus className="w-3.5 h-3.5" />
+            )}
+            צרף קבלה
+          </Button>
+        </>
       )}
+
+      <DocumentScannerDialog
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        filenameBase="receipt"
+        onComplete={(file) => uploadFile(file)}
+      />
     </div>
   );
 }
+
