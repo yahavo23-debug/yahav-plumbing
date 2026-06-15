@@ -123,26 +123,10 @@ const ReportEditor = () => {
     }
   };
 
-  const handleSave = async () => {
-    if (!canEdit) return;
-    setSaving(true);
-    try {
-      const { error } = await supabase.from("reports").update(form).eq("id", id!);
-      if (error) throw error;
-      toast({ title: "נשמר", description: "הדוח עודכן, יוצר PDF..." });
-      // Auto-generate PDF after saving
-      await pdfRef.current?.generate();
-    } catch (err: any) {
-      toast({ title: "שגיאה", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleFinalize = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase.from("reports").update({ ...form, status: "final" }).eq("id", id!);
+      const { error } = await supabase.from("reports").update({ status: "final" }).eq("id", id!);
       if (error) throw error;
       setReport((r: any) => ({ ...r, status: "final" }));
       toast({ title: "הדוח סוים", description: "הדוח סומן כסופי" });
@@ -160,7 +144,7 @@ const ReportEditor = () => {
     setSaving(true);
     try {
       if (mode === "sign") {
-        await supabase.from("reports").update({ ...form, status: "sent" } as any).eq("id", id!);
+        await supabase.from("reports").update({ status: "sent" } as any).eq("id", id!);
         setReport((r: any) => ({ ...r, status: "sent" }));
       }
 
