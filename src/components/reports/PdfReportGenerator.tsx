@@ -74,10 +74,13 @@ function PdfReportGenerator({
     const { data } = await supabase.storage
       .from("reports-pdf")
       .createSignedUrl(report.pdf_path, 3600);
-    if (data) setPdfUrl(data.signedUrl);
+    if (data) {
+      setPdfUrl(data.signedUrl);
+      onPdfReady?.(data.signedUrl);
+    }
   };
 
-  const generatePdf = async () => {
+  const generatePdf = async (opts?: { skipDownload?: boolean }) => {
     setGenerating(true);
     try {
       // Get signed URLs for photos (max 12)
