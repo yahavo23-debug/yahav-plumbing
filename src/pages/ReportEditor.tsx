@@ -15,8 +15,9 @@ import { VideoList } from "@/components/media/VideoList";
 import {
   ArrowRight, Share2, ExternalLink, Copy, Ban, FileText, Send, Lock, MessageCircle, RefreshCw, CheckCircle2,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PdfReportGenerator, PdfReportGeneratorHandle } from "@/components/reports/PdfReportGenerator";
+import { getJobTypeLabel } from "@/lib/constants";
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   draft: { label: "טיוטה", color: "bg-warning/15 text-warning" },
@@ -365,7 +366,7 @@ const ReportEditor = () => {
                 <SummaryField label="לקוח" value={customer?.name} />
                 <SummaryField label="טלפון" value={customer?.phone} />
                 <SummaryField label="כתובת" value={[customer?.city, customer?.address].filter(Boolean).join(" ")} />
-                <SummaryField label="סוג עבודה" value={serviceCall?.job_type} />
+                <SummaryField label="סוג עבודה" value={getJobTypeLabel(serviceCall?.job_type)} />
                 <SummaryField label="תיאור התלונה" value={serviceCall?.description} />
                 <SummaryField label="הערות" value={serviceCall?.notes} />
               </CardContent>
