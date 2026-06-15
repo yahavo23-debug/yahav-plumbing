@@ -260,7 +260,7 @@ const ReportEditor = () => {
             serviceCall={serviceCall}
             customer={customer}
             photos={photos}
-            onPdfReady={(url) => console.log("PDF ready:", url)}
+            onPdfReady={(url) => setPdfPreviewUrl(url)}
           />
           {/* Show share button if link exists */}
           {shareToken && (
