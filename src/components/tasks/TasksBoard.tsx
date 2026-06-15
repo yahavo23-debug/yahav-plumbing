@@ -36,7 +36,11 @@ export interface Task {
   is_done: boolean;
   completed_at: string | null;
   position: number;
+  customer_id?: string | null;
+  customer?: { id: string; full_name: string } | null;
 }
+
+interface CustomerLite { id: string; full_name: string; }
 
 const PRIORITY_META: Record<Task["priority"], { label: string; color: string; ring: string; bar: string }> = {
   high:   { label: "דחוף",  color: "bg-red-100 text-red-700 border-red-300",        ring: "ring-red-400",    bar: "bg-red-500" },
