@@ -105,19 +105,19 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="w-[96vw] sm:max-w-lg max-h-[92vh] p-0 flex flex-col gap-0">
+        <DialogHeader className="px-4 pt-4 pb-2 border-b">
           <DialogTitle>{isEdit ? "עריכת רשומה" : "רשומה חדשה"}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           {/* Direction */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
               variant={direction === "income" ? "default" : "outline"}
               onClick={() => setDirection("income")}
-              className="w-full"
+              className="w-full h-12 text-base"
             >
               הכנסה
             </Button>
@@ -125,11 +125,12 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
               type="button"
               variant={direction === "expense" ? "default" : "outline"}
               onClick={() => setDirection("expense")}
-              className="w-full"
+              className="w-full h-12 text-base"
             >
               הוצאה
             </Button>
           </div>
+
 
           {/* Date + Amount */}
           <div className="grid grid-cols-2 gap-3">
@@ -258,8 +259,8 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="אופציונלי" />
           </div>
 
-          {/* Doc type + upload */}
-          <div className="grid grid-cols-2 gap-3 items-end">
+          {/* Doc type + upload (stack on mobile) */}
+          <div className="space-y-2 sm:grid sm:grid-cols-2 sm:gap-3 sm:items-end sm:space-y-0">
             <div>
               <Label>סוג מסמך</Label>
               <Select value={docType} onValueChange={setDocType}>
@@ -271,15 +272,21 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
                 </SelectContent>
               </Select>
             </div>
-            <FinanceDocUpload
-              currentPath={docPath}
-              onUploaded={setDocPath}
-              onRemoved={() => setDocPath(null)}
-            />
+            <div>
+              <Label className="sm:hidden">מסמך</Label>
+              <FinanceDocUpload
+                currentPath={docPath}
+                onUploaded={setDocPath}
+                onRemoved={() => setDocPath(null)}
+              />
+            </div>
           </div>
+        </div>
 
-          <Button onClick={handleSubmit} disabled={saving || !amount} className="w-full">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+        {/* Sticky save bar */}
+        <div className="border-t bg-background px-4 py-3 sticky bottom-0">
+          <Button onClick={handleSubmit} disabled={saving || !amount} className="w-full h-12 text-base">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
             {isEdit ? "עדכן" : "שמור"}
           </Button>
         </div>
@@ -287,3 +294,4 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
     </Dialog>
   );
 }
+
