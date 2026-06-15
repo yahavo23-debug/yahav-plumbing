@@ -534,6 +534,7 @@ const CalendarPage = () => {
                   const isSel      = selectedDay ? isSameDay(day, selectedDay) : false;
                   const isTod      = isToday(day);
                   const hasNote    = !!notes[key];
+                  const dayTasks   = tasksByDate[key] || [];
 
                   return (
                     <button
