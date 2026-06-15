@@ -135,6 +135,11 @@ function SortableTaskRow({ task, onToggle, onDelete, onEdit }: SortableTaskProps
             {task.reminder_minutes_before !== null && (
               <span className="text-[11px] text-sky-600 flex items-center gap-0.5"><Bell className="w-3 h-3" /></span>
             )}
+            {task.customer && (
+              <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 flex items-center gap-1">
+                <UserIcon className="w-3 h-3" />{task.customer.full_name}
+              </span>
+            )}
           </div>
         </button>
         <button onClick={() => onDelete(task.id)}
