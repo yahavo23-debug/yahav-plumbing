@@ -77,6 +77,8 @@ const CustomerDetail = () => {
   const [editingLeadCost, setEditingLeadCost] = useState(false);
   const [leadCostInput, setLeadCostInput] = useState("");
   const [savingLeadCost, setSavingLeadCost] = useState(false);
+  const [showCreateReportDialog, setShowCreateReportDialog] = useState(false);
+  const [creatingReport, setCreatingReport] = useState(false);
   const billing = useCustomerBilling(id);
 
   useEffect(() => {
