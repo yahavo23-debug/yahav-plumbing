@@ -136,19 +136,40 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
             </button>
           </div>
         ) : (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="gap-1.5"
-          >
-            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
-            צרף מסמך
-          </Button>
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setScannerOpen(true)}
+              disabled={uploading}
+              className="gap-1.5"
+            >
+              <ScanLine className="w-3.5 h-3.5" />
+              סרוק
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="gap-1.5"
+            >
+              {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
+              צרף מסמך
+            </Button>
+          </>
         )}
       </div>
+
+      <DocumentScannerDialog
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        filenameBase="finance-doc"
+        onComplete={(file) => uploadFile(file)}
+      />
+
 
       {/* Fullscreen preview dialog */}
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
