@@ -14,7 +14,6 @@ import { toast } from "@/hooks/use-toast";
 import { PhotoGrid } from "@/components/media/PhotoGrid";
 import { VideoList } from "@/components/media/VideoList";
 import { MediaUploader } from "@/components/media/MediaUploader";
-import { DocumentScanner } from "@/components/media/DocumentScanner";
 import { Tables } from "@/integrations/supabase/types";
 import {
   ArrowRight, Edit, FileText, Calendar, User, MapPin, Phone, Trash2, Receipt,
@@ -587,12 +586,7 @@ const ServiceCallDetail = () => {
             </div>
           )}
           {canUpload && (
-            <div className="flex flex-wrap gap-3 items-start">
-              <div className="flex-1 min-w-0">
-                <MediaUploader serviceCallId={id!} type="photo" onUploadComplete={refreshPhotos} />
-              </div>
-              <DocumentScanner serviceCallId={id!} onUploadComplete={refreshPhotos} />
-            </div>
+            <MediaUploader serviceCallId={id!} type="photo" onUploadComplete={refreshPhotos} />
           )}
           <div className="mt-4">
             <PhotoGrid photos={photos} onDelete={canEdit ? (deletedId) => setPhotos(p => p.filter(x => x.id !== deletedId)) : undefined} />
