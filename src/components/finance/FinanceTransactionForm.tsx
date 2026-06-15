@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { FinanceDocUpload } from "./FinanceDocUpload";
+import { DocumentScanner } from "./DocumentScanner";
 import { financeCategories, financePaymentMethods } from "@/lib/finance-constants";
 import type { FinanceTransaction } from "@/hooks/useFinanceTransactions";
 import { Loader2 } from "lucide-react";
@@ -201,6 +202,11 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
               onUploaded={setDocPath}
               onRemoved={() => setDocPath(null)}
             />
+          </div>
+
+          {/* Document scanner — scroll down to scan a receipt/invoice */}
+          <div className="pt-1">
+            <DocumentScanner onUploaded={(path) => { setDocPath(path); setDocType("receipt"); }} />
           </div>
 
           <Button onClick={handleSubmit} disabled={saving || !amount} className="w-full">
