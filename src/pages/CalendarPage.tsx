@@ -195,6 +195,19 @@ const CalendarPage = () => {
   const [callNotes, setCallNotes]     = useState<Record<string, string>>({});
   const [savingNote, setSavingNote]   = useState<string | null>(null);
 
+  // Tasks (synced with calendar)
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const tasksByDate = useMemo(() => {
+    const m: Record<string, Task[]> = {};
+    for (const t of tasks) {
+      if (!t.due_at || t.is_done) continue;
+      const key = format(parseISO(t.due_at), "yyyy-MM-dd");
+      (m[key] ||= []).push(t);
+    }
+    return m;
+  }, [tasks]);
+
+
   // Add-event form
   const [showForm, setShowForm]       = useState(false);
   const [formTitle, setFormTitle]     = useState("");
