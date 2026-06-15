@@ -562,6 +562,45 @@ const CustomerDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Report — Select Service Call Dialog */}
+      <Dialog open={showCreateReportDialog} onOpenChange={setShowCreateReportDialog}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>צור דוח חדש</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mb-2">בחר קריאת שירות לקישור הדוח:</p>
+          {calls.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">אין קריאות שירות ללקוח זה</p>
+          ) : (
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {calls.map((call) => (
+                <button
+                  key={call.id}
+                  onClick={() => handleCreateReportForCall(call.id, (call as any).call_number)}
+                  disabled={creatingReport}
+                  className="w-full text-right flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors disabled:opacity-50"
+                >
+                  <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center shrink-0 text-xs font-bold text-muted-foreground">
+                    #{(call as any).call_number || "—"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{getJobTypeLabel(call.job_type)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {statusLabels[call.status]} · {new Date(call.created_at).toLocaleDateString("he-IL")}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          <DialogFooter className="flex-row-reverse gap-2">
+            <Button variant="ghost" onClick={() => setShowCreateReportDialog(false)} disabled={creatingReport}>
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };
