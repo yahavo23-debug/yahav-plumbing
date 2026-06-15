@@ -237,9 +237,14 @@ const ReportEditor = () => {
 
   const customer = serviceCall?.customers as any;
   const status = statusConfig[report?.status] || statusConfig.draft;
+  const visibleDamageSummary = Array.isArray(serviceCall?.visible_damage)
+    ? serviceCall.visible_damage
+        .map((item: string) => item.startsWith("other:") ? `אחר: ${item.replace("other:", "")}` : visibleDamageLabels[item] || item)
+        .join(", ")
+    : "";
 
   return (
-    <AppLayout title={form.title || "דוח עבודה"}>
+    <AppLayout title={report?.title || "דוח עבודה"}>
       {/* Locked banner */}
       {isLocked && (
         <div className="flex items-center gap-3 p-3 mb-4 rounded-lg bg-warning/10 border border-warning/30">
@@ -311,8 +316,9 @@ const ReportEditor = () => {
       <Tabs defaultValue={pdfPreviewUrl ? "preview" : "details"} dir="rtl">
         <TabsList className="mb-4 h-12">
           <TabsTrigger value="preview" className="text-base px-6 h-10">תצוגה מקדימה</TabsTrigger>
-          <TabsTrigger value="details" className="text-base px-6 h-10">פרטים</TabsTrigger>
+          <TabsTrigger value="details" className="text-base px-6 h-10">סיכום דוח</TabsTrigger>
           <TabsTrigger value="photos" className="text-base px-6 h-10">תמונות ({photos.length})</TabsTrigger>
+          <TabsTrigger value="materials" className="text-base px-6 h-10">חומרים ({materials.length})</TabsTrigger>
           <TabsTrigger value="videos" className="text-base px-6 h-10">סרטונים ({videos.length})</TabsTrigger>
         </TabsList>
 
@@ -354,51 +360,56 @@ const ReportEditor = () => {
         <TabsContent value="details">
           <div className="space-y-6">
             <Card>
-              <CardHeader><CardTitle className="text-base">פרטי לקוח</CardTitle></CardHeader>
-              <CardContent className="text-sm space-y-1">
-                <p><strong>שם:</strong> {customer?.name}</p>
-                {customer?.phone && <p><strong>טלפון:</strong> {customer.phone}</p>}
-                {customer?.address && <p><strong>כתובת:</strong> {customer.city} {customer.address}</p>}
+              <CardHeader><CardTitle className="text-base">פרטי קריאה</CardTitle></CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2 text-sm">
+                <SummaryField label="לקוח" value={customer?.name} />
+                <SummaryField label="טלפון" value={customer?.phone} />
+                <SummaryField label="כתובת" value={[customer?.city, customer?.address].filter(Boolean).join(" ")} />
+                <SummaryField label="סוג עבודה" value={serviceCall?.job_type} />
+                <SummaryField label="תיאור התלונה" value={serviceCall?.description} />
+                <SummaryField label="הערות" value={serviceCall?.notes} />
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader><CardTitle className="text-base">תוכן הדוח</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>כותרת</Label>
-                  <Input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} disabled={!canEdit} />
-                </div>
-                <div className="space-y-2">
-                  <Label>ממצאים</Label>
-                  <Textarea value={form.findings} onChange={(e) => setForm(f => ({ ...f, findings: e.target.value }))} rows={5} disabled={!canEdit} />
-                </div>
-                <div className="space-y-2">
-                  <Label>המלצות</Label>
-                  <Textarea value={form.recommendations} onChange={(e) => setForm(f => ({ ...f, recommendations: e.target.value }))} rows={5} disabled={!canEdit} />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label>סיכום הצעת מחיר</Label>
-                    <Input value={form.quote_summary} onChange={(e) => setForm(f => ({ ...f, quote_summary: e.target.value }))} disabled={!canEdit} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>מספר חשבונית</Label>
-                    <Input value={form.invoice_number} onChange={(e) => setForm(f => ({ ...f, invoice_number: e.target.value }))} dir="ltr" disabled={!canEdit} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>סטטוס חשבונית</Label>
-                    <Input value={form.invoice_status} onChange={(e) => setForm(f => ({ ...f, invoice_status: e.target.value }))} disabled={!canEdit} />
-                  </div>
-                </div>
-                {canEdit && (
-                  <Button onClick={handleSave} disabled={saving} className="h-12 gap-2">
-                    {saving ? "שומר ויוצר PDF..." : "שמור ויצור PDF"}
-                  </Button>
-                )}
+              <CardHeader><CardTitle className="text-base">אבחון מקצועי</CardTitle></CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <SummaryField label="מצב מים" value={serviceCall?.water_pressure_status} />
+                <SummaryField label="נכס מאוכלס" value={serviceCall?.property_occupied === true ? "כן" : serviceCall?.property_occupied === false ? "לא" : ""} />
+                <SummaryField label="ברז ראשי סגור" value={serviceCall?.main_valve_closed === true ? "כן" : serviceCall?.main_valve_closed === false ? "לא" : ""} />
+                <SummaryField label="מגבלות בבדיקה" value={serviceCall?.test_limitations} />
+                <SummaryField label="שיטת איתור" value={serviceCall?.detection_method} />
+                <SummaryField label="ממצאים" value={serviceCall?.findings} />
+                <SummaryField label="הערכת סיבה" value={serviceCall?.cause_assessment} />
+                <SummaryField label="נזקים נראים לעין" value={visibleDamageSummary} />
+                <SummaryField label="מיקום הנזילה" value={serviceCall?.leak_location} />
+                <SummaryField label="רמת ודאות" value={confidenceLabels[serviceCall?.diagnosis_confidence] || serviceCall?.diagnosis_confidence} />
+                <SummaryField label="רמת דחיפות" value={urgencyLabels[serviceCall?.urgency_level] || serviceCall?.urgency_level} />
+                <SummaryField label="המלצה" value={serviceCall?.recommendations} />
+                <SummaryField label="אזורים שלא נבדקו" value={serviceCall?.areas_not_inspected} />
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="materials">
+          {materials.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">לא נוספו חומרים</p>
+          ) : (
+            <div className="space-y-2">
+              {materials.map((material) => (
+                <Card key={material.id}>
+                  <CardContent className="p-4 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{material.name}</p>
+                      <p className="text-xs text-muted-foreground">כמות: {material.quantity}</p>
+                    </div>
+                    <Badge variant="secondary">{material.is_one_off ? "חד-פעמי" : "מלאי"}</Badge>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="photos">
