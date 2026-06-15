@@ -23,6 +23,7 @@ import {
   buildPdfFooter,
   renderCanvasToPdf,
   escapeHtml,
+  escapeHtmlWithBreaks,
 } from "@/lib/pdf-utils";
 import { LEGAL_SECTIONS } from "@/lib/legal-constants";
 
@@ -66,8 +67,12 @@ function PdfReportGenerator({
   useImperativeHandle(ref, () => ({ generate: generatePdf }));
 
   useEffect(() => {
-    if (report?.pdf_path) loadExistingPdf();
-  }, [report?.pdf_path]);
+    // Draft/sent reports must be regenerated from live diagnosis data on open.
+    // Only signed/final PDFs are treated as archived documents.
+    if (report?.pdf_path && (report?.status === "signed" || report?.status === "final")) {
+      loadExistingPdf();
+    }
+  }, [report?.pdf_path, report?.status]);
 
   const loadExistingPdf = async () => {
     if (!report?.pdf_path) return;
@@ -214,6 +219,7 @@ function PdfReportGenerator({
       if (pdfSigned) {
         setPdfUrl(pdfSigned.signedUrl);
         onPdfReady?.(pdfSigned.signedUrl);
+        report.pdf_path = path;
       }
 
       document.body.removeChild(container);
@@ -377,10 +383,10 @@ function buildReportHtml(data: {
 
   const sectionTitle = (text: string) =>
     `<h2 style="font-size:15px;font-weight:700;margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid #e0e0e0;">${text}</h2>`;
-  const field = (label: string, value: string | null | undefined) =>
-    value
-      ? `<p style="font-size:13px;margin:4px 0;"><strong>${label}:</strong> ${escapeHtml(value)}</p>`
-      : "";
+  const field = (label: string, value: string | number | null | undefined) => {
+    const displayValue = value === null || value === undefined || value === "" ? "—" : String(value);
+    return `<p style="font-size:13px;margin:5px 0;white-space:normal;"><strong>${label}:</strong> ${escapeHtmlWithBreaks(displayValue)}</p>`;
+  };
   const yesNo = (value: boolean | null | undefined) =>
     value === true ? "כן" : value === false ? "לא" : "";
   const visibleDamageLabels: Record<string, string> = {
@@ -419,63 +425,33 @@ function buildReportHtml(data: {
     ${field("הערות", sc.notes)}
   `;
 
-  if (
-    sc.water_pressure_status ||
-    sc.property_occupied !== null ||
-    sc.main_valve_closed !== null ||
-    sc.test_limitations ||
-    sc.areas_not_inspected
-  ) {
-    html += sectionTitle("תנאי בדיקה");
-    html += field("מצב לחץ מים", sc.water_pressure_status);
-    html += field("נכס מאוכלס", yesNo(sc.property_occupied));
-    html += field("ברז ראשי סגור", yesNo(sc.main_valve_closed));
-    html += field("מגבלות בדיקה", sc.test_limitations);
-    html += field("אזורים שלא נבדקו", sc.areas_not_inspected);
-  }
+  html += sectionTitle("תנאי בדיקה");
+  html += field("מצב לחץ מים", sc.water_pressure_status);
+  html += field("נכס מאוכלס", yesNo(sc.property_occupied));
+  html += field("ברז ראשי סגור", yesNo(sc.main_valve_closed));
+  html += field("מגבלות בדיקה", sc.test_limitations);
+  html += field("אזורים שלא נבדקו", sc.areas_not_inspected);
 
-  // Diagnosis
-  if (
-    sc.detection_method ||
-    sc.findings ||
-    sc.cause_assessment ||
-    sc.recommendations ||
-    sc.leak_location ||
-    sc.visible_damage?.length ||
-    sc.diagnosis_confidence ||
-    sc.urgency_level
-  ) {
-    html += sectionTitle("אבחון מקצועי");
-    html += field("שיטת איתור", sc.detection_method);
-    html += field("ממצאים", sc.findings);
-    html += field("הערכת סיבה", sc.cause_assessment);
-    html += field("נזקים נראים לעין", formatVisibleDamage(sc.visible_damage));
-    html += field("מיקום הנזילה", sc.leak_location);
+  const confLabels: Record<string, string> = {
+    high: "גבוהה",
+    medium: "בינונית",
+    suspicion: "חשד בלבד",
+  };
+  const urgLabels: Record<string, string> = {
+    immediate: "תיקון מיידי",
+    soon: "מומלץ בקרוב",
+    monitor: "ניטור",
+  };
 
-    if (sc.diagnosis_confidence) {
-      const confLabels: Record<string, string> = {
-        high: "גבוהה",
-        medium: "בינונית",
-        suspicion: "חשד בלבד",
-      };
-      html += field(
-        "רמת ודאות",
-        confLabels[sc.diagnosis_confidence] || sc.diagnosis_confidence
-      );
-    }
-    if (sc.urgency_level) {
-      const urgLabels: Record<string, string> = {
-        immediate: "תיקון מיידי",
-        soon: "מומלץ בקרוב",
-        monitor: "ניטור",
-      };
-      html += field(
-        "רמת דחיפות",
-        urgLabels[sc.urgency_level] || sc.urgency_level
-      );
-    }
-    html += field("המלצה", sc.recommendations);
-  }
+  html += sectionTitle("אבחון מקצועי");
+  html += field("שיטת איתור", sc.detection_method);
+  html += field("ממצאים", sc.findings);
+  html += field("הערכת סיבה", sc.cause_assessment);
+  html += field("נזקים נראים לעין", formatVisibleDamage(sc.visible_damage));
+  html += field("מיקום הנזילה", sc.leak_location);
+  html += field("רמת ודאות", sc.diagnosis_confidence ? confLabels[sc.diagnosis_confidence] || sc.diagnosis_confidence : null);
+  html += field("רמת דחיפות", sc.urgency_level ? urgLabels[sc.urgency_level] || sc.urgency_level : null);
+  html += field("המלצה", sc.recommendations);
 
   // Photos
   const validPhotos = photoUrls.filter((p) => p.url);

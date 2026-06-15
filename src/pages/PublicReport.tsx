@@ -176,26 +176,24 @@ const PublicReport = () => {
         </Card>
 
         {/* Diagnosis */}
-        {(serviceCall?.water_pressure_status || serviceCall?.detection_method || serviceCall?.findings || serviceCall?.cause_assessment || serviceCall?.recommendations) && (
-          <Card>
-            <CardHeader><CardTitle className="text-base">אבחון מקצועי</CardTitle></CardHeader>
-            <CardContent className="text-sm space-y-2">
-              <SummaryLine label="מצב מים" value={serviceCall?.water_pressure_status} />
-              <SummaryLine label="נכס מאוכלס" value={serviceCall?.property_occupied === true ? "כן" : serviceCall?.property_occupied === false ? "לא" : ""} />
-              <SummaryLine label="ברז ראשי סגור" value={serviceCall?.main_valve_closed === true ? "כן" : serviceCall?.main_valve_closed === false ? "לא" : ""} />
-              <SummaryLine label="מגבלות בבדיקה" value={serviceCall?.test_limitations} />
-              <SummaryLine label="שיטת איתור" value={serviceCall?.detection_method} />
-              <SummaryLine label="ממצאים" value={serviceCall?.findings} />
-              <SummaryLine label="הערכת סיבה" value={serviceCall?.cause_assessment} />
-              <SummaryLine label="נזקים נראים לעין" value={visibleDamageSummary} />
-              <SummaryLine label="מיקום הנזילה" value={serviceCall?.leak_location} />
-              <SummaryLine label="רמת ודאות" value={confidenceLabels[serviceCall?.diagnosis_confidence] || serviceCall?.diagnosis_confidence} />
-              <SummaryLine label="רמת דחיפות" value={urgencyLabels[serviceCall?.urgency_level] || serviceCall?.urgency_level} />
-              <SummaryLine label="המלצה" value={serviceCall?.recommendations} />
-              <SummaryLine label="אזורים שלא נבדקו" value={serviceCall?.areas_not_inspected} />
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardHeader><CardTitle className="text-base">אבחון מקצועי</CardTitle></CardHeader>
+          <CardContent className="text-sm space-y-2">
+            <SummaryLine label="מצב מים" value={serviceCall?.water_pressure_status} />
+            <SummaryLine label="נכס מאוכלס" value={serviceCall?.property_occupied === true ? "כן" : serviceCall?.property_occupied === false ? "לא" : ""} />
+            <SummaryLine label="ברז ראשי סגור" value={serviceCall?.main_valve_closed === true ? "כן" : serviceCall?.main_valve_closed === false ? "לא" : ""} />
+            <SummaryLine label="מגבלות בבדיקה" value={serviceCall?.test_limitations} />
+            <SummaryLine label="שיטת איתור" value={serviceCall?.detection_method} />
+            <SummaryLine label="ממצאים" value={serviceCall?.findings} />
+            <SummaryLine label="הערכת סיבה" value={serviceCall?.cause_assessment} />
+            <SummaryLine label="נזקים נראים לעין" value={visibleDamageSummary} />
+            <SummaryLine label="מיקום הנזילה" value={serviceCall?.leak_location} />
+            <SummaryLine label="רמת ודאות" value={confidenceLabels[serviceCall?.diagnosis_confidence] || serviceCall?.diagnosis_confidence} />
+            <SummaryLine label="רמת דחיפות" value={urgencyLabels[serviceCall?.urgency_level] || serviceCall?.urgency_level} />
+            <SummaryLine label="המלצה" value={serviceCall?.recommendations} />
+            <SummaryLine label="אזורים שלא נבדקו" value={serviceCall?.areas_not_inspected} />
+          </CardContent>
+        </Card>
 
         {/* Materials */}
         {materials.length > 0 && (
