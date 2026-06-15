@@ -18,7 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Plus, TrendingUp, TrendingDown, ArrowDownUp, Trash2,
   Pencil, Download, Loader2, FileText, Copy, RotateCcw,
-  Calendar, CalendarDays, ListChecks,
+  Calendar, CalendarDays, ListChecks, Search,
 } from "lucide-react";
 import {
   categoryLabels, paymentMethodLabels,
