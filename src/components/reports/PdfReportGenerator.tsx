@@ -356,7 +356,7 @@ function buildReportHtml(data: {
   serviceCall: any;
   customer: any;
   photoUrls: any[];
-  quotes: any[];
+  materials: any[];
   logoUrl: string | null;
   signatureUrl: string | null;
   signatureDate: string | null;
@@ -368,7 +368,7 @@ function buildReportHtml(data: {
     serviceCall: sc,
     customer,
     photoUrls,
-    quotes,
+    materials,
     logoUrl,
     signatureUrl,
     signatureDate,
@@ -381,6 +381,22 @@ function buildReportHtml(data: {
   const field = (label: string, value: string | null | undefined) =>
     value
       ? `<p style="font-size:13px;margin:4px 0;"><strong>${label}:</strong> ${escapeHtml(value)}</p>`
+      : "";
+  const yesNo = (value: boolean | null | undefined) =>
+    value === true ? "כן" : value === false ? "לא" : "";
+  const visibleDamageLabels: Record<string, string> = {
+    moisture: "רטיבות",
+    mold: "עובש",
+    peeling_paint: "צבע מתקלף",
+    swollen_flooring: "ריצוף פתוח",
+    ceiling_damage: "נזק בתקרה",
+    other: "אחר",
+  };
+  const formatVisibleDamage = (damage: string[] | null | undefined) =>
+    Array.isArray(damage)
+      ? damage
+          .map((item) => item.startsWith("other:") ? `אחר: ${item.replace("other:", "")}` : visibleDamageLabels[item] || item)
+          .join(", ")
       : "";
 
   let html = buildPdfHeader({
@@ -404,23 +420,38 @@ function buildReportHtml(data: {
     ${field("הערות", sc.notes)}
   `;
 
+  if (
+    sc.water_pressure_status ||
+    sc.property_occupied !== null ||
+    sc.main_valve_closed !== null ||
+    sc.test_limitations ||
+    sc.areas_not_inspected
+  ) {
+    html += sectionTitle("תנאי בדיקה");
+    html += field("מצב לחץ מים", sc.water_pressure_status);
+    html += field("נכס מאוכלס", yesNo(sc.property_occupied));
+    html += field("ברז ראשי סגור", yesNo(sc.main_valve_closed));
+    html += field("מגבלות בדיקה", sc.test_limitations);
+    html += field("אזורים שלא נבדקו", sc.areas_not_inspected);
+  }
+
   // Diagnosis
   if (
     sc.detection_method ||
     sc.findings ||
     sc.cause_assessment ||
     sc.recommendations ||
-    sc.leak_location
+    sc.leak_location ||
+    sc.visible_damage?.length ||
+    sc.diagnosis_confidence ||
+    sc.urgency_level
   ) {
     html += sectionTitle("אבחון מקצועי");
     html += field("שיטת איתור", sc.detection_method);
-    html += field("מצב לחץ מים", sc.water_pressure_status);
-    html += field("מיקום הנזילה", sc.leak_location);
     html += field("ממצאים", sc.findings);
     html += field("הערכת סיבה", sc.cause_assessment);
-    html += field("המלצה", sc.recommendations);
-    html += field("מגבלות בדיקה", sc.test_limitations);
-    html += field("אזורים שלא נבדקו", sc.areas_not_inspected);
+    html += field("נזקים נראים לעין", formatVisibleDamage(sc.visible_damage));
+    html += field("מיקום הנזילה", sc.leak_location);
 
     if (sc.diagnosis_confidence) {
       const confLabels: Record<string, string> = {
@@ -444,13 +475,7 @@ function buildReportHtml(data: {
         urgLabels[sc.urgency_level] || sc.urgency_level
       );
     }
-  }
-
-  // Report findings/recommendations
-  if (report.findings || report.recommendations) {
-    html += sectionTitle("ממצאי הדוח");
-    html += field("ממצאים", report.findings);
-    html += field("המלצות", report.recommendations);
+    html += field("המלצה", sc.recommendations);
   }
 
   // Photos
