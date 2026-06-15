@@ -23,9 +23,8 @@ import {
   buildPdfFooter,
   renderCanvasToPdf,
   escapeHtml,
-  BUSINESS_INFO,
 } from "@/lib/pdf-utils";
-import { LEGAL_SECTIONS, buildLegalAnnexHtml } from "@/lib/legal-constants";
+import { LEGAL_SECTIONS } from "@/lib/legal-constants";
 
 export interface PdfReportGeneratorHandle {
   generate: (opts?: { skipDownload?: boolean }) => Promise<void>;
