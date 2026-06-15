@@ -191,12 +191,12 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .select("*")
+      .select("*, customer:customers(id, full_name)")
       .order("is_done", { ascending: true })
       .order("position", { ascending: true })
       .order("created_at", { ascending: false });
     if (error) { toast.error("שגיאה בטעינת משימות"); setLoading(false); return; }
-    const list = (data as Task[]) || [];
+    const list = (data as unknown as Task[]) || [];
     setTasks(list);
     onTasksChange?.(list);
     setLoading(false);
