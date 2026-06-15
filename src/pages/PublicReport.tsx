@@ -15,12 +15,6 @@ const tagLabels: Record<string, string> = {
   before: "לפני", after: "אחרי", finding: "ממצא", other: "אחר",
 };
 
-const confidenceLabels: Record<string, string> = {
-  high: "גבוהה",
-  medium: "בינונית",
-  suspicion: "חשד בלבד",
-};
-
 const urgencyLabels: Record<string, string> = {
   immediate: "תיקון מיידי",
   soon: "מומלץ בקרוב",
@@ -187,8 +181,6 @@ const PublicReport = () => {
             <SummaryLine label="ממצאים" value={serviceCall?.findings} />
             <SummaryLine label="הערכת סיבה" value={serviceCall?.cause_assessment} />
             <SummaryLine label="נזקים נראים לעין" value={visibleDamageSummary} />
-            <SummaryLine label="מיקום הנזילה" value={serviceCall?.leak_location} />
-            <SummaryLine label="רמת ודאות" value={confidenceLabels[serviceCall?.diagnosis_confidence] || serviceCall?.diagnosis_confidence} />
             <SummaryLine label="רמת דחיפות" value={urgencyLabels[serviceCall?.urgency_level] || serviceCall?.urgency_level} />
             <SummaryLine label="המלצה" value={serviceCall?.recommendations} />
             <SummaryLine label="אזורים שלא נבדקו" value={serviceCall?.areas_not_inspected} />
