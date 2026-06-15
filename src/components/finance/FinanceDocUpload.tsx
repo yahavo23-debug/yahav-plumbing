@@ -3,7 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ImagePlus, Loader2, X, FileText, Maximize2 } from "lucide-react";
+import { ImagePlus, Loader2, X, FileText, Maximize2, ScanLine } from "lucide-react";
+import { DocumentScannerDialog } from "@/components/scanner/DocumentScannerDialog";
+
+
 
 interface FinanceDocUploadProps {
   currentPath?: string | null;
