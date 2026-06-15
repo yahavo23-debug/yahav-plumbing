@@ -146,7 +146,7 @@ const ReportEditor = () => {
         setReport((r: any) => ({ ...r, status: "sent" }));
       }
 
-      // Create share link with access_mode
+      // Create share link with access_mode (or update existing to requested mode)
       let token = shareToken;
       if (!token) {
         const { data, error } = await supabase.from("report_shares").insert({
@@ -158,6 +158,14 @@ const ReportEditor = () => {
         if (error) throw error;
         token = data.share_token;
         setShareToken(token);
+      } else {
+        // Ensure existing active share matches the requested mode
+        const { error: updErr } = await supabase.from("report_shares")
+          .update({ access_mode: mode } as any)
+          .eq("report_id", id!)
+          .eq("is_active", true)
+          .is("revoked_at", null);
+        if (updErr) throw updErr;
       }
 
       setShareDialogOpen(true);
