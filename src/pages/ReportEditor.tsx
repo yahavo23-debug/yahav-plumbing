@@ -314,7 +314,7 @@ const ReportEditor = () => {
         </Card>
       )}
 
-      <Tabs defaultValue={pdfPreviewUrl ? "preview" : "details"} dir="rtl">
+      <Tabs defaultValue="preview" dir="rtl">
         <TabsList className="mb-4 h-12">
           <TabsTrigger value="preview" className="text-base px-6 h-10">תצוגה מקדימה</TabsTrigger>
           <TabsTrigger value="details" className="text-base px-6 h-10">סיכום דוח</TabsTrigger>
