@@ -14,6 +14,31 @@ const tagLabels: Record<string, string> = {
   before: "לפני", after: "אחרי", finding: "ממצא", other: "אחר",
 };
 
+const confidenceLabels: Record<string, string> = {
+  high: "גבוהה",
+  medium: "בינונית",
+  suspicion: "חשד בלבד",
+};
+
+const urgencyLabels: Record<string, string> = {
+  immediate: "תיקון מיידי",
+  soon: "מומלץ בקרוב",
+  monitor: "ניטור",
+};
+
+const visibleDamageLabels: Record<string, string> = {
+  moisture: "רטיבות",
+  mold: "עובש",
+  peeling_paint: "צבע מתקלף",
+  swollen_flooring: "ריצוף פתוח",
+  ceiling_damage: "נזק בתקרה",
+  other: "אחר",
+};
+
+const SummaryLine = ({ label, value }: { label: string; value?: string | number | null }) => (
+  value ? <p><strong>{label}:</strong> <span className="whitespace-pre-wrap">{value}</span></p> : null
+);
+
 const PublicReport = () => {
   const { token } = useParams();
   const { logoUrl } = useLogo();
@@ -92,6 +117,11 @@ const PublicReport = () => {
   const lightboxPhotos = photos.map((p: any) => ({
     id: p.id, url: p.url, caption: p.caption, tag: p.tag,
   }));
+  const visibleDamageSummary = Array.isArray(serviceCall?.visible_damage)
+    ? serviceCall.visible_damage
+        .map((item: string) => item.startsWith("other:") ? `אחר: ${item.replace("other:", "")}` : visibleDamageLabels[item] || item)
+        .join(", ")
+    : "";
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
@@ -142,19 +172,25 @@ const PublicReport = () => {
           </CardContent>
         </Card>
 
-        {/* Findings */}
-        {report?.findings && (
+        {/* Diagnosis */}
+        {(serviceCall?.water_pressure_status || serviceCall?.detection_method || serviceCall?.findings || serviceCall?.cause_assessment || serviceCall?.recommendations) && (
           <Card>
-            <CardHeader><CardTitle className="text-base">ממצאים</CardTitle></CardHeader>
-            <CardContent><p className="text-sm whitespace-pre-wrap">{report.findings}</p></CardContent>
-          </Card>
-        )}
-
-        {/* Recommendations */}
-        {report?.recommendations && (
-          <Card>
-            <CardHeader><CardTitle className="text-base">המלצות</CardTitle></CardHeader>
-            <CardContent><p className="text-sm whitespace-pre-wrap">{report.recommendations}</p></CardContent>
+            <CardHeader><CardTitle className="text-base">אבחון מקצועי</CardTitle></CardHeader>
+            <CardContent className="text-sm space-y-2">
+              <SummaryLine label="מצב מים" value={serviceCall?.water_pressure_status} />
+              <SummaryLine label="נכס מאוכלס" value={serviceCall?.property_occupied === true ? "כן" : serviceCall?.property_occupied === false ? "לא" : ""} />
+              <SummaryLine label="ברז ראשי סגור" value={serviceCall?.main_valve_closed === true ? "כן" : serviceCall?.main_valve_closed === false ? "לא" : ""} />
+              <SummaryLine label="מגבלות בבדיקה" value={serviceCall?.test_limitations} />
+              <SummaryLine label="שיטת איתור" value={serviceCall?.detection_method} />
+              <SummaryLine label="ממצאים" value={serviceCall?.findings} />
+              <SummaryLine label="הערכת סיבה" value={serviceCall?.cause_assessment} />
+              <SummaryLine label="נזקים נראים לעין" value={visibleDamageSummary} />
+              <SummaryLine label="מיקום הנזילה" value={serviceCall?.leak_location} />
+              <SummaryLine label="רמת ודאות" value={confidenceLabels[serviceCall?.diagnosis_confidence] || serviceCall?.diagnosis_confidence} />
+              <SummaryLine label="רמת דחיפות" value={urgencyLabels[serviceCall?.urgency_level] || serviceCall?.urgency_level} />
+              <SummaryLine label="המלצה" value={serviceCall?.recommendations} />
+              <SummaryLine label="אזורים שלא נבדקו" value={serviceCall?.areas_not_inspected} />
+            </CardContent>
           </Card>
         )}
 
