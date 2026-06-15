@@ -192,11 +192,65 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
             </Select>
           </div>
 
+          {/* Customer picker (income only) */}
+          {direction === "income" && (
+            <div>
+              <Label>לקוח</Label>
+              <div className="flex gap-2">
+                <Popover open={customerPickerOpen} onOpenChange={setCustomerPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      className={cn("flex-1 justify-between", !customerId && "text-muted-foreground")}
+                    >
+                      {customerId
+                        ? customers.find(c => c.id === customerId)?.name || "לקוח"
+                        : "בחר לקוח (אופציונלי)"}
+                      <ChevronsUpDown className="ms-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover" align="start">
+                    <Command>
+                      <CommandInput placeholder="חפש לקוח..." />
+                      <CommandList>
+                        <CommandEmpty>לא נמצאו לקוחות</CommandEmpty>
+                        <CommandGroup>
+                          {customers.map(c => (
+                            <CommandItem
+                              key={c.id}
+                              value={c.name}
+                              onSelect={() => {
+                                setCustomerId(c.id);
+                                if (!counterpartyName.trim()) setCounterpartyName(c.name);
+                                setCustomerPickerOpen(false);
+                              }}
+                            >
+                              <Check className={cn("ms-2 h-4 w-4", customerId === c.id ? "opacity-100" : "opacity-0")} />
+                              {c.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {customerId && (
+                  <Button type="button" variant="ghost" size="icon" onClick={() => setCustomerId(null)} title="נקה">
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Counterparty */}
           <div>
-            <Label>שם לקוח / ספק</Label>
+            <Label>{direction === "income" ? "שם משלם (חופשי)" : "שם ספק"}</Label>
             <Input value={counterpartyName} onChange={e => setCounterpartyName(e.target.value)} placeholder="אופציונלי" />
           </div>
+
 
           {/* Notes */}
           <div>
