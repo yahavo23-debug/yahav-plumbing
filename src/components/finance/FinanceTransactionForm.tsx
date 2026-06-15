@@ -105,19 +105,19 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="w-[96vw] sm:max-w-lg max-h-[92vh] p-0 flex flex-col gap-0">
+        <DialogHeader className="px-4 pt-4 pb-2 border-b">
           <DialogTitle>{isEdit ? "עריכת רשומה" : "רשומה חדשה"}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           {/* Direction */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
               variant={direction === "income" ? "default" : "outline"}
               onClick={() => setDirection("income")}
-              className="w-full"
+              className="w-full h-12 text-base"
             >
               הכנסה
             </Button>
@@ -125,11 +125,12 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
               type="button"
               variant={direction === "expense" ? "default" : "outline"}
               onClick={() => setDirection("expense")}
-              className="w-full"
+              className="w-full h-12 text-base"
             >
               הוצאה
             </Button>
           </div>
+
 
           {/* Date + Amount */}
           <div className="grid grid-cols-2 gap-3">
