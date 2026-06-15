@@ -193,15 +193,16 @@ Deno.serve(async (req) => {
     if (shareType === "report") {
       const { data: reports } = await supabase
         .from("reports")
-        .select("id, service_call_id, title, findings, recommendations, quote_summary, invoice_number, invoice_status, status, created_at, updated_at, signature_path, signed_by, signature_date, pdf_path")
+        .select("id, service_call_id, title, status, created_at, updated_at, signature_path, signed_by, signature_date, pdf_path")
         .eq("service_call_id", scId)
         .order("created_at", { ascending: false });
 
       if (reports && reports.length > 0) {
         // Load photos/videos for context
-        const [photosRes, videosRes] = await Promise.all([
+        const [photosRes, videosRes, materialsRes] = await Promise.all([
           supabase.from("service_call_photos").select("*").eq("service_call_id", scId).order("created_at"),
           supabase.from("service_call_videos").select("*").eq("service_call_id", scId).order("created_at"),
+          supabase.from("service_call_materials").select("id, name, quantity, is_one_off").eq("service_call_id", scId).order("created_at"),
         ]);
 
         const photosWithUrls = await Promise.all(
@@ -231,8 +232,10 @@ Deno.serve(async (req) => {
         responseData.reports = reports;
         responseData.photos = photosWithUrls;
         responseData.videos = videosWithUrls;
+        responseData.materials = materialsRes.data || [];
       } else {
         responseData.reports = [];
+        responseData.materials = [];
       }
     }
 

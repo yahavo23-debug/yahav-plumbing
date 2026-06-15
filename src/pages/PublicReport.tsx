@@ -9,10 +9,36 @@ import { PublicSignaturePad } from "@/components/reports/PublicSignaturePad";
 import { Wrench, User, Phone, MapPin, Calendar, Image, Film, FileText, Play, Check } from "lucide-react";
 import { useLogo } from "@/hooks/useLogo";
 import { BUSINESS_INFO } from "@/lib/pdf-utils";
+import { getJobTypeLabel } from "@/lib/constants";
 
 const tagLabels: Record<string, string> = {
   before: "לפני", after: "אחרי", finding: "ממצא", other: "אחר",
 };
+
+const confidenceLabels: Record<string, string> = {
+  high: "גבוהה",
+  medium: "בינונית",
+  suspicion: "חשד בלבד",
+};
+
+const urgencyLabels: Record<string, string> = {
+  immediate: "תיקון מיידי",
+  soon: "מומלץ בקרוב",
+  monitor: "ניטור",
+};
+
+const visibleDamageLabels: Record<string, string> = {
+  moisture: "רטיבות",
+  mold: "עובש",
+  peeling_paint: "צבע מתקלף",
+  swollen_flooring: "ריצוף פתוח",
+  ceiling_damage: "נזק בתקרה",
+  other: "אחר",
+};
+
+const SummaryLine = ({ label, value }: { label: string; value?: string | number | null }) => (
+  value ? <p><strong>{label}:</strong> <span className="whitespace-pre-wrap">{value}</span></p> : null
+);
 
 const PublicReport = () => {
   const { token } = useParams();
@@ -22,6 +48,7 @@ const PublicReport = () => {
   const [customer, setCustomer] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
   const [videos, setVideos] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
@@ -58,6 +85,7 @@ const PublicReport = () => {
       setCustomer(data.customer);
       setPhotos(data.photos || []);
       setVideos(data.videos || []);
+      setMaterials(data.materials || []);
       setAccessMode(data.access_mode || "sign");
     } catch (err: any) {
       console.error("Public report load error:", err);
@@ -92,6 +120,11 @@ const PublicReport = () => {
   const lightboxPhotos = photos.map((p: any) => ({
     id: p.id, url: p.url, caption: p.caption, tag: p.tag,
   }));
+  const visibleDamageSummary = Array.isArray(serviceCall?.visible_damage)
+    ? serviceCall.visible_damage
+        .map((item: string) => item.startsWith("other:") ? `אחר: ${item.replace("other:", "")}` : visibleDamageLabels[item] || item)
+        .join(", ")
+    : "";
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
@@ -131,7 +164,7 @@ const PublicReport = () => {
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><Wrench className="w-4 h-4" /> פרטי קריאת שירות</CardTitle></CardHeader>
           <CardContent className="text-sm space-y-1">
-            <p><strong>סוג עבודה:</strong> {serviceCall?.job_type}</p>
+            <p><strong>סוג עבודה:</strong> {getJobTypeLabel(serviceCall?.job_type)}</p>
             <p><strong>סטטוס:</strong> {serviceCall?.status === "completed" ? "הושלם" : serviceCall?.status}</p>
             {serviceCall?.scheduled_date && (
               <p className="flex items-center gap-1">
@@ -142,19 +175,43 @@ const PublicReport = () => {
           </CardContent>
         </Card>
 
-        {/* Findings */}
-        {report?.findings && (
+        {/* Diagnosis */}
+        {(serviceCall?.water_pressure_status || serviceCall?.detection_method || serviceCall?.findings || serviceCall?.cause_assessment || serviceCall?.recommendations) && (
           <Card>
-            <CardHeader><CardTitle className="text-base">ממצאים</CardTitle></CardHeader>
-            <CardContent><p className="text-sm whitespace-pre-wrap">{report.findings}</p></CardContent>
+            <CardHeader><CardTitle className="text-base">אבחון מקצועי</CardTitle></CardHeader>
+            <CardContent className="text-sm space-y-2">
+              <SummaryLine label="מצב מים" value={serviceCall?.water_pressure_status} />
+              <SummaryLine label="נכס מאוכלס" value={serviceCall?.property_occupied === true ? "כן" : serviceCall?.property_occupied === false ? "לא" : ""} />
+              <SummaryLine label="ברז ראשי סגור" value={serviceCall?.main_valve_closed === true ? "כן" : serviceCall?.main_valve_closed === false ? "לא" : ""} />
+              <SummaryLine label="מגבלות בבדיקה" value={serviceCall?.test_limitations} />
+              <SummaryLine label="שיטת איתור" value={serviceCall?.detection_method} />
+              <SummaryLine label="ממצאים" value={serviceCall?.findings} />
+              <SummaryLine label="הערכת סיבה" value={serviceCall?.cause_assessment} />
+              <SummaryLine label="נזקים נראים לעין" value={visibleDamageSummary} />
+              <SummaryLine label="מיקום הנזילה" value={serviceCall?.leak_location} />
+              <SummaryLine label="רמת ודאות" value={confidenceLabels[serviceCall?.diagnosis_confidence] || serviceCall?.diagnosis_confidence} />
+              <SummaryLine label="רמת דחיפות" value={urgencyLabels[serviceCall?.urgency_level] || serviceCall?.urgency_level} />
+              <SummaryLine label="המלצה" value={serviceCall?.recommendations} />
+              <SummaryLine label="אזורים שלא נבדקו" value={serviceCall?.areas_not_inspected} />
+            </CardContent>
           </Card>
         )}
 
-        {/* Recommendations */}
-        {report?.recommendations && (
+        {/* Materials */}
+        {materials.length > 0 && (
           <Card>
-            <CardHeader><CardTitle className="text-base">המלצות</CardTitle></CardHeader>
-            <CardContent><p className="text-sm whitespace-pre-wrap">{report.recommendations}</p></CardContent>
+            <CardHeader><CardTitle className="text-base">חומרים ({materials.length})</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {materials.map((material: any) => (
+                <div key={material.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm">
+                  <div>
+                    <p className="font-medium">{material.name}</p>
+                    <p className="text-xs text-muted-foreground">כמות: {material.quantity}</p>
+                  </div>
+                  <Badge variant="secondary">{material.is_one_off ? "חד-פעמי" : "מלאי"}</Badge>
+                </div>
+              ))}
+            </CardContent>
           </Card>
         )}
 
@@ -191,18 +248,6 @@ const PublicReport = () => {
                   </button>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Quote/Invoice */}
-        {(report?.quote_summary || report?.invoice_number) && (
-          <Card>
-            <CardHeader><CardTitle className="text-base">פרטי תשלום</CardTitle></CardHeader>
-            <CardContent className="text-sm space-y-1">
-              {report.quote_summary && <p><strong>סיכום הצעת מחיר:</strong> {report.quote_summary}</p>}
-              {report.invoice_number && <p><strong>מספר חשבונית:</strong> {report.invoice_number}</p>}
-              {report.invoice_status && <p><strong>סטטוס:</strong> {report.invoice_status}</p>}
             </CardContent>
           </Card>
         )}

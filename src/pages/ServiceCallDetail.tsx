@@ -89,10 +89,6 @@ const ServiceCallDetail = () => {
   const [completePhotos, setCompletePhotos] = useState<File[]>([]);
   const [completing, setCompleting] = useState(false);
 
-  // Keep findings/recommendations for report creation
-  const [findings, setFindings] = useState("");
-  const [recommendations, setRecommendations] = useState("");
-
   useEffect(() => {
     if (!user || !id) return;
     loadData();
@@ -114,8 +110,6 @@ const ServiceCallDetail = () => {
 
       const data = callRes.data;
       setCall(data);
-      setFindings(data.findings || "");
-      setRecommendations(data.recommendations || "");
       setPhotos(photosRes.data || []);
       setVideos(videosRes.data || []);
 
@@ -161,8 +155,6 @@ const ServiceCallDetail = () => {
         .insert({
           service_call_id: id,
           title: `דוח עבודה - ${(call?.customers as any)?.name || ""}`,
-          findings: findings || null,
-          recommendations: recommendations || null,
           created_by: user.id,
         })
         .select()
@@ -570,11 +562,7 @@ const ServiceCallDetail = () => {
             serviceCallId={id!}
             callData={call}
             readOnly={isContractor}
-            onDataUpdate={(updated) => {
-              setCall(updated);
-              setFindings(updated.findings || "");
-              setRecommendations(updated.recommendations || "");
-            }}
+            onDataUpdate={setCall}
           />
         </TabsContent>
 

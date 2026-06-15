@@ -23,9 +23,8 @@ import {
   buildPdfFooter,
   renderCanvasToPdf,
   escapeHtml,
-  BUSINESS_INFO,
 } from "@/lib/pdf-utils";
-import { LEGAL_SECTIONS, buildLegalAnnexHtml } from "@/lib/legal-constants";
+import { LEGAL_SECTIONS } from "@/lib/legal-constants";
 
 export interface PdfReportGeneratorHandle {
   generate: (opts?: { skipDownload?: boolean }) => Promise<void>;
@@ -46,6 +45,7 @@ const statusLabels: Record<string, string> = {
   in_progress: "בטיפול",
   completed: "הושלם",
   cancelled: "בוטל",
+  pending_customer: "ממתין לאישור לקוח",
 };
 
 // LEGAL_SECTIONS imported from @/lib/legal-constants
@@ -93,24 +93,12 @@ function PdfReportGenerator({
         })
       );
 
-      // Load quotes
-      const { data: quotes } = await supabase
-        .from("quotes")
+      // Load materials used in this service call
+      const { data: materials } = await supabase
+        .from("service_call_materials")
         .select("*")
         .eq("service_call_id", serviceCall.id)
-        .order("created_at", { ascending: false });
-
-      // Load quote items for each quote
-      const quotesWithItems = await Promise.all(
-        (quotes || []).map(async (q: any) => {
-          const { data: items } = await supabase
-            .from("quote_items")
-            .select("*")
-            .eq("quote_id", q.id)
-            .order("sort_order");
-          return { ...q, items: items || [] };
-        })
-      );
+        .order("created_at");
 
       // Get signature URL - prefer report signature, fallback to service call signature
       let signatureUrl: string | null = null;
@@ -137,7 +125,7 @@ function PdfReportGenerator({
         serviceCall,
         customer,
         photoUrls,
-        quotes: quotesWithItems,
+        materials: materials || [],
         logoUrl,
         signatureUrl,
         signatureDate: signatureDateValue,
@@ -281,7 +269,7 @@ function PdfReportGenerator({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">PDF לא נוצר עדיין</p>
-            <p className="text-xs text-muted-foreground">לחץ על "שמור ויצור PDF" כדי לשמור</p>
+            <p className="text-xs text-muted-foreground">לחץ על "צור PDF" כדי ליצור תצוגה מקדימה</p>
           </div>
           <Button
             onClick={() => generatePdf()}
@@ -367,7 +355,7 @@ function buildReportHtml(data: {
   serviceCall: any;
   customer: any;
   photoUrls: any[];
-  quotes: any[];
+  materials: any[];
   logoUrl: string | null;
   signatureUrl: string | null;
   signatureDate: string | null;
@@ -379,7 +367,7 @@ function buildReportHtml(data: {
     serviceCall: sc,
     customer,
     photoUrls,
-    quotes,
+    materials,
     logoUrl,
     signatureUrl,
     signatureDate,
@@ -392,6 +380,22 @@ function buildReportHtml(data: {
   const field = (label: string, value: string | null | undefined) =>
     value
       ? `<p style="font-size:13px;margin:4px 0;"><strong>${label}:</strong> ${escapeHtml(value)}</p>`
+      : "";
+  const yesNo = (value: boolean | null | undefined) =>
+    value === true ? "כן" : value === false ? "לא" : "";
+  const visibleDamageLabels: Record<string, string> = {
+    moisture: "רטיבות",
+    mold: "עובש",
+    peeling_paint: "צבע מתקלף",
+    swollen_flooring: "ריצוף פתוח",
+    ceiling_damage: "נזק בתקרה",
+    other: "אחר",
+  };
+  const formatVisibleDamage = (damage: string[] | null | undefined) =>
+    Array.isArray(damage)
+      ? damage
+          .map((item) => item.startsWith("other:") ? `אחר: ${item.replace("other:", "")}` : visibleDamageLabels[item] || item)
+          .join(", ")
       : "";
 
   let html = buildPdfHeader({
@@ -415,23 +419,38 @@ function buildReportHtml(data: {
     ${field("הערות", sc.notes)}
   `;
 
+  if (
+    sc.water_pressure_status ||
+    sc.property_occupied !== null ||
+    sc.main_valve_closed !== null ||
+    sc.test_limitations ||
+    sc.areas_not_inspected
+  ) {
+    html += sectionTitle("תנאי בדיקה");
+    html += field("מצב לחץ מים", sc.water_pressure_status);
+    html += field("נכס מאוכלס", yesNo(sc.property_occupied));
+    html += field("ברז ראשי סגור", yesNo(sc.main_valve_closed));
+    html += field("מגבלות בדיקה", sc.test_limitations);
+    html += field("אזורים שלא נבדקו", sc.areas_not_inspected);
+  }
+
   // Diagnosis
   if (
     sc.detection_method ||
     sc.findings ||
     sc.cause_assessment ||
     sc.recommendations ||
-    sc.leak_location
+    sc.leak_location ||
+    sc.visible_damage?.length ||
+    sc.diagnosis_confidence ||
+    sc.urgency_level
   ) {
     html += sectionTitle("אבחון מקצועי");
     html += field("שיטת איתור", sc.detection_method);
-    html += field("מצב לחץ מים", sc.water_pressure_status);
-    html += field("מיקום הנזילה", sc.leak_location);
     html += field("ממצאים", sc.findings);
     html += field("הערכת סיבה", sc.cause_assessment);
-    html += field("המלצה", sc.recommendations);
-    html += field("מגבלות בדיקה", sc.test_limitations);
-    html += field("אזורים שלא נבדקו", sc.areas_not_inspected);
+    html += field("נזקים נראים לעין", formatVisibleDamage(sc.visible_damage));
+    html += field("מיקום הנזילה", sc.leak_location);
 
     if (sc.diagnosis_confidence) {
       const confLabels: Record<string, string> = {
@@ -455,13 +474,7 @@ function buildReportHtml(data: {
         urgLabels[sc.urgency_level] || sc.urgency_level
       );
     }
-  }
-
-  // Report findings/recommendations
-  if (report.findings || report.recommendations) {
-    html += sectionTitle("ממצאי הדוח");
-    html += field("ממצאים", report.findings);
-    html += field("המלצות", report.recommendations);
+    html += field("המלצה", sc.recommendations);
   }
 
   // Photos
@@ -475,32 +488,16 @@ function buildReportHtml(data: {
     html += `</div>`;
   }
 
-  // Quotes
-  if (quotes.length > 0) {
-    html += sectionTitle("הצעות מחיר");
-    for (const quote of quotes) {
-      const items = (quote.items || []) as any[];
-      const subtotal = items.reduce(
-        (s: number, i: any) =>
-          s + Number(i.quantity) * Number(i.unit_price),
-        0
-      );
-      const discount = Number(quote.discount_percent) || 0;
-      const afterDiscount = subtotal * (1 - discount / 100);
-      const total = afterDiscount;
-
-      html += `<div style="margin-bottom:12px;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;">`;
-      html += `<div style="background:#f0f4ff;padding:8px 12px;font-weight:600;font-size:13px;">${escapeHtml(quote.title) || "הצעת מחיר"}</div>`;
-      html += `<table style="width:100%;font-size:12px;border-collapse:collapse;">`;
-      html += `<thead><tr style="background:#f8f9fa;"><th style="padding:6px;text-align:right;border-bottom:1px solid #e0e0e0;">תיאור</th><th style="padding:6px;text-align:center;border-bottom:1px solid #e0e0e0;">כמות</th><th style="padding:6px;text-align:center;border-bottom:1px solid #e0e0e0;">מחיר</th><th style="padding:6px;text-align:center;border-bottom:1px solid #e0e0e0;">סה"כ</th></tr></thead>`;
-      html += `<tbody>`;
-      for (const item of items) {
-        html += `<tr><td style="padding:6px;border-bottom:1px solid #f0f0f0;">${escapeHtml(item.description)}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">${item.quantity}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">₪${Number(item.unit_price).toFixed(2)}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">₪${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}</td></tr>`;
-      }
-      html += `</tbody></table>`;
-      html += `<div style="padding:8px 12px;text-align:left;font-weight:700;font-size:14px;border-top:1px solid #e0e0e0;">סה"כ: ₪${total.toFixed(2)}</div>`;
-      html += `</div>`;
+  // Materials used in the call — quotes stay separate and are not embedded in the report
+  if (materials.length > 0) {
+    html += sectionTitle("חומרים");
+    html += `<table style="width:100%;font-size:12px;border-collapse:collapse;border:1px solid #e0e0e0;">`;
+    html += `<thead><tr style="background:#f8f9fa;"><th style="padding:7px;text-align:right;border-bottom:1px solid #e0e0e0;">שם חומר</th><th style="padding:7px;text-align:center;border-bottom:1px solid #e0e0e0;">כמות</th><th style="padding:7px;text-align:center;border-bottom:1px solid #e0e0e0;">סוג</th></tr></thead>`;
+    html += `<tbody>`;
+    for (const material of materials) {
+      html += `<tr><td style="padding:7px;border-bottom:1px solid #f0f0f0;">${escapeHtml(material.name)}</td><td style="padding:7px;text-align:center;border-bottom:1px solid #f0f0f0;">${material.quantity}</td><td style="padding:7px;text-align:center;border-bottom:1px solid #f0f0f0;">${material.is_one_off ? "חד-פעמי" : "מלאי"}</td></tr>`;
     }
+    html += `</tbody></table>`;
   }
 
   html += `<div data-pdf-annex="true" style="padding-top:8px;">`;

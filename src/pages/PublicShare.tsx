@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useLogo } from "@/hooks/useLogo";
 import { BUSINESS_INFO } from "@/lib/pdf-utils";
+import { getJobTypeLabel } from "@/lib/constants";
 
 const tagLabels: Record<string, string> = {
   before: "לפני", after: "אחרי", finding: "ממצא", other: "אחר",
@@ -48,8 +49,12 @@ const urgencyIcons: Record<string, any> = {
 
 const visibleDamageLabels: Record<string, string> = {
   moisture: "רטיבות", mold: "עובש", peeling_paint: "צבע מתקלף",
-  swollen_flooring: "ריצוף פתוח", ceiling_damage: "נזק בתקרה",
+  swollen_flooring: "ריצוף פתוח", ceiling_damage: "נזק בתקרה", other: "אחר",
 };
+
+const SummaryLine = ({ label, value }: { label: string; value?: string | number | null }) => (
+  value ? <p><strong>{label}:</strong> <span className="whitespace-pre-wrap">{value}</span></p> : null
+);
 
 const PublicShare = () => {
   const { token } = useParams();
@@ -178,6 +183,8 @@ const PublicShare = () => {
         {shareType === "report" && (
           <ReportSection
             reports={data.reports || []}
+            serviceCall={data.service_call}
+            materials={data.materials || []}
             photos={data.photos || []}
             videos={data.videos || []}
             onPhotoClick={setLightboxIndex}
@@ -759,8 +766,8 @@ const QuotesSection = ({ quotes, shareToken, onQuoteSigned }: { quotes: any[]; s
 };
 
 const ReportSection = ({
-  reports, photos, videos, onPhotoClick, onVideoClick,
-}: { reports: any[]; photos: any[]; videos: any[]; onPhotoClick: (i: number) => void; onVideoClick: (v: any) => void }) => {
+  reports, serviceCall, materials, photos, videos, onPhotoClick, onVideoClick,
+}: { reports: any[]; serviceCall: any; materials: any[]; photos: any[]; videos: any[]; onPhotoClick: (i: number) => void; onVideoClick: (v: any) => void }) => {
   if (reports.length === 0) {
     return (
       <Card>
@@ -771,6 +778,12 @@ const ReportSection = ({
     );
   }
 
+  const visibleDamageSummary = Array.isArray(serviceCall?.visible_damage)
+    ? serviceCall.visible_damage
+        .map((item: string) => item.startsWith("other:") ? `אחר: ${item.replace("other:", "")}` : visibleDamageLabels[item] || item)
+        .join(", ")
+    : "";
+
   return (
     <div className="space-y-6">
       {reports.map((report: any) => (
@@ -780,29 +793,39 @@ const ReportSection = ({
               <CardTitle className="text-base">{report.title}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              {report.findings && (
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">ממצאים</p>
-                  <p className="whitespace-pre-wrap">{report.findings}</p>
-                </div>
-              )}
-              {report.recommendations && (
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">המלצות</p>
-                  <p className="whitespace-pre-wrap">{report.recommendations}</p>
-                </div>
-              )}
-              {report.quote_summary && (
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">סיכום הצעת מחיר</p>
-                  <p>{report.quote_summary}</p>
-                </div>
-              )}
-              {report.invoice_number && (
-                <p><strong>חשבונית:</strong> {report.invoice_number}</p>
-              )}
+              <SummaryLine label="סוג עבודה" value={getJobTypeLabel(serviceCall?.job_type)} />
+              <SummaryLine label="מצב מים" value={serviceCall?.water_pressure_status} />
+              <SummaryLine label="נכס מאוכלס" value={serviceCall?.property_occupied === true ? "כן" : serviceCall?.property_occupied === false ? "לא" : ""} />
+              <SummaryLine label="ברז ראשי סגור" value={serviceCall?.main_valve_closed === true ? "כן" : serviceCall?.main_valve_closed === false ? "לא" : ""} />
+              <SummaryLine label="מגבלות בבדיקה" value={serviceCall?.test_limitations} />
+              <SummaryLine label="שיטת איתור" value={serviceCall?.detection_method} />
+              <SummaryLine label="ממצאים" value={serviceCall?.findings} />
+              <SummaryLine label="הערכת סיבה" value={serviceCall?.cause_assessment} />
+              <SummaryLine label="נזקים נראים לעין" value={visibleDamageSummary} />
+              <SummaryLine label="מיקום הנזילה" value={serviceCall?.leak_location} />
+              <SummaryLine label="רמת ודאות" value={confidenceLabels[serviceCall?.diagnosis_confidence] || serviceCall?.diagnosis_confidence} />
+              <SummaryLine label="רמת דחיפות" value={urgencyLabels[serviceCall?.urgency_level] || serviceCall?.urgency_level} />
+              <SummaryLine label="המלצה" value={serviceCall?.recommendations} />
+              <SummaryLine label="אזורים שלא נבדקו" value={serviceCall?.areas_not_inspected} />
             </CardContent>
           </Card>
+
+          {materials.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">חומרים ({materials.length})</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {materials.map((material: any) => (
+                  <div key={material.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm">
+                    <div>
+                      <p className="font-medium">{material.name}</p>
+                      <p className="text-xs text-muted-foreground">כמות: {material.quantity}</p>
+                    </div>
+                    <Badge variant="secondary">{material.is_one_off ? "חד-פעמי" : "מלאי"}</Badge>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           {report.signature_url && (
             <Card>
