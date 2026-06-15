@@ -215,6 +215,7 @@ function PdfReportGenerator({
       if (pdfSigned) {
         setPdfUrl(pdfSigned.signedUrl);
         onPdfReady?.(pdfSigned.signedUrl);
+        report.pdf_path = path;
       }
 
       document.body.removeChild(container);
