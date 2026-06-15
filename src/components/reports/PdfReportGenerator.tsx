@@ -298,7 +298,7 @@ function PdfReportGenerator({
       {/* Regenerate button when PDF exists */}
       {pdfUrl && (
         <Button
-          onClick={generatePdf}
+          onClick={() => generatePdf()}
           disabled={generating}
           variant="ghost"
           size="sm"
