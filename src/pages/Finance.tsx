@@ -18,7 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Plus, TrendingUp, TrendingDown, ArrowDownUp, Trash2,
   Pencil, Download, Loader2, FileText, Copy, RotateCcw,
-  Calendar, CalendarDays, ListChecks,
+  Calendar, CalendarDays, ListChecks, Search,
 } from "lucide-react";
 import {
   categoryLabels, paymentMethodLabels,
@@ -49,6 +49,7 @@ export default function Finance() {
   const [activeTab, setActiveTab] = useState<string>("expense");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
@@ -63,11 +64,12 @@ export default function Finance() {
     return `${HEBREW_MONTHS[m - 1]} ${y}`;
   }, [period, month]);
 
-  const hasActiveFilters = filterCategory !== "all" || filterStatus !== "all";
+  const hasActiveFilters = filterCategory !== "all" || filterStatus !== "all" || searchQuery.trim().length > 0;
 
   const resetFilters = () => {
     setFilterCategory("all");
     setFilterStatus("all");
+    setSearchQuery("");
     setActiveTab("expense");
   };
 
@@ -94,6 +96,12 @@ export default function Finance() {
     if (t.direction !== activeTab) return false;
     if (filterCategory !== "all" && t.category !== filterCategory) return false;
     if (filterStatus !== "all" && t.status !== filterStatus) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const name = (t.counterparty_name || "").toLowerCase();
+      const notes = (t.notes || "").toLowerCase();
+      if (!name.includes(q) && !notes.includes(q)) return false;
+    }
     return true;
   });
 
@@ -361,6 +369,16 @@ export default function Finance() {
               <SelectItem value="credit">זיכוי</SelectItem>
             </SelectContent>
           </Select>
+
+          <div className="relative w-48">
+            <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="חיפוש לפי שם..."
+              className="pr-9 text-sm"
+            />
+          </div>
 
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1.5 text-muted-foreground">
