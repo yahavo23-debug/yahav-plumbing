@@ -78,16 +78,30 @@ export function DocumentScannerDialog({ open, onOpenChange, onComplete, filename
 
   useEffect(() => {
     if (open) {
-      // Try camera; if it fails we silently show the upload fallback
+      setMode("capture");
+      setReviewIdx(0);
       startCamera();
     } else {
       stopCamera();
       setPages([]);
       setCameraError(null);
+      setMode("capture");
     }
     return () => stopCamera();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Stop / restart camera when entering / leaving review mode
+  useEffect(() => {
+    if (!open) return;
+    if (mode === "review") {
+      stopCamera();
+    } else if (mode === "capture") {
+      startCamera();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
 
   /** Apply "scanner" filter: light grayscale + contrast + brightness on a canvas */
   const enhance = (canvas: HTMLCanvasElement) => {
