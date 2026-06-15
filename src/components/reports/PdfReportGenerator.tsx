@@ -489,32 +489,16 @@ function buildReportHtml(data: {
     html += `</div>`;
   }
 
-  // Quotes
-  if (quotes.length > 0) {
-    html += sectionTitle("הצעות מחיר");
-    for (const quote of quotes) {
-      const items = (quote.items || []) as any[];
-      const subtotal = items.reduce(
-        (s: number, i: any) =>
-          s + Number(i.quantity) * Number(i.unit_price),
-        0
-      );
-      const discount = Number(quote.discount_percent) || 0;
-      const afterDiscount = subtotal * (1 - discount / 100);
-      const total = afterDiscount;
-
-      html += `<div style="margin-bottom:12px;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;">`;
-      html += `<div style="background:#f0f4ff;padding:8px 12px;font-weight:600;font-size:13px;">${escapeHtml(quote.title) || "הצעת מחיר"}</div>`;
-      html += `<table style="width:100%;font-size:12px;border-collapse:collapse;">`;
-      html += `<thead><tr style="background:#f8f9fa;"><th style="padding:6px;text-align:right;border-bottom:1px solid #e0e0e0;">תיאור</th><th style="padding:6px;text-align:center;border-bottom:1px solid #e0e0e0;">כמות</th><th style="padding:6px;text-align:center;border-bottom:1px solid #e0e0e0;">מחיר</th><th style="padding:6px;text-align:center;border-bottom:1px solid #e0e0e0;">סה"כ</th></tr></thead>`;
-      html += `<tbody>`;
-      for (const item of items) {
-        html += `<tr><td style="padding:6px;border-bottom:1px solid #f0f0f0;">${escapeHtml(item.description)}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">${item.quantity}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">₪${Number(item.unit_price).toFixed(2)}</td><td style="padding:6px;text-align:center;border-bottom:1px solid #f0f0f0;">₪${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}</td></tr>`;
-      }
-      html += `</tbody></table>`;
-      html += `<div style="padding:8px 12px;text-align:left;font-weight:700;font-size:14px;border-top:1px solid #e0e0e0;">סה"כ: ₪${total.toFixed(2)}</div>`;
-      html += `</div>`;
+  // Materials used in the call — quotes stay separate and are not embedded in the report
+  if (materials.length > 0) {
+    html += sectionTitle("חומרים");
+    html += `<table style="width:100%;font-size:12px;border-collapse:collapse;border:1px solid #e0e0e0;">`;
+    html += `<thead><tr style="background:#f8f9fa;"><th style="padding:7px;text-align:right;border-bottom:1px solid #e0e0e0;">שם חומר</th><th style="padding:7px;text-align:center;border-bottom:1px solid #e0e0e0;">כמות</th><th style="padding:7px;text-align:center;border-bottom:1px solid #e0e0e0;">סוג</th></tr></thead>`;
+    html += `<tbody>`;
+    for (const material of materials) {
+      html += `<tr><td style="padding:7px;border-bottom:1px solid #f0f0f0;">${escapeHtml(material.name)}</td><td style="padding:7px;text-align:center;border-bottom:1px solid #f0f0f0;">${material.quantity}</td><td style="padding:7px;text-align:center;border-bottom:1px solid #f0f0f0;">${material.is_one_off ? "חד-פעמי" : "מלאי"}</td></tr>`;
     }
+    html += `</tbody></table>`;
   }
 
   html += `<div data-pdf-annex="true" style="padding-top:8px;">`;
