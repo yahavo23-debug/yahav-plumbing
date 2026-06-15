@@ -526,6 +526,41 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
               </Select>
             </div>
             <div>
+              <label className="text-xs text-muted-foreground">לקוח מקושר (אופציונלי)</label>
+              <Popover open={customerPickerOpen} onOpenChange={setCustomerPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between font-normal" type="button">
+                    <span className="flex items-center gap-2 truncate">
+                      <UserIcon className="w-4 h-4 shrink-0" />
+                      {form.customer_name || <span className="text-muted-foreground">בחר לקוח...</span>}
+                    </span>
+                    {form.customer_id && (
+                      <X className="w-4 h-4 opacity-60 hover:opacity-100"
+                        onClick={(e) => { e.stopPropagation(); setForm(f => ({ ...f, customer_id: null, customer_name: null })); }} />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[300px]" align="start" dir="rtl">
+                  <Command>
+                    <CommandInput placeholder="חיפוש לקוח..." />
+                    <CommandList>
+                      <CommandEmpty>לא נמצאו לקוחות</CommandEmpty>
+                      <CommandGroup>
+                        {customers.map(c => (
+                          <CommandItem key={c.id} value={c.name} onSelect={() => {
+                            setForm(f => ({ ...f, customer_id: c.id, customer_name: c.name }));
+                            setCustomerPickerOpen(false);
+                          }}>
+                            <UserIcon className="w-4 h-4 ml-2" />{c.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
               <label className="text-xs text-muted-foreground">צבע</label>
               <div className="flex gap-2 mt-1 flex-wrap">
                 {COLOR_PALETTE.map(c => (
