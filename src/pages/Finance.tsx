@@ -105,7 +105,18 @@ export default function Finance() {
     return true;
   });
 
-  const openDoc = async (docPath: string) => {
+  // Supplier summary for expense search
+  const supplierSummary = useMemo(() => {
+    if (activeTab !== "expense" || !searchQuery.trim()) return null;
+    const q = searchQuery.trim().toLowerCase();
+    const matching = transactions.filter(t =>
+      t.direction === "expense" &&
+      t.counterparty_name &&
+      t.counterparty_name.toLowerCase().includes(q)
+    );
+    const total = matching.reduce((s, t) => s + Number(t.amount), 0);
+    return { total, count: matching.length };
+  }, [transactions, activeTab, searchQuery]);
     setPreviewLoading(true);
     try {
       // Try finance-docs bucket first, fallback to receipts bucket (for auto-created entries from billing)
