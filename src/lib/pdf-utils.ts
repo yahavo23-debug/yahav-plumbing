@@ -96,15 +96,63 @@ export function renderCanvasToPdf(
     return;
   }
 
-  // Multi-page: slice the canvas into page-sized chunks
-  const scaledPageHeight = usableHeight / ratio; // height in canvas pixels per page
+  // Multi-page: slice the canvas into page-sized chunks, snapping to
+  // blank (white) horizontal rows to avoid cutting text between pages.
+  const scaledPageHeight = Math.floor(usableHeight / ratio); // canvas px per page
+  const srcCtx = canvas.getContext("2d");
   let yOffset = 0;
   let pageIndex = 0;
 
-  while (yOffset < canvas.height) {
-    const sliceHeight = Math.min(scaledPageHeight, canvas.height - yOffset);
+  // Pre-compute "is row blank" lookup if we can read pixels.
+  // A row is blank when nearly all pixels are white-ish.
+  let blankRows: Uint8Array | null = null;
+  try {
+    if (srcCtx) {
+      const imgData = srcCtx.getImageData(0, 0, canvas.width, canvas.height);
+      blankRows = new Uint8Array(canvas.height);
+      const w = canvas.width;
+      const data = imgData.data;
+      for (let y = 0; y < canvas.height; y++) {
+        let nonWhite = 0;
+        const rowStart = y * w * 4;
+        // Sample every 4th pixel for speed
+        for (let x = 0; x < w; x += 4) {
+          const i = rowStart + x * 4;
+          if (data[i] < 245 || data[i + 1] < 245 || data[i + 2] < 245) {
+            nonWhite++;
+            if (nonWhite > 2) break;
+          }
+        }
+        blankRows[y] = nonWhite <= 2 ? 1 : 0;
+      }
+    }
+  } catch {
+    // Tainted canvas — fall back to naive slicing
+    blankRows = null;
+  }
 
-    // Create a temporary canvas for this page slice
+  while (yOffset < canvas.height) {
+    let sliceHeight = Math.min(scaledPageHeight, canvas.height - yOffset);
+
+    // If this isn't the last slice, look for a blank row to cut on.
+    if (blankRows && yOffset + sliceHeight < canvas.height) {
+      // Search backwards from the boundary for a blank row, up to 25% of page.
+      const minSlice = Math.floor(scaledPageHeight * 0.75);
+      let cut = -1;
+      for (let y = yOffset + sliceHeight - 1; y >= yOffset + minSlice; y--) {
+        if (blankRows[y]) {
+          // Find run of blanks to cut roughly in the middle
+          let end = y;
+          while (end > yOffset + minSlice && blankRows[end - 1]) end--;
+          cut = Math.floor((y + end) / 2);
+          break;
+        }
+      }
+      if (cut > 0) {
+        sliceHeight = cut - yOffset;
+      }
+    }
+
     const pageCanvas = document.createElement("canvas");
     pageCanvas.width = canvas.width;
     pageCanvas.height = sliceHeight;
