@@ -27,10 +27,7 @@ export function ReceiptUpload({
   const fileRef = useRef<HTMLInputElement>(null);
 
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const uploadFile = async (file: File) => {
     if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
       toast({ title: "שגיאה", description: "ניתן להעלות תמונות או PDF בלבד", variant: "destructive" });
       return;
@@ -44,7 +41,7 @@ export function ReceiptUpload({
     setUploading(true);
     try {
       const ext = file.name.split(".").pop() || "jpg";
-      const path = `${customerId}/${entryId || Date.now()}.${ext}`;
+      const path = `${customerId}/${entryId || Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
 
       const { error } = await supabase.storage
         .from("receipts")
@@ -52,7 +49,6 @@ export function ReceiptUpload({
 
       if (error) throw error;
 
-      // Show local preview
       setPreviewUrl(URL.createObjectURL(file));
       onUploaded(path);
       toast({ title: "הועלה", description: "תמונת הקבלה נשמרה" });
@@ -64,6 +60,13 @@ export function ReceiptUpload({
       if (fileRef.current) fileRef.current.value = "";
     }
   };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+  };
+
 
   const handleRemove = () => {
     setPreviewUrl(null);
