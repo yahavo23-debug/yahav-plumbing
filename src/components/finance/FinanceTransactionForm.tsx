@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { FinanceDocUpload } from "./FinanceDocUpload";
 import { financeCategories, financePaymentMethods } from "@/lib/finance-constants";
 import type { FinanceTransaction } from "@/hooks/useFinanceTransactions";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 
 interface Props {
   open: boolean;
@@ -38,7 +42,22 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
   const [docType, setDocType] = useState(editTransaction?.doc_type || "receipt");
   const [docPath, setDocPath] = useState<string | null>(editTransaction?.doc_path || null);
   const [status, setStatus] = useState(editTransaction?.status || "paid");
+  const [customerId, setCustomerId] = useState<string | null>(editTransaction?.customer_id || null);
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
+  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    (supabase as any)
+      .from("customers")
+      .select("id, name")
+      .order("name", { ascending: true })
+      .then(({ data }: any) => {
+        if (Array.isArray(data)) setCustomers(data);
+      });
+  }, [open]);
+
 
   const handleSubmit = async () => {
     if (!user || !amount || !direction) return;
@@ -52,11 +71,13 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
         category: category === "other_custom" ? (customCategory.trim() || "אחר") : (category || null),
         payment_method: paymentMethod || null,
         counterparty_name: counterpartyName.trim() || null,
+        customer_id: direction === "income" ? customerId : null,
         notes: notes.trim() || null,
         doc_type: docType || null,
         doc_path: docPath,
         status,
       };
+
 
       if (isEdit) {
         const { error } = await (supabase as any)
@@ -171,11 +192,65 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
             </Select>
           </div>
 
+          {/* Customer picker (income only) */}
+          {direction === "income" && (
+            <div>
+              <Label>לקוח</Label>
+              <div className="flex gap-2">
+                <Popover open={customerPickerOpen} onOpenChange={setCustomerPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      className={cn("flex-1 justify-between", !customerId && "text-muted-foreground")}
+                    >
+                      {customerId
+                        ? customers.find(c => c.id === customerId)?.name || "לקוח"
+                        : "בחר לקוח (אופציונלי)"}
+                      <ChevronsUpDown className="ms-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover" align="start">
+                    <Command>
+                      <CommandInput placeholder="חפש לקוח..." />
+                      <CommandList>
+                        <CommandEmpty>לא נמצאו לקוחות</CommandEmpty>
+                        <CommandGroup>
+                          {customers.map(c => (
+                            <CommandItem
+                              key={c.id}
+                              value={c.name}
+                              onSelect={() => {
+                                setCustomerId(c.id);
+                                if (!counterpartyName.trim()) setCounterpartyName(c.name);
+                                setCustomerPickerOpen(false);
+                              }}
+                            >
+                              <Check className={cn("ms-2 h-4 w-4", customerId === c.id ? "opacity-100" : "opacity-0")} />
+                              {c.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {customerId && (
+                  <Button type="button" variant="ghost" size="icon" onClick={() => setCustomerId(null)} title="נקה">
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Counterparty */}
           <div>
-            <Label>שם לקוח / ספק</Label>
+            <Label>{direction === "income" ? "שם משלם (חופשי)" : "שם ספק"}</Label>
             <Input value={counterpartyName} onChange={e => setCounterpartyName(e.target.value)} placeholder="אופציונלי" />
           </div>
+
 
           {/* Notes */}
           <div>
