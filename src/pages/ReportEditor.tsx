@@ -4,8 +4,6 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +13,7 @@ import { PhotoGrid } from "@/components/media/PhotoGrid";
 import { DownloadAllPhotos } from "@/components/media/DownloadAllPhotos";
 import { VideoList } from "@/components/media/VideoList";
 import {
-  ArrowRight, Share2, ExternalLink, Copy, Ban, FileText, Send, Lock, MessageCircle, AlertTriangle, RefreshCw, CheckCircle2,
+  ArrowRight, Share2, ExternalLink, Copy, Ban, FileText, Send, Lock, MessageCircle, RefreshCw, CheckCircle2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PdfReportGenerator, PdfReportGeneratorHandle } from "@/components/reports/PdfReportGenerator";
