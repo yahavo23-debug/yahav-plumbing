@@ -67,8 +67,12 @@ function PdfReportGenerator({
   useImperativeHandle(ref, () => ({ generate: generatePdf }));
 
   useEffect(() => {
-    if (report?.pdf_path) loadExistingPdf();
-  }, [report?.pdf_path]);
+    // Draft/sent reports must be regenerated from live diagnosis data on open.
+    // Only signed/final PDFs are treated as archived documents.
+    if (report?.pdf_path && (report?.status === "signed" || report?.status === "final")) {
+      loadExistingPdf();
+    }
+  }, [report?.pdf_path, report?.status]);
 
   const loadExistingPdf = async () => {
     if (!report?.pdf_path) return;
