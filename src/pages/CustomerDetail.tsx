@@ -136,6 +136,40 @@ const CustomerDetail = () => {
     setSavingLeadCost(false);
   };
 
+  const handleCreateReportForCall = async (callId: string, callNumber?: number) => {
+    if (!user || !id) return;
+    setCreatingReport(true);
+    try {
+      const { data: existing } = await supabase.from("reports")
+        .select("id").eq("service_call_id", callId).limit(1);
+
+      if (existing && existing.length > 0) {
+        navigate(`/reports/${existing[0].id}`);
+        return;
+      }
+
+      const { data, error } = await supabase.from("reports")
+        .insert({
+          service_call_id: callId,
+          title: `דוח עבודה - ${customer?.name || ""}`,
+          created_by: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({ title: "דוח נוצר", description: `דוח עבור קריאה #${callNumber || "—"} נוצר בהצלחה` });
+      navigate(`/reports/${data.id}`);
+    } catch (err: any) {
+      console.error("Create report error:", err);
+      toast({ title: "שגיאה ביצירת דוח", description: err.message, variant: "destructive" });
+    } finally {
+      setCreatingReport(false);
+      setShowCreateReportDialog(false);
+    }
+  };
+
   if (loading) {
     return <AppLayout title="טוען..."><p className="text-center py-8">טוען...</p></AppLayout>;
   }
