@@ -618,6 +618,9 @@ const CalendarPage = () => {
           </div>
         </div>
 
+        {/* Tasks Board (synced with calendar) */}
+        <TasksBoard onTasksChange={setTasks} />
+
         {/* Day panel */}
         {selectedDay && (
           <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
