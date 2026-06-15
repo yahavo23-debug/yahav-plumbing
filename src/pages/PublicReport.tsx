@@ -48,6 +48,7 @@ const PublicReport = () => {
   const [customer, setCustomer] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
   const [videos, setVideos] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
@@ -84,6 +85,7 @@ const PublicReport = () => {
       setCustomer(data.customer);
       setPhotos(data.photos || []);
       setVideos(data.videos || []);
+      setMaterials(data.materials || []);
       setAccessMode(data.access_mode || "sign");
     } catch (err: any) {
       console.error("Public report load error:", err);
@@ -191,6 +193,24 @@ const PublicReport = () => {
               <SummaryLine label="רמת דחיפות" value={urgencyLabels[serviceCall?.urgency_level] || serviceCall?.urgency_level} />
               <SummaryLine label="המלצה" value={serviceCall?.recommendations} />
               <SummaryLine label="אזורים שלא נבדקו" value={serviceCall?.areas_not_inspected} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Materials */}
+        {materials.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">חומרים ({materials.length})</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {materials.map((material: any) => (
+                <div key={material.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm">
+                  <div>
+                    <p className="font-medium">{material.name}</p>
+                    <p className="text-xs text-muted-foreground">כמות: {material.quantity}</p>
+                  </div>
+                  <Badge variant="secondary">{material.is_one_off ? "חד-פעמי" : "מלאי"}</Badge>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}
