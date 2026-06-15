@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useLogo } from "@/hooks/useLogo";
 import { BUSINESS_INFO } from "@/lib/pdf-utils";
+import { getJobTypeLabel } from "@/lib/constants";
 
 const tagLabels: Record<string, string> = {
   before: "לפני", after: "אחרי", finding: "ממצא", other: "אחר",
@@ -48,8 +49,12 @@ const urgencyIcons: Record<string, any> = {
 
 const visibleDamageLabels: Record<string, string> = {
   moisture: "רטיבות", mold: "עובש", peeling_paint: "צבע מתקלף",
-  swollen_flooring: "ריצוף פתוח", ceiling_damage: "נזק בתקרה",
+  swollen_flooring: "ריצוף פתוח", ceiling_damage: "נזק בתקרה", other: "אחר",
 };
+
+const SummaryLine = ({ label, value }: { label: string; value?: string | number | null }) => (
+  value ? <p><strong>{label}:</strong> <span className="whitespace-pre-wrap">{value}</span></p> : null
+);
 
 const PublicShare = () => {
   const { token } = useParams();
@@ -178,6 +183,8 @@ const PublicShare = () => {
         {shareType === "report" && (
           <ReportSection
             reports={data.reports || []}
+            serviceCall={data.service_call}
+            materials={data.materials || []}
             photos={data.photos || []}
             videos={data.videos || []}
             onPhotoClick={setLightboxIndex}
