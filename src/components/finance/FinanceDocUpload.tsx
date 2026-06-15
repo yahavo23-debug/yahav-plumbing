@@ -45,10 +45,7 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
     }
   }, [currentPath]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const uploadFile = async (file: File) => {
     const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
     if (!allowed.includes(file.type)) {
       toast({ title: "שגיאה", description: "ניתן להעלות תמונות או PDF בלבד", variant: "destructive" });
@@ -82,6 +79,13 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
       if (fileRef.current) fileRef.current.value = "";
     }
   };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+  };
+
 
   const handleRemove = () => {
     setPreviewUrl(null);
