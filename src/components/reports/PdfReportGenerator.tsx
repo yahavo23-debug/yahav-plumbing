@@ -28,7 +28,7 @@ import {
 import { LEGAL_SECTIONS, buildLegalAnnexHtml } from "@/lib/legal-constants";
 
 export interface PdfReportGeneratorHandle {
-  generate: () => Promise<void>;
+  generate: (opts?: { skipDownload?: boolean }) => Promise<void>;
 }
 
 interface PdfReportGeneratorProps {
