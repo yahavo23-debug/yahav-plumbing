@@ -315,6 +315,41 @@ const ReportEditor = () => {
           <TabsTrigger value="videos" className="text-base px-6 h-10">סרטונים ({videos.length})</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="preview">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                <span>תצוגה מקדימה של ה-PDF</span>
+                {pdfPreviewUrl && (
+                  <a
+                    href={pdfPreviewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    פתח במסך מלא
+                  </a>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pdfPreviewUrl ? (
+                <iframe
+                  src={pdfPreviewUrl}
+                  title="PDF Preview"
+                  className="w-full rounded border border-border"
+                  style={{ height: "75vh", minHeight: 500 }}
+                />
+              ) : (
+                <div className="text-center py-12 text-muted-foreground text-sm">
+                  טוען תצוגה מקדימה של ה-PDF... אם הכפתור לא נוצר אוטומטית, לחץ "צור PDF" למעלה.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+
         <TabsContent value="details">
           <div className="space-y-6">
             <Card>
