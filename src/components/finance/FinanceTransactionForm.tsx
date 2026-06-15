@@ -71,11 +71,13 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
         category: category === "other_custom" ? (customCategory.trim() || "אחר") : (category || null),
         payment_method: paymentMethod || null,
         counterparty_name: counterpartyName.trim() || null,
+        customer_id: direction === "income" ? customerId : null,
         notes: notes.trim() || null,
         doc_type: docType || null,
         doc_path: docPath,
         status,
       };
+
 
       if (isEdit) {
         const { error } = await (supabase as any)
