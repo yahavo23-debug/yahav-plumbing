@@ -19,7 +19,9 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPdf, setIsPdf] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
 
   useEffect(() => {
     if (currentPath && !previewUrl) {
