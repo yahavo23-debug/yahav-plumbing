@@ -535,8 +535,15 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
                       {form.customer_name || <span className="text-muted-foreground">בחר לקוח...</span>}
                     </span>
                     {form.customer_id && (
-                      <X className="w-4 h-4 opacity-60 hover:opacity-100"
-                        onClick={(e) => { e.stopPropagation(); setForm(f => ({ ...f, customer_id: null, customer_name: null })); }} />
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="inline-flex items-center justify-center rounded-sm px-1.5 py-0.5 text-[11px] bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); setForm(f => ({ ...f, customer_id: null, customer_name: null })); }}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); setForm(f => ({ ...f, customer_id: null, customer_name: null })); }}}
+                      >
+                        נתק
+                      </span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -546,6 +553,16 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
                     <CommandList>
                       <CommandEmpty>לא נמצאו לקוחות</CommandEmpty>
                       <CommandGroup>
+                        <CommandItem
+                          value="__clear__"
+                          onSelect={() => {
+                            setForm(f => ({ ...f, customer_id: null, customer_name: null }));
+                            setCustomerPickerOpen(false);
+                          }}
+                          className="text-muted-foreground"
+                        >
+                          <X className="w-4 h-4 ml-2" />ללא לקוח
+                        </CommandItem>
                         {customers.map(c => (
                           <CommandItem key={c.id} value={c.name} onSelect={() => {
                             setForm(f => ({ ...f, customer_id: c.id, customer_name: c.name }));
