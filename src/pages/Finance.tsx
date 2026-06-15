@@ -117,6 +117,8 @@ export default function Finance() {
     const total = matching.reduce((s, t) => s + Number(t.amount), 0);
     return { total, count: matching.length };
   }, [transactions, activeTab, searchQuery]);
+
+  const openDoc = async (docPath: string) => {
     setPreviewLoading(true);
     try {
       // Try finance-docs bucket first, fallback to receipts bucket (for auto-created entries from billing)
