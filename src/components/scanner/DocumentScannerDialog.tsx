@@ -42,6 +42,9 @@ export function DocumentScannerDialog({ open, onOpenChange, onComplete, filename
   const [pages, setPages] = useState<ScannedPage[]>([]);
   const [busy, setBusy] = useState(false);
   const [building, setBuilding] = useState(false);
+  const [mode, setMode] = useState<"capture" | "review">("capture");
+  const [reviewIdx, setReviewIdx] = useState(0);
+
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
