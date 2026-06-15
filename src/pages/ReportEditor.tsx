@@ -222,11 +222,12 @@ const ReportEditor = () => {
   const waMessage = shareUrl ? encodeURIComponent(`שלום, מצורף דוח עבודה לעיון וחתימה:\n${shareUrl}`) : "";
   const customerPhone = (serviceCall?.customers as any)?.phone;
   const customerWaNumber = customerPhone ? `972${customerPhone.replace(/^0/, "")}` : "";
+  // Use whatsapp:// protocol so the desktop app opens (falls back to web if not installed)
   const whatsappUrl = shareUrl && customerWaNumber
-    ? `https://wa.me/${customerWaNumber}?text=${waMessage}`
-    : shareUrl ? `https://wa.me/?text=${waMessage}` : "";
+    ? `whatsapp://send?phone=${customerWaNumber}&text=${waMessage}`
+    : shareUrl ? `whatsapp://send?text=${waMessage}` : "";
   const customWaUrl = shareUrl && customWaNumber.trim()
-    ? `https://wa.me/972${customWaNumber.trim().replace(/^0/, "")}?text=${waMessage}`
+    ? `whatsapp://send?phone=972${customWaNumber.trim().replace(/^0/, "")}&text=${waMessage}`
     : "";
 
   if (loading) {
