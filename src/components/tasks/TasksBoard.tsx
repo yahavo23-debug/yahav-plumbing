@@ -156,11 +156,14 @@ interface TaskFormState {
   dueTime: string;
   recurrence: Task["recurrence"];
   reminder_minutes_before: number | null;
+  customer_id: string | null;
+  customer_name: string | null;
 }
 
 const emptyForm = (): TaskFormState => ({
   title: "", description: "", priority: "medium", color: "#3b82f6",
   dueDate: "", dueTime: "", recurrence: "none", reminder_minutes_before: null,
+  customer_id: null, customer_name: null,
 });
 
 interface TasksBoardProps {
