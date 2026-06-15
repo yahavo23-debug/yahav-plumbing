@@ -284,7 +284,7 @@ function PdfReportGenerator({
             <p className="text-xs text-muted-foreground">לחץ על "שמור ויצור PDF" כדי לשמור</p>
           </div>
           <Button
-            onClick={generatePdf}
+            onClick={() => generatePdf()}
             disabled={generating}
             size="sm"
             className="h-8 gap-1.5 text-xs shrink-0"
