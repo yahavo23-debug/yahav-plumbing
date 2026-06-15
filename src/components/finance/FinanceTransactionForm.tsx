@@ -42,7 +42,22 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
   const [docType, setDocType] = useState(editTransaction?.doc_type || "receipt");
   const [docPath, setDocPath] = useState<string | null>(editTransaction?.doc_path || null);
   const [status, setStatus] = useState(editTransaction?.status || "paid");
+  const [customerId, setCustomerId] = useState<string | null>(editTransaction?.customer_id || null);
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
+  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    (supabase as any)
+      .from("customers")
+      .select("id, name")
+      .order("name", { ascending: true })
+      .then(({ data }: any) => {
+        if (Array.isArray(data)) setCustomers(data);
+      });
+  }, [open]);
+
 
   const handleSubmit = async () => {
     if (!user || !amount || !direction) return;
