@@ -573,8 +573,14 @@ const CalendarPage = () => {
                             <span className={cn("w-2 h-2 rounded-full shrink-0", e.color)} />{e.title}
                           </span>
                         ))}
-                        {!vacation && (dayCalls.length + dayEvents.length) > 2 && (
-                          <span className="text-[10px] text-muted-foreground">+{dayCalls.length + dayEvents.length - 2} עוד</span>
+                        {!vacation && dayTasks.slice(0, 1).map(t => (
+                          <span key={t.id} className="text-[10px] leading-tight truncate flex items-center gap-0.5">
+                            <ListChecks className="w-2.5 h-2.5 shrink-0" style={{ color: t.color }} />
+                            <span className="truncate" style={{ color: t.color }}>{t.title}</span>
+                          </span>
+                        ))}
+                        {!vacation && (dayCalls.length + dayEvents.length + dayTasks.length) > 3 && (
+                          <span className="text-[10px] text-muted-foreground">+{dayCalls.length + dayEvents.length + dayTasks.length - 3} עוד</span>
                         )}
                       </div>
                       {dayCalls.length > 0 && (
