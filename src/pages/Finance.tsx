@@ -96,6 +96,12 @@ export default function Finance() {
     if (t.direction !== activeTab) return false;
     if (filterCategory !== "all" && t.category !== filterCategory) return false;
     if (filterStatus !== "all" && t.status !== filterStatus) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const name = (t.counterparty_name || "").toLowerCase();
+      const notes = (t.notes || "").toLowerCase();
+      if (!name.includes(q) && !notes.includes(q)) return false;
+    }
     return true;
   });
 
