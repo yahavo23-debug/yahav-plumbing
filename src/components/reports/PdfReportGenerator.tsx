@@ -384,7 +384,8 @@ function buildReportHtml(data: {
   const sectionTitle = (text: string) =>
     `<h2 style="font-size:15px;font-weight:700;margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid #e0e0e0;">${text}</h2>`;
   const field = (label: string, value: string | number | null | undefined) => {
-    const displayValue = value === null || value === undefined || value === "" ? "—" : String(value);
+    if (value === null || value === undefined || String(value).trim() === "") return "";
+    const displayValue = String(value);
     return `<p style="font-size:13px;margin:5px 0;white-space:normal;"><strong>${label}:</strong> ${escapeHtmlWithBreaks(displayValue)}</p>`;
   };
   const yesNo = (value: boolean | null | undefined) =>
@@ -432,11 +433,6 @@ function buildReportHtml(data: {
   html += field("מגבלות בדיקה", sc.test_limitations);
   html += field("אזורים שלא נבדקו", sc.areas_not_inspected);
 
-  const confLabels: Record<string, string> = {
-    high: "גבוהה",
-    medium: "בינונית",
-    suspicion: "חשד בלבד",
-  };
   const urgLabels: Record<string, string> = {
     immediate: "תיקון מיידי",
     soon: "מומלץ בקרוב",
@@ -448,8 +444,6 @@ function buildReportHtml(data: {
   html += field("ממצאים", sc.findings);
   html += field("הערכת סיבה", sc.cause_assessment);
   html += field("נזקים נראים לעין", formatVisibleDamage(sc.visible_damage));
-  html += field("מיקום הנזילה", sc.leak_location);
-  html += field("רמת ודאות", sc.diagnosis_confidence ? confLabels[sc.diagnosis_confidence] || sc.diagnosis_confidence : null);
   html += field("רמת דחיפות", sc.urgency_level ? urgLabels[sc.urgency_level] || sc.urgency_level : null);
   html += field("המלצה", sc.recommendations);
 
