@@ -269,7 +269,7 @@ function PdfReportGenerator({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">PDF לא נוצר עדיין</p>
-            <p className="text-xs text-muted-foreground">לחץ על "שמור ויצור PDF" כדי לשמור</p>
+            <p className="text-xs text-muted-foreground">לחץ על "צור PDF" כדי ליצור תצוגה מקדימה</p>
           </div>
           <Button
             onClick={() => generatePdf()}
