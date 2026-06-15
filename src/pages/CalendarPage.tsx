@@ -12,8 +12,9 @@ import {
   eachMonthOfInterval,
 } from "date-fns";
 import { he } from "date-fns/locale";
-import { ChevronRight, ChevronLeft, CalendarDays, X, Plus, Wrench, Star, Trash2, Plane } from "lucide-react";
+import { ChevronRight, ChevronLeft, CalendarDays, X, Plus, Wrench, Star, Trash2, Plane, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TasksBoard, type Task } from "@/components/tasks/TasksBoard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -193,6 +194,19 @@ const CalendarPage = () => {
   // Inline call notes
   const [callNotes, setCallNotes]     = useState<Record<string, string>>({});
   const [savingNote, setSavingNote]   = useState<string | null>(null);
+
+  // Tasks (synced with calendar)
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const tasksByDate = useMemo(() => {
+    const m: Record<string, Task[]> = {};
+    for (const t of tasks) {
+      if (!t.due_at || t.is_done) continue;
+      const key = format(parseISO(t.due_at), "yyyy-MM-dd");
+      (m[key] ||= []).push(t);
+    }
+    return m;
+  }, [tasks]);
+
 
   // Add-event form
   const [showForm, setShowForm]       = useState(false);
@@ -520,6 +534,7 @@ const CalendarPage = () => {
                   const isSel      = selectedDay ? isSameDay(day, selectedDay) : false;
                   const isTod      = isToday(day);
                   const hasNote    = !!notes[key];
+                  const dayTasks   = tasksByDate[key] || [];
 
                   return (
                     <button
@@ -558,8 +573,14 @@ const CalendarPage = () => {
                             <span className={cn("w-2 h-2 rounded-full shrink-0", e.color)} />{e.title}
                           </span>
                         ))}
-                        {!vacation && (dayCalls.length + dayEvents.length) > 2 && (
-                          <span className="text-[10px] text-muted-foreground">+{dayCalls.length + dayEvents.length - 2} עוד</span>
+                        {!vacation && dayTasks.slice(0, 1).map(t => (
+                          <span key={t.id} className="text-[10px] leading-tight truncate flex items-center gap-0.5">
+                            <ListChecks className="w-2.5 h-2.5 shrink-0" style={{ color: t.color }} />
+                            <span className="truncate" style={{ color: t.color }}>{t.title}</span>
+                          </span>
+                        ))}
+                        {!vacation && (dayCalls.length + dayEvents.length + dayTasks.length) > 3 && (
+                          <span className="text-[10px] text-muted-foreground">+{dayCalls.length + dayEvents.length + dayTasks.length - 3} עוד</span>
                         )}
                       </div>
                       {dayCalls.length > 0 && (
@@ -596,6 +617,9 @@ const CalendarPage = () => {
             <span className="text-xs text-muted-foreground">יש הערה</span>
           </div>
         </div>
+
+        {/* Tasks Board (synced with calendar) */}
+        <TasksBoard onTasksChange={setTasks} />
 
         {/* Day panel */}
         {selectedDay && (

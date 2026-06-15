@@ -1296,6 +1296,57 @@ export type Database = {
           },
         ]
       }
+      tasks: {
+        Row: {
+          color: string
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_at: string | null
+          id: string
+          is_done: boolean
+          position: number
+          priority: string
+          recurrence: string
+          reminder_minutes_before: number | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          is_done?: boolean
+          position?: number
+          priority?: string
+          recurrence?: string
+          reminder_minutes_before?: number | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          is_done?: boolean
+          position?: number
+          priority?: string
+          recurrence?: string
+          reminder_minutes_before?: number | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
