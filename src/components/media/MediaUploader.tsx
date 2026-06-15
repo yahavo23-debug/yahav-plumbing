@@ -95,7 +95,7 @@ export function MediaUploader({ serviceCallId, type, onUploadComplete }: MediaUp
   }, [user, serviceCallId, type, tag, caption, bucket, onUploadComplete]);
 
   const tagLabels: Record<string, string> = {
-    before: "לפני", after: "אחרי", finding: "ממצא", other: "אחר",
+    before: "לפני", after: "אחרי", finding: "ממצא", document: "מסמך", other: "אחר",
   };
 
   return (
