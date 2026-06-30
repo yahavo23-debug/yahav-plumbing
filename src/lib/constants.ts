@@ -33,6 +33,7 @@ export const statusLabels: Record<string, string> = {
   completed: "הושלם",
   cancelled: "בוטל",
   pending_customer: "ממתין לאישור לקוח",
+  awaiting_payment: "ממתין לתשלום",
 };
 
 export const statusColors: Record<string, string> = {
@@ -41,6 +42,17 @@ export const statusColors: Record<string, string> = {
   completed: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   cancelled: "bg-muted text-muted-foreground",
   pending_customer: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  awaiting_payment: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+};
+
+/** Bank account details for collection reports (shown on דוח גבייה PDF). */
+export const BANK_DETAILS = {
+  bankName: "בנק מזרחי טפחות",
+  bankNumber: "20",
+  branchNumber: "615",
+  accountNumber: "155793",
+  accountType: "עסק שאינו תאגיד",
+  beneficiaryName: "יהב אוחנה",
 };
 
 /**
