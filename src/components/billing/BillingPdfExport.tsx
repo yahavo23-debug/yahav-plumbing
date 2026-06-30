@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useLogo } from "@/hooks/useLogo";
@@ -7,6 +7,7 @@ import { FileDown, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { buildPdfHeader, buildPdfFooter, renderCanvasToPdf, escapeHtml } from "@/lib/pdf-utils";
+import { BANK_DETAILS } from "@/lib/constants";
 
 interface LedgerEntry {
   id: string;
@@ -31,6 +32,8 @@ interface BillingPdfExportProps {
   overdueDays: number;
   hasLegalAction: boolean;
   legalActionNote: string;
+  /** When this prop flips to true, the PDF is generated automatically (one shot). */
+  autoTrigger?: boolean;
 }
 
 const entryTypeLabels: Record<string, string> = {
