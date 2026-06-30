@@ -405,6 +405,7 @@ const ServiceCallDetail = () => {
               >
                 ממתין לאישור לקוח
               </Button>
+            )}
             {call.status !== "completed" && call.status !== "cancelled" && call.status !== "awaiting_payment" && (
               <Button
                 variant="outline"
