@@ -277,6 +277,39 @@ function buildBillingHtml(data: {
     `;
   }
 
+  // Bank details for payment (shown only when there's an outstanding balance)
+  if (balance > 0) {
+    html += `
+      <div style="background:#eff6ff;padding:14px 16px;border-radius:8px;margin-bottom:16px;border:1px solid #3b82f6;">
+        <p style="font-size:14px;font-weight:700;margin:0 0 8px;color:#1e3a8a;">💳 פרטי תשלום בהעברה בנקאית</p>
+        <table style="width:100%;font-size:12px;color:#1e3a8a;">
+          <tr>
+            <td style="padding:3px 0;width:40%;"><strong>בנק:</strong></td>
+            <td style="padding:3px 0;">${escapeHtml(BANK_DETAILS.bankName)} (${escapeHtml(BANK_DETAILS.bankNumber)})</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;"><strong>סניף:</strong></td>
+            <td style="padding:3px 0;">${escapeHtml(BANK_DETAILS.branchNumber)}</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;"><strong>מספר חשבון:</strong></td>
+            <td style="padding:3px 0;">${escapeHtml(BANK_DETAILS.accountNumber)}</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;"><strong>סוג חשבון:</strong></td>
+            <td style="padding:3px 0;">${escapeHtml(BANK_DETAILS.accountType)}</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;"><strong>שם המוטב:</strong></td>
+            <td style="padding:3px 0;">${escapeHtml(BANK_DETAILS.beneficiaryName)}</td>
+          </tr>
+        </table>
+        <p style="font-size:11px;color:#1e40af;margin:8px 0 0;">לאחר העברה — נא לשלוח אישור בוואטסאפ. תודה!</p>
+      </div>
+    `;
+  }
+
+
   // Entries table
   html += `
     <h2 style="font-size:15px;font-weight:700;margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid #e0e0e0;">פירוט תנועות (${entries.length})</h2>
