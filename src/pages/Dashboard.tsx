@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   Users, Wrench, AlertCircle, Plus, CheckCircle2, Clock,
   PhoneCall, ChevronLeft, CalendarClock, Flame, ChevronDown,
-  MessageCircle, HourglassIcon, Navigation,
+  MessageCircle, HourglassIcon, Navigation, Wallet, FileDown,
 } from "lucide-react";
 import { getJobTypeLabel, statusColors, statusLabels } from "@/lib/constants";
 import { format } from "date-fns";
@@ -264,6 +264,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [quickCallOpen, setQuickCallOpen] = useState(false);
   const [completeDialogCall, setCompleteDialogCall] = useState<any | null>(null);
+  const [debtsSummary, setDebtsSummary] = useState<{ total: number; count: number; topName: string | null; topAmount: number; over90Count: number }>({ total: 0, count: 0, topName: null, topAmount: 0, over90Count: 0 });
   const navigate = useNavigate();
   const { user, isAdmin, role } = useAuth();
   const { requestPermission, notify, permission } = useNotifications();
