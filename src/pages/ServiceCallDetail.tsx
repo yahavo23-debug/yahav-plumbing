@@ -405,6 +405,14 @@ const ServiceCallDetail = () => {
               >
                 ממתין לאישור לקוח
               </Button>
+            {call.status !== "completed" && call.status !== "cancelled" && call.status !== "awaiting_payment" && (
+              <Button
+                variant="outline"
+                className="gap-2 text-rose-700 border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                onClick={() => setShowPendingPaymentDialog(true)}
+              >
+                <Wallet className="w-4 h-4" /> בוצע — ממתין לתשלום
+              </Button>
             )}
             <Button onClick={handleCreateReport} className="gap-2">
               <FileText className="w-4 h-4" /> דוח עבודה
