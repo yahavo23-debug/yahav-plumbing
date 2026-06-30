@@ -590,6 +590,36 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* Debts panel — admin/secretary */}
+      {(isAdmin || isSecretary) && debtsSummary.count > 0 && (
+        <Card className="mb-6 border-destructive/30 bg-gradient-to-l from-destructive/5 to-transparent">
+          <CardContent className="p-4 flex flex-wrap items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+              <Wallet className="w-6 h-6 text-destructive" />
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <p className="text-xs text-muted-foreground">חוב פתוח מלקוחות</p>
+              <p className="text-2xl font-bold text-destructive">
+                ₪{debtsSummary.total.toLocaleString("he-IL", { maximumFractionDigits: 0 })}
+                <span className="text-sm font-normal text-muted-foreground mr-2">
+                  · {debtsSummary.count} לקוחות
+                  {debtsSummary.over90Count > 0 && ` · ${debtsSummary.over90Count} מעל 90 יום`}
+                </span>
+              </p>
+              {debtsSummary.topName && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  החוב הגדול: <span className="font-semibold text-foreground">{debtsSummary.topName}</span> · ₪{debtsSummary.topAmount.toLocaleString("he-IL", { maximumFractionDigits: 0 })}
+                </p>
+              )}
+            </div>
+            <Button onClick={() => navigate("/debts")} className="gap-2 shrink-0">
+              <FileDown className="w-4 h-4" />
+              ניהול חובות ודוחות גבייה
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ממתין לאישור לקוח — reminder section */}
       {(loading || pendingCalls.length > 0) && (
         <div className="mb-6">
