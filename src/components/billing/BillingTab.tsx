@@ -799,6 +799,7 @@ export function BillingTab({
           overdueDays={overdueDays}
           hasLegalAction={hasLegalAction}
           legalActionNote={legalActionNote}
+          autoTrigger={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("autoPdf") === "1"}
         />
         {canAdd && balance > 0 && (
           <Button
