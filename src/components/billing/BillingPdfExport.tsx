@@ -56,9 +56,11 @@ export function BillingPdfExport({
   overdueDays,
   hasLegalAction,
   legalActionNote,
+  autoTrigger,
 }: BillingPdfExportProps) {
   const { logoUrl } = useLogo();
   const [generating, setGenerating] = useState(false);
+  const autoFiredRef = useRef(false);
 
   const generatePdf = async () => {
     setGenerating(true);
