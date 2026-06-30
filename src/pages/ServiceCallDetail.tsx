@@ -33,6 +33,8 @@ import { MaterialsTab } from "@/components/inventory/MaterialsTab";
 import { ReceiptUpload } from "@/components/billing/ReceiptUpload";
 import { financePaymentMethods } from "@/lib/finance-constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PendingPaymentDialog } from "@/components/service-calls/PendingPaymentDialog";
+import { Wallet } from "lucide-react";
 
 
 type Photo = Tables<"service_call_photos">;
@@ -88,6 +90,9 @@ const ServiceCallDetail = () => {
   const [completeReceipt, setCompleteReceipt] = useState<string | null>(null);
   const [completePhotos, setCompletePhotos] = useState<File[]>([]);
   const [completing, setCompleting] = useState(false);
+
+  // Pending-payment dialog
+  const [showPendingPaymentDialog, setShowPendingPaymentDialog] = useState(false);
 
   useEffect(() => {
     if (!user || !id) return;
