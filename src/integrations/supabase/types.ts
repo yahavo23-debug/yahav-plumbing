@@ -1184,6 +1184,7 @@ export type Database = {
           leak_location: string | null
           main_valve_closed: boolean | null
           notes: string | null
+          pending_payment_at: string | null
           priority: string
           property_occupied: boolean | null
           quote_id: string | null
@@ -1223,6 +1224,7 @@ export type Database = {
           leak_location?: string | null
           main_valve_closed?: boolean | null
           notes?: string | null
+          pending_payment_at?: string | null
           priority?: string
           property_occupied?: boolean | null
           quote_id?: string | null
@@ -1262,6 +1264,7 @@ export type Database = {
           leak_location?: string | null
           main_valve_closed?: boolean | null
           notes?: string | null
+          pending_payment_at?: string | null
           priority?: string
           property_occupied?: boolean | null
           quote_id?: string | null
