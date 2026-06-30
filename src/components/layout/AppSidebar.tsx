@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Users, Wrench, FileText, LogOut, Settings,
   ChevronRight, CalendarDays, Wallet, BarChart2, LineChart, BookOpen, Receipt, Package,
+  AlertCircle,
 } from "lucide-react";
 
 interface NavItem {
@@ -40,9 +41,9 @@ const navGroups: NavGroup[] = [
   {
     label: "כספים",
     items: [
-      { icon: Wallet,    label: "הכנסות והוצאות", path: "/finance",        roles: ["admin", "secretary"] },
-      
-      { icon: LineChart, label: "רווחיות",         path: "/profitability",  roles: ["admin"] },
+      { icon: Wallet,      label: "הכנסות והוצאות", path: "/finance",        roles: ["admin", "secretary"] },
+      { icon: AlertCircle, label: "חובות לקוחות",    path: "/debts",          roles: ["admin", "secretary"] },
+      { icon: LineChart,   label: "רווחיות",         path: "/profitability",  roles: ["admin"] },
     ],
   },
 ];

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -233,7 +233,7 @@ const CustomerDetail = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="calls" dir="rtl">
+      <Tabs defaultValue={(typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab")) || "calls"} dir="rtl">
         <TabsList className="mb-4 h-12 w-full justify-start">
           <TabsTrigger value="calls" className="text-base px-4 h-10">
             קריאות ({calls.length})
