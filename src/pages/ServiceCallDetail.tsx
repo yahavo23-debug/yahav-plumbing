@@ -797,6 +797,14 @@ const ServiceCallDetail = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    {showPendingPaymentDialog && (
+      <PendingPaymentDialog
+        open={showPendingPaymentDialog}
+        onClose={() => setShowPendingPaymentDialog(false)}
+        serviceCall={call}
+        onSuccess={() => setCall({ ...call, status: "awaiting_payment", pending_payment_at: new Date().toISOString() })}
+      />
+    )}
     </AppLayout>
   );
 };
