@@ -153,6 +153,16 @@ export function BillingPdfExport({
     }
   };
 
+  // Auto-generate once when triggered from parent (e.g., after marking call as awaiting payment)
+  useEffect(() => {
+    if (autoTrigger && !autoFiredRef.current && !generating && entries.length > 0) {
+      autoFiredRef.current = true;
+      generatePdf();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTrigger, entries.length]);
+
+
   return (
     <Button
       onClick={generatePdf}
