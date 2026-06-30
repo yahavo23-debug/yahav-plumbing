@@ -33,13 +33,16 @@ import { MaterialsTab } from "@/components/inventory/MaterialsTab";
 import { ReceiptUpload } from "@/components/billing/ReceiptUpload";
 import { financePaymentMethods } from "@/lib/finance-constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PendingPaymentDialog } from "@/components/service-calls/PendingPaymentDialog";
+import { Wallet } from "lucide-react";
 
 
 type Photo = Tables<"service_call_photos">;
 type Video = Tables<"service_call_videos">;
 
 const statusLabels: Record<string, string> = {
-  open: "פתוח", in_progress: "בטיפול", completed: "הושלם", cancelled: "בוטל", pending_customer: "ממתין לאישור לקוח",
+  open: "פתוח", in_progress: "בטיפול", completed: "הושלם", cancelled: "בוטל",
+  pending_customer: "ממתין לאישור לקוח", awaiting_payment: "ממתין לתשלום",
 };
 const statusColors: Record<string, string> = {
   open: "bg-warning/15 text-warning border-warning/30",
@@ -47,6 +50,7 @@ const statusColors: Record<string, string> = {
   completed: "bg-success/15 text-success border-success/30",
   cancelled: "bg-destructive/15 text-destructive border-destructive/30",
   pending_customer: "bg-purple-500/15 text-purple-600 border-purple-500/30",
+  awaiting_payment: "bg-rose-500/15 text-rose-600 border-rose-500/30",
 };
 const priorityLabels: Record<string, string> = {
   low: "נמוכה", medium: "בינונית", high: "גבוהה", urgent: "דחופה",
@@ -88,6 +92,9 @@ const ServiceCallDetail = () => {
   const [completeReceipt, setCompleteReceipt] = useState<string | null>(null);
   const [completePhotos, setCompletePhotos] = useState<File[]>([]);
   const [completing, setCompleting] = useState(false);
+
+  // Pending-payment dialog
+  const [showPendingPaymentDialog, setShowPendingPaymentDialog] = useState(false);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -399,6 +406,15 @@ const ServiceCallDetail = () => {
                 }}
               >
                 ממתין לאישור לקוח
+              </Button>
+            )}
+            {call.status !== "completed" && call.status !== "cancelled" && call.status !== "awaiting_payment" && (
+              <Button
+                variant="outline"
+                className="gap-2 text-rose-700 border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                onClick={() => setShowPendingPaymentDialog(true)}
+              >
+                <Wallet className="w-4 h-4" /> בוצע — ממתין לתשלום
               </Button>
             )}
             <Button onClick={handleCreateReport} className="gap-2">
@@ -783,6 +799,14 @@ const ServiceCallDetail = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    {showPendingPaymentDialog && (
+      <PendingPaymentDialog
+        open={showPendingPaymentDialog}
+        onClose={() => setShowPendingPaymentDialog(false)}
+        serviceCall={call}
+        onSuccess={() => setCall({ ...call, status: "awaiting_payment", pending_payment_at: new Date().toISOString() })}
+      />
+    )}
     </AppLayout>
   );
 };

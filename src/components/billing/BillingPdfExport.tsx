@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useLogo } from "@/hooks/useLogo";
@@ -7,6 +7,7 @@ import { FileDown, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { buildPdfHeader, buildPdfFooter, renderCanvasToPdf, escapeHtml } from "@/lib/pdf-utils";
+import { BANK_DETAILS } from "@/lib/constants";
 
 interface LedgerEntry {
   id: string;
@@ -31,6 +32,8 @@ interface BillingPdfExportProps {
   overdueDays: number;
   hasLegalAction: boolean;
   legalActionNote: string;
+  /** When this prop flips to true, the PDF is generated automatically (one shot). */
+  autoTrigger?: boolean;
 }
 
 const entryTypeLabels: Record<string, string> = {
@@ -53,9 +56,11 @@ export function BillingPdfExport({
   overdueDays,
   hasLegalAction,
   legalActionNote,
+  autoTrigger,
 }: BillingPdfExportProps) {
   const { logoUrl } = useLogo();
   const [generating, setGenerating] = useState(false);
+  const autoFiredRef = useRef(false);
 
   const generatePdf = async () => {
     setGenerating(true);
@@ -147,6 +152,16 @@ export function BillingPdfExport({
       setGenerating(false);
     }
   };
+
+  // Auto-generate once when triggered from parent (e.g., after marking call as awaiting payment)
+  useEffect(() => {
+    if (autoTrigger && !autoFiredRef.current && !generating && entries.length > 0) {
+      autoFiredRef.current = true;
+      generatePdf();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTrigger, entries.length]);
+
 
   return (
     <Button
@@ -261,6 +276,39 @@ function buildBillingHtml(data: {
       </div>
     `;
   }
+
+  // Bank details for payment (shown only when there's an outstanding balance)
+  if (balance > 0) {
+    html += `
+      <div style="background:#eff6ff;padding:14px 16px;border-radius:8px;margin-bottom:16px;border:1px solid #3b82f6;">
+        <p style="font-size:14px;font-weight:700;margin:0 0 8px;color:#1e3a8a;">💳 פרטי תשלום בהעברה בנקאית</p>
+        <table style="width:100%;font-size:12px;color:#1e3a8a;">
+          <tr>
+            <td style="padding:3px 0;width:40%;"><strong>בנק:</strong></td>
+            <td style="padding:3px 0;">${escapeHtml(BANK_DETAILS.bankName)} (${escapeHtml(BANK_DETAILS.bankNumber)})</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;"><strong>סניף:</strong></td>
+            <td style="padding:3px 0;">${escapeHtml(BANK_DETAILS.branchNumber)}</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;"><strong>מספר חשבון:</strong></td>
+            <td style="padding:3px 0;">${escapeHtml(BANK_DETAILS.accountNumber)}</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;"><strong>סוג חשבון:</strong></td>
+            <td style="padding:3px 0;">${escapeHtml(BANK_DETAILS.accountType)}</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;"><strong>שם המוטב:</strong></td>
+            <td style="padding:3px 0;">${escapeHtml(BANK_DETAILS.beneficiaryName)}</td>
+          </tr>
+        </table>
+        <p style="font-size:11px;color:#1e40af;margin:8px 0 0;">לאחר העברה — נא לשלוח אישור בוואטסאפ. תודה!</p>
+      </div>
+    `;
+  }
+
 
   // Entries table
   html += `
