@@ -41,7 +41,8 @@ type Photo = Tables<"service_call_photos">;
 type Video = Tables<"service_call_videos">;
 
 const statusLabels: Record<string, string> = {
-  open: "פתוח", in_progress: "בטיפול", completed: "הושלם", cancelled: "בוטל", pending_customer: "ממתין לאישור לקוח",
+  open: "פתוח", in_progress: "בטיפול", completed: "הושלם", cancelled: "בוטל",
+  pending_customer: "ממתין לאישור לקוח", awaiting_payment: "ממתין לתשלום",
 };
 const statusColors: Record<string, string> = {
   open: "bg-warning/15 text-warning border-warning/30",
@@ -49,6 +50,7 @@ const statusColors: Record<string, string> = {
   completed: "bg-success/15 text-success border-success/30",
   cancelled: "bg-destructive/15 text-destructive border-destructive/30",
   pending_customer: "bg-purple-500/15 text-purple-600 border-purple-500/30",
+  awaiting_payment: "bg-rose-500/15 text-rose-600 border-rose-500/30",
 };
 const priorityLabels: Record<string, string> = {
   low: "נמוכה", medium: "בינונית", high: "גבוהה", urgent: "דחופה",
