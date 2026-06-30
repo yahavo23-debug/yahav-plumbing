@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   Users, Wrench, AlertCircle, Plus, CheckCircle2, Clock,
   PhoneCall, ChevronLeft, CalendarClock, Flame, ChevronDown,
-  MessageCircle, HourglassIcon, Navigation,
+  MessageCircle, HourglassIcon, Navigation, Wallet, FileDown,
 } from "lucide-react";
 import { getJobTypeLabel, statusColors, statusLabels } from "@/lib/constants";
 import { format } from "date-fns";
@@ -264,6 +264,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [quickCallOpen, setQuickCallOpen] = useState(false);
   const [completeDialogCall, setCompleteDialogCall] = useState<any | null>(null);
+  const [debtsSummary, setDebtsSummary] = useState<{ total: number; count: number; topName: string | null; topAmount: number; over90Count: number }>({ total: 0, count: 0, topName: null, topAmount: 0, over90Count: 0 });
   const navigate = useNavigate();
   const { user, isAdmin, role } = useAuth();
   const { requestPermission, notify, permission } = useNotifications();
@@ -332,6 +333,13 @@ const Dashboard = () => {
       setPendingCalls(pending);
       setInProgressList(inProgRes.data || []);
 
+      // Debts summary (admin/secretary only)
+      if (isAdmin || isSecretary) {
+        loadDebtsSummary();
+      }
+
+
+
       // Send notification if there are stale pending calls
       if (Notification.permission === "granted" && pending.length > 0) {
         const stale = pending.filter((c: any) => daysSince(c.updated_at) >= 3);
@@ -351,7 +359,44 @@ const Dashboard = () => {
     }
   };
 
+  const loadDebtsSummary = async () => {
+    try {
+      const [ledgerRes, customersRes] = await Promise.all([
+        (supabase as any).from("customer_ledger").select("customer_id, entry_type, amount, entry_date").order("entry_date", { ascending: true }),
+        supabase.from("customers").select("id, name").eq("is_walkin", false as any),
+      ]);
+      const custMap = new Map((customersRes.data || []).map((c: any) => [c.id, c.name]));
+      const grouped = new Map<string, any[]>();
+      for (const e of (ledgerRes.data || []) as any[]) {
+        if (!grouped.has(e.customer_id)) grouped.set(e.customer_id, []);
+        grouped.get(e.customer_id)!.push(e);
+      }
+      const now = Date.now();
+      let total = 0, count = 0, topAmount = 0, topName: string | null = null, over90Count = 0;
+      grouped.forEach((entries, cid) => {
+        if (!custMap.has(cid)) return;
+        const charges = entries.filter((e) => e.entry_type === "charge").reduce((s, e) => s + Number(e.amount), 0);
+        const payments = entries.filter((e) => e.entry_type === "payment").reduce((s, e) => s + Number(e.amount), 0);
+        const credits = entries.filter((e) => e.entry_type === "credit").reduce((s, e) => s + Number(e.amount), 0);
+        const bal = charges - payments - credits;
+        if (bal <= 0.5) return;
+        count += 1;
+        total += bal;
+        const firstCharge = entries.find((e) => e.entry_type === "charge");
+        if (firstCharge) {
+          const days = Math.floor((now - new Date(firstCharge.entry_date).getTime()) / (1000 * 60 * 60 * 24));
+          if (days > 90) over90Count += 1;
+        }
+        if (bal > topAmount) { topAmount = bal; topName = custMap.get(cid) as string; }
+      });
+      setDebtsSummary({ total, count, topName, topAmount, over90Count });
+    } catch (err) {
+      console.error("Debts summary error:", err);
+    }
+  };
+
   const handleEnableNotifications = async () => {
+
     const result = await requestPermission();
     if (result === "granted") {
       toast({ title: "✅ התראות הופעלו!", description: "תקבל התראה כשיש לקוחות שממתינים לאישור" });
@@ -544,6 +589,36 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Debts panel — admin/secretary */}
+      {(isAdmin || isSecretary) && debtsSummary.count > 0 && (
+        <Card className="mb-6 border-destructive/30 bg-gradient-to-l from-destructive/5 to-transparent">
+          <CardContent className="p-4 flex flex-wrap items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+              <Wallet className="w-6 h-6 text-destructive" />
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <p className="text-xs text-muted-foreground">חוב פתוח מלקוחות</p>
+              <p className="text-2xl font-bold text-destructive">
+                ₪{debtsSummary.total.toLocaleString("he-IL", { maximumFractionDigits: 0 })}
+                <span className="text-sm font-normal text-muted-foreground mr-2">
+                  · {debtsSummary.count} לקוחות
+                  {debtsSummary.over90Count > 0 && ` · ${debtsSummary.over90Count} מעל 90 יום`}
+                </span>
+              </p>
+              {debtsSummary.topName && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  החוב הגדול: <span className="font-semibold text-foreground">{debtsSummary.topName}</span> · ₪{debtsSummary.topAmount.toLocaleString("he-IL", { maximumFractionDigits: 0 })}
+                </p>
+              )}
+            </div>
+            <Button onClick={() => navigate("/debts")} className="gap-2 shrink-0">
+              <FileDown className="w-4 h-4" />
+              ניהול חובות ודוחות גבייה
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ממתין לאישור לקוח — reminder section */}
       {(loading || pendingCalls.length > 0) && (
