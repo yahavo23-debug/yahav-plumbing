@@ -535,7 +535,11 @@ export default function Finance() {
               ✕ סגור
             </Button>
             {previewUrl.match(/\.pdf/i) ? (
-              <iframe src={previewUrl} className="w-full h-[85vh] rounded-lg bg-white" />
+              <iframe
+                src={`${previewUrl}#toolbar=1&navpanes=0&scrollbar=1&view=Fit&zoom=page-fit`}
+                className="w-full h-[85vh] rounded-lg bg-white"
+                title="תצוגת מסמך"
+              />
             ) : (
               <img src={previewUrl} alt="מסמך מצורף" className="max-w-full max-h-[85vh] mx-auto rounded-lg object-contain" />
             )}
