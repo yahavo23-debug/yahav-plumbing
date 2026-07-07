@@ -23,6 +23,8 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
   const [zoom, setZoom] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const pdfPreviewUrl = previewUrl ? `${previewUrl}#toolbar=1&navpanes=0&scrollbar=1&view=Fit&zoom=page-fit` : "";
+
 
   useEffect(() => {
     if (currentPath && !previewUrl) {
@@ -182,11 +184,13 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
         <DialogContent className="w-[96vw] max-w-5xl h-[92dvh] max-h-[92dvh] p-0 overflow-hidden flex flex-col">
           {isPdf ? (
-            <iframe
-              src={previewUrl || ""}
-              className="w-full flex-1 rounded"
-              title="תצוגת מסמך"
-            />
+            <div className="flex-1 min-h-0 bg-muted/30 p-2">
+              <iframe
+                src={pdfPreviewUrl}
+                className="h-full w-full rounded bg-background"
+                title="תצוגת מסמך"
+              />
+            </div>
           ) : (
             <>
               <div className="shrink-0 flex items-center justify-center gap-2 border-b border-border p-2 bg-background" dir="rtl">
