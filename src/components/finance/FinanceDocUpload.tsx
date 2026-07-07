@@ -181,11 +181,18 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
               title="תצוגת מסמך"
             />
           ) : (
-            <img
-              src={previewUrl || ""}
-              alt="תצוגת מסמך"
-              className="w-full max-h-[80vh] object-contain rounded"
-            />
+            <div
+              className="w-full max-h-[80vh] overflow-auto rounded bg-muted/30"
+              style={{ touchAction: "pinch-zoom" }}
+            >
+              <img
+                src={previewUrl || ""}
+                alt="תצוגת מסמך"
+                className="max-w-full h-auto mx-auto select-none"
+                style={{ touchAction: "pinch-zoom" }}
+                draggable={false}
+              />
+            </div>
           )}
         </DialogContent>
       </Dialog>
