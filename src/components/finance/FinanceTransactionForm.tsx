@@ -283,8 +283,8 @@ export function FinanceTransactionForm({ open, onClose, onSaved, editTransaction
           </div>
         </div>
 
-        {/* Sticky save bar */}
-        <div className="border-t bg-background px-4 py-3 sticky bottom-0">
+        {/* Save bar */}
+        <div className="border-t bg-background px-4 py-3 shrink-0">
           <Button onClick={handleSubmit} disabled={saving || !amount} className="w-full h-12 text-base">
             {saving ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
             {isEdit ? "עדכן" : "שמור"}
