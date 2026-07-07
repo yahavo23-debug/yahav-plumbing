@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ImagePlus, Loader2, X, FileText, Maximize2, ScanLine } from "lucide-react";
+import { ImagePlus, Loader2, X, FileText, Maximize2, ScanLine, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { DocumentScannerDialog } from "@/components/scanner/DocumentScannerDialog";
 
 
@@ -20,6 +20,7 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
   const [isPdf, setIsPdf] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
 
 
@@ -90,7 +91,13 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
   const handleRemove = () => {
     setPreviewUrl(null);
     setIsPdf(false);
+    setZoom(1);
     onRemoved?.();
+  };
+
+  const openPreview = () => {
+    setZoom(1);
+    setFullscreen(true);
   };
 
   return (
@@ -107,7 +114,7 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
           <div className="relative group">
             {isPdf ? (
               <div
-                onClick={() => setFullscreen(true)}
+                onClick={openPreview}
                 className="w-16 h-16 rounded border border-input bg-muted flex items-center justify-center cursor-pointer hover:bg-muted/80 transition-colors"
               >
                 <FileText className="w-6 h-6 text-muted-foreground" />
@@ -116,13 +123,13 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
               <img
                 src={previewUrl || ""}
                 alt="תצוגה מקדימה"
-                onClick={() => setFullscreen(true)}
+                onClick={openPreview}
                 className="w-16 h-16 rounded border border-input object-cover cursor-pointer hover:opacity-80 transition-opacity"
               />
             )}
             <button
               type="button"
-              onClick={() => setFullscreen(true)}
+              onClick={openPreview}
               className="absolute bottom-0 left-0 w-5 h-5 bg-black/60 text-white rounded-tr rounded-bl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             >
               <Maximize2 className="w-3 h-3" />
@@ -173,26 +180,64 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
 
       {/* Fullscreen preview dialog */}
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
-        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-2">
+        <DialogContent className="w-[96vw] max-w-5xl h-[92dvh] max-h-[92dvh] p-0 overflow-hidden flex flex-col">
           {isPdf ? (
             <iframe
               src={previewUrl || ""}
-              className="w-full h-[80vh] rounded"
+              className="w-full flex-1 rounded"
               title="תצוגת מסמך"
             />
           ) : (
-            <div
-              className="w-full max-h-[80vh] overflow-auto rounded bg-muted/30"
-              style={{ touchAction: "pinch-zoom" }}
-            >
-              <img
-                src={previewUrl || ""}
-                alt="תצוגת מסמך"
-                className="max-w-full h-auto mx-auto select-none"
-                style={{ touchAction: "pinch-zoom" }}
-                draggable={false}
-              />
-            </div>
+            <>
+              <div className="shrink-0 flex items-center justify-center gap-2 border-b border-border p-2 bg-background" dir="rtl">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setZoom((value) => Math.max(0.5, Number((value - 0.25).toFixed(2))))}
+                  disabled={zoom <= 0.5}
+                  aria-label="הקטן תצוגה"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setZoom(1)}
+                  aria-label="התאם לגודל המסך"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+                <span className="min-w-14 text-center text-sm font-medium text-muted-foreground">
+                  {Math.round(zoom * 100)}%
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setZoom((value) => Math.min(3, Number((value + 0.25).toFixed(2))))}
+                  disabled={zoom >= 3}
+                  aria-label="הגדל תצוגה"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+              </div>
+              <div
+                className="flex-1 min-h-0 overflow-auto bg-muted/30 p-2 sm:p-4"
+                style={{ touchAction: "pan-x pan-y pinch-zoom" }}
+              >
+                <div className="min-h-full flex items-start justify-center">
+                  <img
+                    src={previewUrl || ""}
+                    alt="תצוגת מסמך"
+                    className="h-auto max-h-none rounded border border-border bg-background object-contain select-none"
+                    style={{ width: `${zoom * 100}%`, maxWidth: zoom === 1 ? "100%" : "none", touchAction: "pan-x pan-y pinch-zoom" }}
+                    draggable={false}
+                  />
+                </div>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
