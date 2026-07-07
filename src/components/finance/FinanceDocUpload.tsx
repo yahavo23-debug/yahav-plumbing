@@ -87,7 +87,7 @@ function PdfFitPreview({ url, data }: { url?: string; data?: ArrayBuffer | null 
           pageWrap.appendChild(canvas);
           pagesElement.appendChild(pageWrap);
 
-          await page.render({ canvasContext: context, viewport: renderViewport }).promise;
+          await page.render({ canvas, canvasContext: context, viewport: renderViewport }).promise;
         }
       } catch (err) {
         if (!cancelled) {
