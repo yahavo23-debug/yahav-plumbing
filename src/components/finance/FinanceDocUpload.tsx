@@ -5,6 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ImagePlus, Loader2, X, FileText, Maximize2, ScanLine, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { DocumentScannerDialog } from "@/components/scanner/DocumentScannerDialog";
+import * as pdfjsLib from "pdfjs-dist/build/pdf.mjs";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 
 
@@ -12,6 +16,145 @@ interface FinanceDocUploadProps {
   currentPath?: string | null;
   onUploaded: (path: string) => void;
   onRemoved?: () => void;
+}
+
+function PdfFitPreview({ url }: { url: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const pagesRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    const updateWidth = () => setContainerWidth(Math.floor(element.clientWidth));
+    updateWidth();
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!url || !containerWidth || !pagesRef.current) return;
+
+    let cancelled = false;
+    let loadingTask: ReturnType<typeof pdfjsLib.getDocument> | null = null;
+
+    const renderPdf = async () => {
+      const pagesElement = pagesRef.current;
+      if (!pagesElement) return;
+
+      pagesElement.innerHTML = "";
+      setLoading(true);
+      setError(null);
+
+      try {
+        loadingTask = pdfjsLib.getDocument(url);
+        const pdf = await loadingTask.promise;
+        const availableWidth = Math.max(260, containerWidth - 16);
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+          if (cancelled) return;
+
+          const page = await pdf.getPage(pageNumber);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const fitScale = availableWidth / baseViewport.width;
+          const displayViewport = page.getViewport({ scale: fitScale * zoom });
+          const renderViewport = page.getViewport({ scale: fitScale * zoom * pixelRatio });
+
+          const pageWrap = document.createElement("div");
+          pageWrap.className = "flex justify-center pb-3";
+
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          if (!context) continue;
+
+          canvas.width = Math.floor(renderViewport.width);
+          canvas.height = Math.floor(renderViewport.height);
+          canvas.style.width = `${Math.floor(displayViewport.width)}px`;
+          canvas.style.height = `${Math.floor(displayViewport.height)}px`;
+          canvas.className = "max-w-none rounded border border-border bg-background shadow-sm";
+
+          pageWrap.appendChild(canvas);
+          pagesElement.appendChild(pageWrap);
+
+          await page.render({ canvasContext: context, viewport: renderViewport }).promise;
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("PDF preview render error:", err);
+          setError("לא ניתן להציג את ה-PDF בתצוגה מקדימה");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    renderPdf();
+
+    return () => {
+      cancelled = true;
+      loadingTask?.destroy();
+    };
+  }, [url, zoom, containerWidth]);
+
+  return (
+    <>
+      <div className="shrink-0 flex items-center justify-center gap-2 border-b border-border p-2 bg-background" dir="rtl">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => setZoom((value) => Math.max(0.75, Number((value - 0.25).toFixed(2))))}
+          disabled={zoom <= 0.75}
+          aria-label="הקטן תצוגה"
+        >
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => setZoom(1)}
+          aria-label="חזור לגודל רגיל"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
+        <span className="min-w-14 text-center text-sm font-medium text-muted-foreground">
+          {Math.round(zoom * 100)}%
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => setZoom((value) => Math.min(2.5, Number((value + 0.25).toFixed(2))))}
+          disabled={zoom >= 2.5}
+          aria-label="הגדל תצוגה"
+        >
+          <ZoomIn className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div ref={containerRef} className="relative flex-1 min-h-0 overflow-auto bg-muted/30 p-2">
+        {loading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        {error && (
+          <div className="m-3 rounded border border-destructive/30 bg-destructive/10 p-3 text-center text-sm text-destructive" dir="rtl">
+            {error}
+          </div>
+        )}
+        <div ref={pagesRef} className="mx-auto w-full" />
+      </div>
+    </>
+  );
 }
 
 export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: FinanceDocUploadProps) {
@@ -22,8 +165,6 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
   const [scannerOpen, setScannerOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  const pdfPreviewUrl = previewUrl ? `${previewUrl}#toolbar=1&navpanes=0&scrollbar=1&view=Fit&zoom=page-fit` : "";
 
 
   useEffect(() => {
@@ -184,13 +325,7 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
         <DialogContent className="w-[96vw] max-w-5xl h-[92dvh] max-h-[92dvh] p-0 overflow-hidden flex flex-col">
           {isPdf ? (
-            <div className="flex-1 min-h-0 bg-muted/30 p-2">
-              <iframe
-                src={pdfPreviewUrl}
-                className="h-full w-full rounded bg-background"
-                title="תצוגת מסמך"
-              />
-            </div>
+            <PdfFitPreview url={previewUrl || ""} />
           ) : (
             <>
               <div className="shrink-0 flex items-center justify-center gap-2 border-b border-border p-2 bg-background" dir="rtl">
