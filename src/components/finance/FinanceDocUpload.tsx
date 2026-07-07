@@ -313,6 +313,22 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
         )}
       </div>
 
+      {previewUrl && isPdf && (
+        <div className="mt-2 flex h-[45vh] min-h-[280px] flex-col overflow-hidden rounded-md border border-border bg-background">
+          <PdfFitPreview url={previewUrl} />
+        </div>
+      )}
+      {previewUrl && !isPdf && (
+        <div className="mt-2 overflow-hidden rounded-md border border-border bg-muted/30">
+          <img
+            src={previewUrl}
+            alt="תצוגה מקדימה של המסמך"
+            onClick={openPreview}
+            className="max-h-[45vh] w-full cursor-zoom-in object-contain"
+          />
+        </div>
+      )}
+
       <DocumentScannerDialog
         open={scannerOpen}
         onOpenChange={setScannerOpen}
