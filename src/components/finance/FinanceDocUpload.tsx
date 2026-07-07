@@ -5,8 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ImagePlus, Loader2, X, FileText, Maximize2, ScanLine, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { DocumentScannerDialog } from "@/components/scanner/DocumentScannerDialog";
-import * as pdfjsLib from "pdfjs-dist/build/pdf.mjs";
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.mjs?url";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -18,7 +18,7 @@ interface FinanceDocUploadProps {
   onRemoved?: () => void;
 }
 
-function PdfFitPreview({ url }: { url: string }) {
+function PdfFitPreview({ url, data }: { url?: string; data?: ArrayBuffer | null }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
@@ -39,7 +39,7 @@ function PdfFitPreview({ url }: { url: string }) {
   }, []);
 
   useEffect(() => {
-    if (!url || !containerWidth || !pagesRef.current) return;
+    if ((!url && !data) || !containerWidth || !pagesRef.current) return;
 
     let cancelled = false;
     let loadingTask: ReturnType<typeof pdfjsLib.getDocument> | null = null;
@@ -53,7 +53,11 @@ function PdfFitPreview({ url }: { url: string }) {
       setError(null);
 
       try {
-        loadingTask = pdfjsLib.getDocument(url);
+        loadingTask = pdfjsLib.getDocument(
+          data
+            ? { data: new Uint8Array(data.slice(0)) }
+            : { url: url || "" }
+        );
         const pdf = await loadingTask.promise;
         const availableWidth = Math.max(260, containerWidth - 16);
         const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
@@ -101,7 +105,7 @@ function PdfFitPreview({ url }: { url: string }) {
       cancelled = true;
       loadingTask?.destroy();
     };
-  }, [url, zoom, containerWidth]);
+  }, [url, data, zoom, containerWidth]);
 
   return (
     <>
@@ -160,16 +164,32 @@ function PdfFitPreview({ url }: { url: string }) {
 export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: FinanceDocUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
   const [isPdf, setIsPdf] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
+  const objectUrlRef = useRef<string | null>(null);
+
+  const setLocalObjectUrl = (file: File) => {
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    const objectUrl = URL.createObjectURL(file);
+    objectUrlRef.current = objectUrl;
+    setPreviewUrl(objectUrl);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    };
+  }, []);
 
 
   useEffect(() => {
     if (currentPath && !previewUrl) {
-      setIsPdf(currentPath.endsWith(".pdf"));
+      const pathIsPdf = currentPath.toLowerCase().endsWith(".pdf");
+      setIsPdf(pathIsPdf);
       // Try finance-docs first, fallback to receipts (for auto-created entries from billing)
       supabase.storage
         .from("finance-docs")
@@ -177,12 +197,26 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
         .then(({ data, error }) => {
           if (data?.signedUrl && !error) {
             setPreviewUrl(data.signedUrl);
+            if (pathIsPdf) {
+              fetch(data.signedUrl)
+                .then((response) => response.arrayBuffer())
+                .then(setPdfData)
+                .catch(() => setPdfData(null));
+            }
           } else {
             supabase.storage
               .from("receipts")
               .createSignedUrl(currentPath, 300)
               .then(({ data: rData }) => {
-                if (rData?.signedUrl) setPreviewUrl(rData.signedUrl);
+                if (rData?.signedUrl) {
+                  setPreviewUrl(rData.signedUrl);
+                  if (pathIsPdf) {
+                    fetch(rData.signedUrl)
+                      .then((response) => response.arrayBuffer())
+                      .then(setPdfData)
+                      .catch(() => setPdfData(null));
+                  }
+                }
               });
           }
         });
@@ -211,8 +245,10 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
 
       if (error) throw error;
 
-      setIsPdf(file.type === "application/pdf");
-      setPreviewUrl(URL.createObjectURL(file));
+      const fileIsPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      setIsPdf(fileIsPdf);
+      setPdfData(fileIsPdf ? await file.arrayBuffer() : null);
+      setLocalObjectUrl(file);
       onUploaded(path);
       toast({ title: "הועלה", description: "המסמך נשמר" });
     } catch (err: any) {
@@ -233,6 +269,7 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
 
   const handleRemove = () => {
     setPreviewUrl(null);
+    setPdfData(null);
     setIsPdf(false);
     setZoom(1);
     onRemoved?.();
@@ -315,7 +352,7 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
 
       {previewUrl && isPdf && (
         <div className="mt-2 flex h-[45vh] min-h-[280px] flex-col overflow-hidden rounded-md border border-border bg-background">
-          <PdfFitPreview url={previewUrl} />
+          <PdfFitPreview url={previewUrl} data={pdfData} />
         </div>
       )}
       {previewUrl && !isPdf && (
@@ -341,7 +378,7 @@ export function FinanceDocUpload({ currentPath, onUploaded, onRemoved }: Finance
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
         <DialogContent className="w-[96vw] max-w-5xl h-[92dvh] max-h-[92dvh] p-0 overflow-hidden flex flex-col">
           {isPdf ? (
-            <PdfFitPreview url={previewUrl || ""} />
+            <PdfFitPreview url={previewUrl || undefined} data={pdfData} />
           ) : (
             <>
               <div className="shrink-0 flex items-center justify-center gap-2 border-b border-border p-2 bg-background" dir="rtl">
