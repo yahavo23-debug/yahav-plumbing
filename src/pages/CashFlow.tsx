@@ -28,7 +28,7 @@ import { he } from "date-fns/locale";
  */
 
 interface Txn { direction: string; amount: number; txn_date: string }
-interface LedgerRow { entry_type: string; amount: number }
+interface LedgerRow { customer_id: string; entry_type: string; amount: number }
 
 interface WeekRow {
   key: string;
@@ -73,7 +73,7 @@ const CashFlow = () => {
             .select("direction, amount, txn_date")
             .gte("txn_date", since)
             .order("txn_date", { ascending: true }),
-          (supabase as any).from("customer_ledger").select("entry_type, amount"),
+          (supabase as any).from("customer_ledger").select("customer_id, entry_type, amount"),
         ]);
         if (txnRes.error) throw txnRes.error;
         setTxns((txnRes.data as Txn[]) || []);
@@ -118,25 +118,29 @@ const CashFlow = () => {
     const avgWeeklyIncome = histIncome / 8;
     const avgWeeklyExpense = histExpense / 8;
 
-    // חובות פתוחים של לקוחות
-    let owed = 0;
+    // חובות פתוחים של לקוחות — חישוב פר לקוח, כמו במסך החובות
+    const perCustomer = new Map<string, number>();
     ledger.forEach((e) => {
       const amt = Number(e.amount);
-      if (e.entry_type === "charge") owed += amt;
-      else owed -= amt;
+      let delta = 0;
+      if (e.entry_type === "charge") delta = amt;
+      else if (e.entry_type === "payment" || e.entry_type === "credit") delta = -amt;
+      perCustomer.set(e.customer_id, (perCustomer.get(e.customer_id) || 0) + delta);
     });
-    const openDebts = Math.max(0, owed);
+    let openDebts = 0;
+    perCustomer.forEach((bal) => { if (bal > 0.5) openDebts += bal; });
 
-    // בניית ציר שבועות
+    // בניית ציר שבועות — "יתרת הבנק" מעגנת את היום, והעבר מחושב אחורה ממנה
     const weeks: WeekRow[] = [];
-    let balance = openingBalance;
     const windowStart = subWeeks(thisWeekStart, PAST_WEEKS);
+    let netLast4Weeks = 0;
     txns.forEach((t) => {
       const d = parseISO(t.txn_date);
-      if (isBefore(d, windowStart)) {
-        balance += t.direction === "income" ? Number(t.amount) : -Number(t.amount);
+      if (!isBefore(d, windowStart) && isBefore(d, thisWeekStart)) {
+        netLast4Weeks += t.direction === "income" ? Number(t.amount) : -Number(t.amount);
       }
     });
+    let balance = openingBalance - netLast4Weeks;
 
     for (let i = -PAST_WEEKS; i < FUTURE_WEEKS; i++) {
       const wStart = addWeeks(thisWeekStart, i);
