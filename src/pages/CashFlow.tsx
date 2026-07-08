@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 import {
-  TrendingUp, TrendingDown, Wallet, AlertTriangle, Scale, Pencil, Check,
+  TrendingUp, TrendingDown, HandCoins, Pencil, Check, ChevronDown,
+  PiggyBank, CircleCheck, CircleAlert, CircleX,
 } from "lucide-react";
 import {
-  ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ReferenceLine,
-  ResponsiveContainer, CartesianGrid, Legend,
+  AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine,
+  ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import {
   startOfWeek, addWeeks, format, isBefore, parseISO, subWeeks,
@@ -19,20 +22,13 @@ import {
 import { he } from "date-fns/locale";
 
 /**
- * תזרים מזומנים — תחזית מתגלגלת 13 שבועות (מודל 13-Week Rolling Forecast).
- * עבר: 4 שבועות אחרונים בפועל. עתיד: תחזית לפי ממוצעים + גביית חובות צפויה.
+ * תזרים מזומנים בגובה העיניים:
+ * שאלה אחת גדולה — "יש לך מספיק כסף?" — ותחזית 3 חודשים קדימה בשפה פשוטה.
+ * מבוסס מודל 13-Week Rolling Forecast, מוגש בלי ז'רגון.
  */
 
-interface Txn {
-  direction: string;
-  amount: number;
-  txn_date: string;
-}
-
-interface LedgerRow {
-  entry_type: string;
-  amount: number;
-}
+interface Txn { direction: string; amount: number; txn_date: string }
+interface LedgerRow { entry_type: string; amount: number }
 
 interface WeekRow {
   key: string;
@@ -49,14 +45,15 @@ const PAST_WEEKS = 4;
 const FUTURE_WEEKS = 13;
 const OPENING_BALANCE_KEY = "cashflow_opening_balance";
 
-const fmtILS = (n: number) =>
-  "₪" + Math.round(n).toLocaleString("he-IL");
+const fmtILS = (n: number) => "₪" + Math.round(n).toLocaleString("he-IL");
 
 const CashFlow = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [txns, setTxns] = useState<Txn[]>([]);
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [openingBalance, setOpeningBalance] = useState<number>(() => {
     const saved = localStorage.getItem(OPENING_BALANCE_KEY);
     return saved ? Number(saved) : 0;
@@ -76,16 +73,14 @@ const CashFlow = () => {
             .select("direction, amount, txn_date")
             .gte("txn_date", since)
             .order("txn_date", { ascending: true }),
-          (supabase as any)
-            .from("customer_ledger")
-            .select("entry_type, amount"),
+          (supabase as any).from("customer_ledger").select("entry_type, amount"),
         ]);
         if (txnRes.error) throw txnRes.error;
         setTxns((txnRes.data as Txn[]) || []);
         setLedger((ledgerRes.data as LedgerRow[]) || []);
       } catch (err) {
         console.error("cashflow load error:", err);
-        toast({ title: "שגיאה", description: "לא ניתן לטעון נתוני תזרים", variant: "destructive" });
+        toast({ title: "שגיאה", description: "לא ניתן לטעון נתונים", variant: "destructive" });
       } finally {
         setLoading(false);
       }
@@ -102,14 +97,14 @@ const CashFlow = () => {
     setOpeningBalance(n);
     localStorage.setItem(OPENING_BALANCE_KEY, String(n));
     setEditingBalance(false);
-    toast({ title: "✅ יתרת הפתיחה עודכנה" });
+    toast({ title: "✅ עודכן! התחזית חושבה מחדש" });
   };
 
   const model = useMemo(() => {
     const now = new Date();
     const thisWeekStart = startOfWeek(now, { weekStartsOn: 0 });
 
-    // ---- ממוצעים היסטוריים (8 שבועות אחרונים, לא כולל השבוע הנוכחי) ----
+    // ממוצעים מ-8 השבועות האחרונים
     const histStart = subWeeks(thisWeekStart, 8);
     let histIncome = 0;
     let histExpense = 0;
@@ -123,7 +118,7 @@ const CashFlow = () => {
     const avgWeeklyIncome = histIncome / 8;
     const avgWeeklyExpense = histExpense / 8;
 
-    // ---- חובות פתוחים (צד הלקוחות): חיובים פחות תשלומים/זיכויים ----
+    // חובות פתוחים של לקוחות
     let owed = 0;
     ledger.forEach((e) => {
       const amt = Number(e.amount);
@@ -132,11 +127,9 @@ const CashFlow = () => {
     });
     const openDebts = Math.max(0, owed);
 
-    // ---- בניית שבועות: עבר בפועל + עתיד תחזית ----
+    // בניית ציר שבועות
     const weeks: WeekRow[] = [];
     let balance = openingBalance;
-
-    // יתרה מצטברת עד תחילת חלון התצוגה
     const windowStart = subWeeks(thisWeekStart, PAST_WEEKS);
     txns.forEach((t) => {
       const d = parseISO(t.txn_date);
@@ -154,7 +147,6 @@ const CashFlow = () => {
       let debtCollection = 0;
 
       if (isPast || i === 0) {
-        // בפועל (השבוע הנוכחי: בפועל עד כה + השלמת תחזית יחסית)
         txns.forEach((t) => {
           const d = parseISO(t.txn_date);
           if (!isBefore(d, wStart) && isBefore(d, wEnd)) {
@@ -165,17 +157,13 @@ const CashFlow = () => {
       }
       if (!isPast) {
         if (i === 0) {
-          // השלמת השבוע הנוכחי לפי ממוצע (אם בפועל נמוך מהממוצע)
           inflow = Math.max(inflow, avgWeeklyIncome);
           outflow = Math.max(outflow, avgWeeklyExpense);
         } else {
           inflow = avgWeeklyIncome;
           outflow = avgWeeklyExpense;
         }
-        // גביית חובות: פריסה על פני 4 השבועות הקרובים
-        if (i >= 0 && i < 4 && openDebts > 0) {
-          debtCollection = openDebts / 4;
-        }
+        if (i >= 0 && i < 4 && openDebts > 0) debtCollection = openDebts / 4;
       }
 
       const net = inflow + debtCollection - outflow;
@@ -192,195 +180,258 @@ const CashFlow = () => {
       });
     }
 
-    // רף ביטחון: חודש הוצאות ממוצע
-    const safetyBuffer = avgWeeklyExpense * 4.33;
-    const lowestWeek = weeks
-      .filter((w) => !w.isPast)
-      .reduce((min, w) => (w.balance < min.balance ? w : min), weeks[weeks.length - 1]);
+    const safetyBuffer = avgWeeklyExpense * 4.33; // חודש הוצאות
+    const futureWeeks = weeks.filter((w) => !w.isPast);
+    const lowestWeek = futureWeeks.reduce(
+      (min, w) => (w.balance < min.balance ? w : min),
+      futureWeeks[0]
+    );
+    const endBalance = weeks[weeks.length - 1]?.balance ?? 0;
+    const currentBalance = weeks[PAST_WEEKS - 1]?.balance ?? openingBalance;
 
-    return { weeks, avgWeeklyIncome, avgWeeklyExpense, openDebts, safetyBuffer, lowestWeek };
+    // סטטוס פשוט: ירוק / צהוב / אדום
+    let status: "green" | "amber" | "red" = "green";
+    if (lowestWeek && lowestWeek.balance < 0) status = "red";
+    else if (lowestWeek && lowestWeek.balance < safetyBuffer) status = "amber";
+
+    return {
+      weeks, avgWeeklyIncome, avgWeeklyExpense, openDebts,
+      safetyBuffer, lowestWeek, endBalance, currentBalance, status,
+    };
   }, [txns, ledger, openingBalance]);
 
-  const currentBalance = model.weeks.length
-    ? model.weeks[PAST_WEEKS - 1]?.balance ?? openingBalance
-    : openingBalance;
+  const monthlyIncome = model.avgWeeklyIncome * 4.33;
+  const monthlyExpense = model.avgWeeklyExpense * 4.33;
 
-  const belowBuffer = model.lowestWeek && model.lowestWeek.balance < model.safetyBuffer;
+  const statusConfig = {
+    green: {
+      icon: CircleCheck,
+      bg: "from-emerald-500 to-green-600",
+      title: "אתה בירוק! 🟢",
+      text: `לפי הקצב שלך, בעוד 3 חודשים יהיו לך בערך ${fmtILS(model.endBalance)}. העסק מכניס יותר ממה שהוא מוציא — תמשיך ככה.`,
+    },
+    amber: {
+      icon: CircleAlert,
+      bg: "from-amber-400 to-orange-500",
+      title: "שים לב 🟡",
+      text: `בסביבות ${model.lowestWeek?.label || ""} הכסף צפוי לרדת ל-${fmtILS(model.lowestWeek?.balance || 0)} — קצת נמוך. כדאי לגבות מהלקוחות שחייבים לך (${fmtILS(model.openDebts)}) ולא לקנות ציוד גדול החודש.`,
+    },
+    red: {
+      icon: CircleX,
+      bg: "from-red-500 to-rose-600",
+      title: "אזהרה — צפוי מינוס 🔴",
+      text: `בסביבות ${model.lowestWeek?.label || ""} אתה צפוי להיכנס למינוס (${fmtILS(model.lowestWeek?.balance || 0)}). הדבר הכי מהיר: לגבות עכשיו את ה-${fmtILS(model.openDebts)} שלקוחות חייבים לך.`,
+    },
+  } as const;
+
+  const sc = statusConfig[model.status];
+  const StatusIcon = sc.icon;
 
   return (
     <AppLayout title="תזרים מזומנים">
-      <div dir="rtl" className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <Scale className="w-5 h-5" /> תזרים מזומנים
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              תחזית מתגלגלת ל-13 שבועות קדימה — מבוסס על ההכנסות, ההוצאות והחובות שלך
-            </p>
+      <div dir="rtl" className="space-y-5 max-w-4xl mx-auto">
+
+        {/* כותרת */}
+        <div>
+          <h1 className="text-2xl font-bold">💰 הכסף שלך — קדימה 3 חודשים</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            המערכת מסתכלת על ההכנסות, ההוצאות והחובות שלך — ואומרת לך פשוט: הכול בסדר או לא.
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="space-y-4">
+            <div className="h-36 rounded-2xl bg-muted animate-pulse" />
+            <div className="h-24 rounded-2xl bg-muted animate-pulse" />
+            <div className="h-64 rounded-2xl bg-muted animate-pulse" />
           </div>
-          {/* יתרת פתיחה */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">יתרת פתיחה בבנק:</span>
-            {editingBalance ? (
-              <div className="flex items-center gap-1">
-                <Input
-                  className="w-28 h-8 text-left"
-                  value={tempBalance}
-                  onChange={(e) => setTempBalance(e.target.value)}
-                  placeholder="₪"
-                  autoFocus
-                />
-                <Button size="sm" className="h-8 px-2" onClick={saveOpeningBalance}>
-                  <Check className="w-4 h-4" />
-                </Button>
+        ) : (
+          <>
+            {/* התשובה הגדולה */}
+            <div className={`rounded-2xl bg-gradient-to-l ${sc.bg} text-white p-6 shadow-lg`}>
+              <div className="flex items-start gap-4">
+                <StatusIcon className="w-12 h-12 shrink-0 opacity-90" />
+                <div>
+                  <p className="text-2xl font-bold">{sc.title}</p>
+                  <p className="mt-1 text-white/90 leading-relaxed">{sc.text}</p>
+                </div>
               </div>
-            ) : (
-              <button
-                className="font-semibold flex items-center gap-1 hover:text-primary"
-                onClick={() => {
-                  setTempBalance(String(openingBalance));
-                  setEditingBalance(true);
-                }}
-              >
-                {fmtILS(openingBalance)}
-                <Pencil className="w-3 h-3 text-muted-foreground" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* כרטיסי סיכום */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Wallet className="w-5 h-5 mx-auto text-primary mb-1" />
-              <p className={`text-xl font-bold ${currentBalance < 0 ? "text-destructive" : ""}`}>
-                {fmtILS(currentBalance)}
-              </p>
-              <p className="text-xs text-muted-foreground">יתרה משוערת היום</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <TrendingUp className="w-5 h-5 mx-auto text-green-600 mb-1" />
-              <p className="text-xl font-bold text-green-700">{fmtILS(model.avgWeeklyIncome)}</p>
-              <p className="text-xs text-muted-foreground">הכנסה ממוצעת לשבוע</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <TrendingDown className="w-5 h-5 mx-auto text-red-500 mb-1" />
-              <p className="text-xl font-bold text-red-600">{fmtILS(model.avgWeeklyExpense)}</p>
-              <p className="text-xs text-muted-foreground">הוצאה ממוצעת לשבוע</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <AlertTriangle className="w-5 h-5 mx-auto text-amber-500 mb-1" />
-              <p className="text-xl font-bold text-amber-600">{fmtILS(model.openDebts)}</p>
-              <p className="text-xs text-muted-foreground">חובות פתוחים לגבייה</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* אזהרת תזרים */}
-        {belowBuffer && (
-          <div className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-900/10 p-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <p className="font-semibold">שים לב לתזרים</p>
-              <p className="text-muted-foreground">
-                בשבוע של {model.lowestWeek.label} היתרה הצפויה ({fmtILS(model.lowestWeek.balance)})
-                יורדת מתחת לרף הביטחון המומלץ ({fmtILS(model.safetyBuffer)} — חודש הוצאות).
-                שווה להקדים גבייה מלקוחות חייבים או לדחות הוצאה גדולה.
-              </p>
             </div>
-          </div>
-        )}
 
-        {/* גרף */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">17 שבועות — 4 אחורה בפועל + 13 קדימה תחזית</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="h-72 rounded-xl bg-muted animate-pulse" />
-            ) : (
-              <div className="h-72" dir="ltr">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={model.weeks} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis dataKey="label" fontSize={11} />
-                    <YAxis fontSize={11} tickFormatter={(v) => (v / 1000).toFixed(0) + "K"} />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [fmtILS(value), name]}
-                      labelFormatter={(l) => "שבוע " + l}
+            {/* היתרה בבנק — קלט פשוט */}
+            <Card className="rounded-2xl">
+              <CardContent className="p-5 flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <PiggyBank className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">כמה יש לך עכשיו בבנק?</p>
+                    <p className="text-xs text-muted-foreground/70">
+                      עדכן פעם בשבוע — וכל התחזית מתכיילת למציאות
+                    </p>
+                  </div>
+                </div>
+                {editingBalance ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      className="w-32 h-10 text-lg text-left font-bold"
+                      value={tempBalance}
+                      onChange={(e) => setTempBalance(e.target.value)}
+                      placeholder="₪"
+                      autoFocus
                     />
-                    <Legend />
-                    <ReferenceLine y={model.safetyBuffer} stroke="#f59e0b" strokeDasharray="4 4" />
-                    <ReferenceLine y={0} stroke="#ef4444" />
-                    <Bar dataKey="inflow" name="הכנסות" fill="#22c55e" radius={[3, 3, 0, 0]} stackId="in" />
-                    <Bar dataKey="debtCollection" name="גבייה צפויה" fill="#86efac" radius={[3, 3, 0, 0]} stackId="in" />
-                    <Bar dataKey="outflow" name="הוצאות" fill="#f87171" radius={[3, 3, 0, 0]} />
-                    <Line dataKey="balance" name="יתרה" stroke="#2563eb" strokeWidth={2.5} dot={false} type="monotone" />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* טבלת שבועות */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">פירוט שבועי</CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-muted-foreground">
-                  <th className="text-right py-2 font-medium">שבוע</th>
-                  <th className="text-right py-2 font-medium">הכנסות</th>
-                  <th className="text-right py-2 font-medium">גבייה צפויה</th>
-                  <th className="text-right py-2 font-medium">הוצאות</th>
-                  <th className="text-right py-2 font-medium">נטו</th>
-                  <th className="text-right py-2 font-medium">יתרה</th>
-                </tr>
-              </thead>
-              <tbody>
-                {model.weeks.map((w) => (
-                  <tr
-                    key={w.key}
-                    className={`border-b last:border-0 ${
-                      w.isPast ? "text-muted-foreground" : ""
-                    } ${w.balance < 0 ? "bg-red-50 dark:bg-red-900/10" : ""}`}
+                    <Button className="h-10" onClick={saveOpeningBalance}>
+                      <Check className="w-4 h-4 ml-1" /> שמור
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    className="text-2xl font-bold flex items-center gap-2 hover:text-primary transition-colors"
+                    onClick={() => {
+                      setTempBalance(String(openingBalance || ""));
+                      setEditingBalance(true);
+                    }}
                   >
-                    <td className="py-2">
-                      {w.label}
-                      {w.isPast && <span className="text-xs mr-1">(בפועל)</span>}
-                    </td>
-                    <td className="py-2 text-green-700">{fmtILS(w.inflow)}</td>
-                    <td className="py-2 text-green-600">{w.debtCollection ? fmtILS(w.debtCollection) : "—"}</td>
-                    <td className="py-2 text-red-600">{fmtILS(w.outflow)}</td>
-                    <td className={`py-2 font-medium ${w.net < 0 ? "text-red-600" : "text-green-700"}`}>
-                      {fmtILS(w.net)}
-                    </td>
-                    <td className={`py-2 font-bold ${w.balance < 0 ? "text-destructive" : ""}`}>
-                      {fmtILS(w.balance)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
-              איך זה מחושב? ההכנסות וההוצאות העתידיות מבוססות על הממוצע השבועי שלך ב-8 השבועות
-              האחרונים. "גבייה צפויה" = החובות הפתוחים של הלקוחות, בפריסה על פני 4 שבועות.
-              עדכן את "יתרת הפתיחה" ליתרה האמיתית בבנק כדי שהקו הכחול ישקף את המציאות.
-            </p>
-          </CardContent>
-        </Card>
+                    {openingBalance ? fmtILS(openingBalance) : "לחץ להזנה"}
+                    <Pencil className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* שלושה מספרים פשוטים */}
+            <div className="grid grid-cols-3 gap-3">
+              <Card className="rounded-2xl border-green-200 dark:border-green-900/40">
+                <CardContent className="p-4 text-center">
+                  <TrendingUp className="w-6 h-6 mx-auto text-green-600 mb-1" />
+                  <p className="text-lg sm:text-xl font-bold text-green-700">{fmtILS(monthlyIncome)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">נכנס בחודש</p>
+                </CardContent>
+              </Card>
+              <Card className="rounded-2xl border-red-200 dark:border-red-900/40">
+                <CardContent className="p-4 text-center">
+                  <TrendingDown className="w-6 h-6 mx-auto text-red-500 mb-1" />
+                  <p className="text-lg sm:text-xl font-bold text-red-600">{fmtILS(monthlyExpense)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">יוצא בחודש</p>
+                </CardContent>
+              </Card>
+              <Card
+                className="rounded-2xl border-amber-200 dark:border-amber-900/40 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate("/debts")}
+              >
+                <CardContent className="p-4 text-center">
+                  <HandCoins className="w-6 h-6 mx-auto text-amber-500 mb-1" />
+                  <p className="text-lg sm:text-xl font-bold text-amber-600">{fmtILS(model.openDebts)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">חייבים לך — לחץ לגבייה</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* הגרף — קו אחד פשוט */}
+            <Card className="rounded-2xl">
+              <CardContent className="p-5">
+                <p className="font-semibold mb-1">📈 כמה כסף יהיה לך — שבוע אחרי שבוע</p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  הקו הכחול = הכסף שלך. מעל הקו המקווקו = מצב בריא. מתחת לאדום = מינוס.
+                </p>
+                <div className="h-64" dir="ltr">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={model.weeks} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="balanceFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
+                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.03} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.25} vertical={false} />
+                      <XAxis dataKey="label" fontSize={11} tickMargin={6} />
+                      <YAxis
+                        fontSize={11}
+                        tickFormatter={(v) => (v >= 1000 || v <= -1000 ? (v / 1000).toFixed(0) + "K" : v)}
+                        width={42}
+                      />
+                      <Tooltip
+                        formatter={(value: number) => [fmtILS(value), "הכסף שלך"]}
+                        labelFormatter={(l) => "שבוע שמתחיל ב-" + l}
+                        contentStyle={{ direction: "rtl", borderRadius: 12 }}
+                      />
+                      <ReferenceLine
+                        y={model.safetyBuffer}
+                        stroke="#f59e0b"
+                        strokeDasharray="6 4"
+                        label={{ value: "רף ביטחון", position: "insideTopRight", fontSize: 10, fill: "#b45309" }}
+                      />
+                      <ReferenceLine y={0} stroke="#ef4444" strokeWidth={1.5} />
+                      <Area
+                        dataKey="balance"
+                        type="monotone"
+                        stroke="#2563eb"
+                        strokeWidth={3}
+                        fill="url(#balanceFill)"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* פירוט מלא — מוסתר כברירת מחדל */}
+            <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full rounded-xl gap-2">
+                  <ChevronDown className={`w-4 h-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`} />
+                  {detailsOpen ? "הסתר את הפירוט המלא" : "רוצה לראות את החישוב המלא? לחץ כאן"}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <Card className="rounded-2xl mt-3">
+                  <CardContent className="p-5 overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-muted-foreground">
+                          <th className="text-right py-2 font-medium">שבוע</th>
+                          <th className="text-right py-2 font-medium">נכנס</th>
+                          <th className="text-right py-2 font-medium">גבייה צפויה</th>
+                          <th className="text-right py-2 font-medium">יוצא</th>
+                          <th className="text-right py-2 font-medium">נשאר בסוף</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {model.weeks.map((w) => (
+                          <tr
+                            key={w.key}
+                            className={`border-b last:border-0 ${w.isPast ? "text-muted-foreground" : ""} ${
+                              w.balance < 0 ? "bg-red-50 dark:bg-red-900/10" : ""
+                            }`}
+                          >
+                            <td className="py-2">
+                              {w.label}
+                              {w.isPast && <span className="text-xs mr-1">(היה בפועל)</span>}
+                            </td>
+                            <td className="py-2 text-green-700">{fmtILS(w.inflow)}</td>
+                            <td className="py-2 text-green-600">{w.debtCollection ? fmtILS(w.debtCollection) : "—"}</td>
+                            <td className="py-2 text-red-600">{fmtILS(w.outflow)}</td>
+                            <td className={`py-2 font-bold ${w.balance < 0 ? "text-destructive" : ""}`}>
+                              {fmtILS(w.balance)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+                      איך זה עובד? התחזית מבוססת על הממוצע שלך מ-8 השבועות האחרונים. "גבייה צפויה" =
+                      החובות של הלקוחות, בהנחה שתגבה אותם בחודש הקרוב. ככל שתעדכן את היתרה בבנק —
+                      התחזית מדויקת יותר.
+                    </p>
+                  </CardContent>
+                </Card>
+              </CollapsibleContent>
+            </Collapsible>
+          </>
+        )}
       </div>
     </AppLayout>
   );
