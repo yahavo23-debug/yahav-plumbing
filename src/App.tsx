@@ -66,6 +66,7 @@ import Invoices from "./pages/Invoices";
 import Quotes from "./pages/Quotes";
 import Inventory from "./pages/Inventory";
 import Debts from "./pages/Debts";
+import CashFlow from "./pages/CashFlow";
 
 const queryClient = new QueryClient();
 
@@ -126,6 +127,7 @@ function AppRoutes() {
       <Route path="/calendar" element={<ProtectedRoute allowedRoles={["admin", "technician", "secretary"]}><ErrorBoundary><CalendarPage /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><Finance /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/debts" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><Debts /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/cashflow" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><CashFlow /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/invoices" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><Invoices /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/profitability" element={<ProtectedRoute allowedRoles={["admin"]}><ErrorBoundary><ProfitabilityReport /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute allowedRoles={["admin"]}><ErrorBoundary><Settings /></ErrorBoundary></ProtectedRoute>} />

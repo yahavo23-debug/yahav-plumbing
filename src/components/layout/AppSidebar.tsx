@@ -43,6 +43,7 @@ const navGroups: NavGroup[] = [
     items: [
       { icon: Wallet,      label: "הכנסות והוצאות", path: "/finance",        roles: ["admin", "secretary"] },
       { icon: AlertCircle, label: "חובות לקוחות",    path: "/debts",          roles: ["admin", "secretary"] },
+      { icon: BarChart2,   label: "תזרים מזומנים",   path: "/cashflow",       roles: ["admin", "secretary"] },
       { icon: LineChart,   label: "רווחיות",         path: "/profitability",  roles: ["admin"] },
     ],
   },
