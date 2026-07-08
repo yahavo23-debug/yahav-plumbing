@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { FinanceHubExtras } from "@/components/finance/FinanceHubExtras";
 import {
   TrendingUp, TrendingDown, HandCoins, Pencil, Check, ChevronDown,
   Landmark, Briefcase, Home, RefreshCw, PlugZap,
@@ -27,7 +28,7 @@ import { he } from "date-fns/locale";
  * יתרות בנק אמיתיות (מסונכרנות אוטומטית מהמחשב), מה קרה החודש, ומי חייב לו.
  */
 
-interface Txn { direction: string; amount: number; txn_date: string }
+interface Txn { direction: string; amount: number; txn_date: string; counterparty_name?: string | null; notes?: string | null }
 interface LedgerRow { customer_id: string; entry_type: string; amount: number }
 interface BankAccount { key: string; bank: string; label: string; accountNumber: string; balance: number | null }
 interface BankData { updated_at: string; accounts: BankAccount[]; errors?: { bank: string; message: string }[] }
@@ -62,7 +63,7 @@ const CashFlow = () => {
         const [txnRes, ledgerRes, bankRes] = await Promise.all([
           supabase
             .from("financial_transactions")
-            .select("direction, amount, txn_date")
+            .select("direction, amount, txn_date, counterparty_name, notes")
             .gte("txn_date", since)
             .order("txn_date", { ascending: true }),
           (supabase as any).from("customer_ledger").select("customer_id, entry_type, amount"),
@@ -405,6 +406,12 @@ const CashFlow = () => {
                 </Card>
               </CollapsibleContent>
             </Collapsible>
+
+            {/* ── מרכז הכספים המלא: הלוואות, אשראי, ביטוחים, כפילויות ── */}
+            <div className="pt-2">
+              <p className="font-semibold mb-2">🗂️ כל הכסף שלך במקום אחד</p>
+              <FinanceHubExtras txns={txns} />
+            </div>
           </>
         )}
       </div>
