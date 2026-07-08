@@ -29,10 +29,35 @@ interface DebtorRow {
   lastEntryDate: string | null;
 }
 
-function toWhatsApp(phone: string) {
+function toWhatsApp(phone: string, text?: string) {
   const digits = phone.replace(/\D/g, "");
   const intl = digits.startsWith("0") ? "972" + digits.slice(1) : digits;
-  return `https://wa.me/${intl}`;
+  return `https://wa.me/${intl}` + (text ? `?text=${encodeURIComponent(text)}` : "");
+}
+
+/** הודעת תזכורת אוטומטית — הטון מתאים את עצמו לוותק החוב */
+function buildReminder(r: DebtorRow) {
+  const amount = "₪" + Math.round(r.balance).toLocaleString("he-IL");
+  const firstName = (r.name || "").trim().split(" ")[0] || "";
+  if (r.overdueDays <= 30) {
+    return `היי ${firstName}, מה נשמע? 🙂
+רק תזכורת קטנה על יתרת תשלום של ${amount} מהעבודה האחרונה.
+אפשר בהעברה בנקאית / ביט / מזומן — מה שנוח לך.
+תודה רבה! 🔧
+יהב אינסטלציה - פתרונות ביוב ומים | 054-2121204`;
+  }
+  if (r.overdueDays <= 90) {
+    return `שלום ${firstName},
+מזכיר שקיימת יתרת תשלום פתוחה של ${amount} (מלפני ${r.overdueDays} ימים).
+אשמח להסדרה השבוע — העברה בנקאית / ביט / מזומן.
+לכל שאלה אני זמין 🙏
+יהב אינסטלציה - פתרונות ביוב ומים | 054-2121204`;
+  }
+  return `שלום ${firstName},
+בהמשך לפניות קודמות — קיימת יתרת חוב פתוחה של ${amount}, מזה ${r.overdueDays} ימים.
+אבקש להסדיר את התשלום עד סוף השבוע.
+פרטי חשבון להעברה: בנק מזרחי טפחות, סניף 615, חשבון 155793, ע"ש יהב אוחנה.
+בתודה, יהב אוחנה | יהב אינסטלציה | 054-2121204`;
 }
 
 const Debts = () => {
@@ -260,8 +285,8 @@ const Debts = () => {
                         <a href={`tel:${r.phone}`}><Phone className="w-4 h-4" /> חייג</a>
                       </Button>
                       <Button asChild variant="outline" size="sm" className="h-9 gap-1.5 text-green-700">
-                        <a href={toWhatsApp(r.phone)} target="_blank" rel="noopener noreferrer">
-                          <MessageCircle className="w-4 h-4" /> WhatsApp
+                        <a href={toWhatsApp(r.phone, buildReminder(r))} target="_blank" rel="noopener noreferrer">
+                          <MessageCircle className="w-4 h-4" /> תזכורת בוואטסאפ
                         </a>
                       </Button>
                     </>
