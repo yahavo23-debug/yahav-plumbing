@@ -98,6 +98,45 @@ export type Database = {
         }
         Relationships: []
       }
+      business_payment_settings: {
+        Row: {
+          account_number: string
+          bank_name: string
+          bank_number: string
+          beneficiary_name: string
+          bit_phone: string
+          branch_number: string
+          business_license: string | null
+          business_name: string
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string
+          bank_name?: string
+          bank_number?: string
+          beneficiary_name?: string
+          bit_phone?: string
+          branch_number?: string
+          business_license?: string | null
+          business_name?: string
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string
+          bank_name?: string
+          bank_number?: string
+          beneficiary_name?: string
+          bit_phone?: string
+          branch_number?: string
+          business_license?: string | null
+          business_name?: string
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       change_audit_logs: {
         Row: {
           changed_at: string | null
@@ -281,6 +320,8 @@ export type Database = {
           address: string | null
           billing_notes: string | null
           city: string | null
+          collection_flag: boolean
+          collection_flag_at: string | null
           created_at: string
           created_by: string | null
           email: string | null
@@ -302,6 +343,8 @@ export type Database = {
           address?: string | null
           billing_notes?: string | null
           city?: string | null
+          collection_flag?: boolean
+          collection_flag_at?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -323,6 +366,8 @@ export type Database = {
           address?: string | null
           billing_notes?: string | null
           city?: string | null
+          collection_flag?: boolean
+          collection_flag_at?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -584,6 +629,62 @@ export type Database = {
             columns: ["inventory_item_id"]
             isOneToOne: false
             referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_requests: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          is_active: boolean
+          items: Json | null
+          note: string | null
+          paid_at: string | null
+          sent_at: string | null
+          share_token: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          id?: string
+          is_active?: boolean
+          items?: Json | null
+          note?: string | null
+          paid_at?: string | null
+          sent_at?: string | null
+          share_token?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          id?: string
+          is_active?: boolean
+          items?: Json | null
+          note?: string | null
+          paid_at?: string | null
+          sent_at?: string | null
+          share_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_requests_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
