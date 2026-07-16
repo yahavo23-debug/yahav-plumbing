@@ -1,5 +1,7 @@
 // Edge function — get-payment-request
-// עמוד תשלום ציבורי: מקבל share_token ומחזיר את פרטי בקשת התשלום + פרטי הבנק/ביט + לוגו.
+// עמוד תשלום/דוח גבייה ציבורי: מקבל share_token ומחזיר את פרטי הבקשה,
+// פירוט החיובים, פרטי הבנק/ביט (מהגדרות העסק) והלוגו.
+// הצגת מידע בלבד — אין כאן שום עיבוד תשלומים.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -8,16 +10,17 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// פרטי תשלום קבועים של העסק (זהים ל-BANK_DETAILS בקוד הלקוח)
-const BANK = {
-  bankName: "בנק מזרחי טפחות",
-  bankNumber: "20",
-  branchNumber: "615",
-  accountNumber: "155793",
-  beneficiaryName: "יהב אוחנה",
+// ברירות מחדל אם טבלת ההגדרות עוד לא קיימת/ריקה
+const DEFAULTS = {
+  bank_name: "בנק מזרחי טפחות",
+  bank_number: "20",
+  branch_number: "615",
+  account_number: "155793",
+  beneficiary_name: "יהב אוחנה",
+  bit_phone: "054-2121204",
+  business_name: "יהב אינסטלציה - פתרונות ביוב ומים",
+  business_license: null as string | null,
 };
-const BIT_PHONE = "054-2121204";
-const BUSINESS_NAME = "יהב אינסטלציה - פתרונות ביוב ומים";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -37,7 +40,7 @@ Deno.serve(async (req) => {
 
     const { data: pr, error } = await supabase
       .from("payment_requests")
-      .select("customer_name, amount, note, is_active, paid_at, created_at")
+      .select("customer_name, amount, note, items, is_active, paid_at, created_at")
       .eq("share_token", share_token)
       .single();
 
@@ -52,7 +55,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // לוגו (אם קיים)
+    // הגדרות תשלום של העסק
+    let settings = DEFAULTS;
+    try {
+      const { data: s } = await supabase
+        .from("business_payment_settings").select("*").eq("id", 1).single();
+      if (s) settings = { ...DEFAULTS, ...s };
+    } catch { /* משתמשים בברירות מחדל */ }
+
+    // לוגו
     let logoUrl: string | null = null;
     try {
       const { data: branding } = await supabase
@@ -68,10 +79,19 @@ Deno.serve(async (req) => {
       customerName: pr.customer_name,
       amount: Number(pr.amount),
       note: pr.note,
+      items: pr.items || null,
+      createdAt: pr.created_at,
       paid: !!pr.paid_at,
-      businessName: BUSINESS_NAME,
-      bank: BANK,
-      bitPhone: BIT_PHONE,
+      businessName: settings.business_name,
+      businessLicense: settings.business_license || null,
+      bank: {
+        bankName: settings.bank_name,
+        bankNumber: settings.bank_number,
+        branchNumber: settings.branch_number,
+        accountNumber: settings.account_number,
+        beneficiaryName: settings.beneficiary_name,
+      },
+      bitPhone: settings.bit_phone,
       logoUrl,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {

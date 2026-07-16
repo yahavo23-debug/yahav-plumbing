@@ -47,6 +47,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { BillingPdfExport } from "./BillingPdfExport";
+import { createCollectionReport } from "@/lib/collection-report";
 import { ReceiptUpload } from "./ReceiptUpload";
 
 interface LedgerEntry {
@@ -129,6 +130,7 @@ export function BillingTab({
 
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sendingReport, setSendingReport] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasLegalAction, setHasLegalAction] = useState(false);
@@ -785,6 +787,39 @@ export function BillingTab({
 
       {/* Action Buttons */}
       <div className="flex items-center justify-between flex-wrap gap-2">
+        {!isContractor && balance > 0 && (
+          <Button
+            size="sm"
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+            disabled={sendingReport}
+            title="דוח גבייה מפורט ללקוח: פירוט חיובים + תשלום בביט/העברה, נשלח בוואטסאפ"
+            onClick={async () => {
+              if (!user) return;
+              setSendingReport(true);
+              try {
+                const report = await createCollectionReport({
+                  customerId,
+                  customerName: customerName || "לקוח",
+                  customerPhone: customerPhone || null,
+                  userId: user.id,
+                });
+                if (report.waUrl) {
+                  window.open(report.waUrl, "_blank");
+                } else {
+                  await navigator.clipboard.writeText(report.payUrl);
+                  toast({ title: "הקישור הועתק", description: "אין טלפון ללקוח — קישור הדוח הועתק לשליחה ידנית" });
+                }
+              } catch (e: any) {
+                toast({ title: "שגיאה", description: e.message || "לא ניתן ליצור דוח גבייה", variant: "destructive" });
+              } finally {
+                setSendingReport(false);
+              }
+            }}
+          >
+            <Receipt className="w-4 h-4" />
+            {sendingReport ? "יוצר דוח..." : "דוח גבייה בוואטסאפ"}
+          </Button>
+        )}
         <BillingPdfExport
           customerName={customerName || "לקוח"}
           customerPhone={customerPhone}

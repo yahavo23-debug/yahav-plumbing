@@ -1,26 +1,39 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Copy, Check, Loader2, ShieldCheck, Landmark, Smartphone, Phone } from "lucide-react";
+import { Copy, Check, Loader2, ShieldCheck, Landmark, Smartphone, Phone, FileText } from "lucide-react";
 
 /**
- * עמוד תשלום ציבורי יוקרתי ללקוח.
- * מוצג דרך קישור /pay/:token שנשלח בוואטסאפ. מאפשר העתקה בלחיצה של כל פרט,
- * העברה בנקאית או ביט. אין כאן הזנת פרטי אשראי — רק פרטים להעברה.
+ * עמוד תשלום / דוח גבייה ציבורי יוקרתי ללקוח.
+ * מוצג דרך קישור /pay/:token שנשלח בוואטסאפ.
+ * אם הבקשה כוללת פירוט חיובים (items) — מוצג דוח גבייה מלא עם טבלת חובות.
+ * מאפשר העתקה בלחיצה של כל פרט תשלום. אין כאן הזנת פרטי אשראי — הצגת מידע בלבד.
  */
+
+interface ReportItem {
+  description: string;
+  date: string | null;
+  amount: number;
+  status?: string;
+}
 
 interface PaymentData {
   customerName: string;
   amount: number;
   note: string | null;
+  items: ReportItem[] | null;
+  createdAt: string;
   paid: boolean;
   businessName: string;
+  businessLicense: string | null;
   bank: { bankName: string; bankNumber: string; branchNumber: string; accountNumber: string; beneficiaryName: string };
   bitPhone: string;
   logoUrl: string | null;
 }
 
 const fmtILS = (n: number) => "₪" + Math.round(n).toLocaleString("he-IL");
+const fmtDate = (d: string | null | undefined) =>
+  d ? new Date(d).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
 
 function CopyRow({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -44,6 +57,21 @@ function CopyRow({ label, value }: { label: string; value: string }) {
     </button>
   );
 }
+
+/** לוגו bit מסוגנן (וורדמארק) */
+function BitMark() {
+  return (
+    <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-pink-500 to-fuchsia-600 text-white font-black text-sm tracking-tight shadow-md select-none">
+      bit
+    </span>
+  );
+}
+
+const statusChip = (s?: string) => {
+  if (s === "שולם") return "bg-emerald-100 text-emerald-700";
+  if (s === "חלקי") return "bg-amber-100 text-amber-700";
+  return "bg-rose-100 text-rose-700";
+};
 
 const PublicPayment = () => {
   const { token } = useParams();
@@ -92,6 +120,7 @@ const PublicPayment = () => {
 
   const bitLink = `https://www.bitpay.co.il/app/me/${data.bitPhone.replace(/\D/g, "")}`;
   const waBusiness = `https://wa.me/972${data.bitPhone.replace(/\D/g, "").replace(/^0/, "")}`;
+  const isReport = !!(data.items && data.items.length > 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-100 py-8 px-4" dir="rtl">
@@ -107,14 +136,20 @@ const PublicPayment = () => {
             </div>
           )}
           <h1 className="text-xl font-bold">{data.businessName}</h1>
-          <p className="text-white/60 text-sm mt-0.5">בקשת תשלום</p>
+          {data.businessLicense && (
+            <p className="text-white/50 text-xs mt-0.5">עוסק מס' {data.businessLicense}</p>
+          )}
+          <p className="text-white/60 text-sm mt-0.5">
+            {isReport ? "דוח גבייה" : "בקשת תשלום"}
+            {data.createdAt && <span className="text-white/40"> · הופק בתאריך {fmtDate(data.createdAt)}</span>}
+          </p>
         </div>
 
-        {/* כרטיס הסכום */}
+        {/* כרטיס הדוח */}
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           <div className="bg-gradient-to-l from-emerald-600 to-teal-600 text-white p-6 text-center">
             <p className="text-white/80 text-sm">שלום {data.customerName},</p>
-            <p className="text-white/80 text-sm">סכום לתשלום</p>
+            <p className="text-white/80 text-sm">{isReport ? "סה״כ לתשלום" : "סכום לתשלום"}</p>
             <p className="text-5xl font-extrabold mt-1 tracking-tight">{fmtILS(data.amount)}</p>
             {data.note && <p className="text-white/90 text-sm mt-2">{data.note}</p>}
             {data.paid && (
@@ -125,12 +160,50 @@ const PublicPayment = () => {
           </div>
 
           <div className="p-5 space-y-5">
+            {/* פירוט חיובים — דוח גבייה */}
+            {isReport && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-slate-700 flex items-center justify-center">
+                    <FileText className="w-4 h-4 text-white" />
+                  </div>
+                  <p className="font-bold text-slate-800">פירוט החיובים</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                  {data.items!.map((it, i) => (
+                    <div
+                      key={i}
+                      className={
+                        "flex items-center justify-between gap-3 px-4 py-3 " +
+                        (i > 0 ? "border-t border-slate-100" : "")
+                      }
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{it.description || "עבודת אינסטלציה"}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {it.date && <span className="text-xs text-slate-400">{fmtDate(it.date)}</span>}
+                          {it.status && (
+                            <span className={"text-[10px] px-1.5 py-0.5 rounded-full font-semibold " + statusChip(it.status)}>
+                              {it.status}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="font-bold text-slate-800 shrink-0">{fmtILS(it.amount)}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-t border-slate-200">
+                    <span className="text-sm font-bold text-slate-700">סה״כ לתשלום</span>
+                    <span className="text-lg font-extrabold text-emerald-700">{fmtILS(data.amount)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ביט */}
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-pink-500 to-fuchsia-600 flex items-center justify-center">
-                  <Smartphone className="w-4 h-4 text-white" />
-                </div>
+                <BitMark />
                 <p className="font-bold text-slate-800">תשלום מהיר ב-<span className="text-fuchsia-600">bit</span></p>
               </div>
               <CopyRow label="מספר לביט" value={data.bitPhone} />

@@ -13,6 +13,7 @@ import { User, Shield, Wrench, ClipboardList, HardHat, Cloud, Database, RefreshC
 import { UserManagement } from "@/components/settings/UserManagement";
 import { AuditLogViewer } from "@/components/settings/AuditLogViewer";
 import { LogoUpload } from "@/components/settings/LogoUpload";
+import { PaymentSettingsCard } from "@/components/settings/PaymentSettingsCard";
 
 const ROLE_DISPLAY: Record<string, { label: string; icon: React.ReactNode }> = {
   admin: { label: "מנהל", icon: <Shield className="w-3.5 h-3.5" /> },
@@ -276,6 +277,9 @@ const Settings = () => {
 
         {/* Admin-only: Logo */}
         {isAdmin && <LogoUpload />}
+
+        {/* Admin-only: Payment details for collection reports */}
+        {isAdmin && <PaymentSettingsCard />}
 
         {/* Admin-only: User Management */}
         {isAdmin && <UserManagement />}
