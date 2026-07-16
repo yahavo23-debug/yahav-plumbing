@@ -266,7 +266,7 @@ const Debts = () => {
     <AppLayout title="מחלקת גבייה">
       {/* לוח בקרה — סיכום */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <Card className="bg-gradient-to-br from-slate-900 to-slate-700 text-white border-0">
+        <Card className="bg-gradient-to-l from-blue-950 via-blue-800 to-cyan-600 text-white border-0 shadow-md">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-white/70 text-xs mb-1">
               <Wallet className="w-3.5 h-3.5" /> סה״כ חוב פתוח

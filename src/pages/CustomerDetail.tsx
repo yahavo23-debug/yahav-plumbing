@@ -259,10 +259,12 @@ const CustomerDetail = () => {
       </div>
 
       {/* כרטיס לקוח יוקרתי: שם, כתובת, סטטוס ופעולות מהירות */}
-      <div className="rounded-2xl overflow-hidden border border-border bg-card shadow-sm mb-5">
-        <div className="bg-gradient-to-l from-slate-900 to-slate-700 text-white p-5">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center text-2xl font-bold shrink-0" aria-hidden="true">
+      <div className="rounded-2xl overflow-hidden border border-border bg-card shadow-md mb-5">
+        <div className="relative bg-gradient-to-l from-blue-950 via-blue-800 to-cyan-600 text-white p-5">
+          <div className="pointer-events-none absolute -top-10 -left-10 w-44 h-44 rounded-full bg-cyan-400/20 blur-2xl" aria-hidden="true" />
+          <div className="pointer-events-none absolute -bottom-14 right-1/3 w-40 h-40 rounded-full bg-orange-400/15 blur-2xl" aria-hidden="true" />
+          <div className="relative flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-500 text-white shadow-lg flex items-center justify-center text-2xl font-bold shrink-0" aria-hidden="true">
               {(customer.name || "?").trim().charAt(0)}
             </div>
             <div className="min-w-0 flex-1">
@@ -290,28 +292,28 @@ const CustomerDetail = () => {
         {/* פעולות מהירות — גדולות וברורות */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3">
           {customer.phone && !isContractor ? (
-            <Button asChild variant="outline" className="h-12 gap-2 text-base">
+            <Button asChild variant="outline" className="h-12 gap-2 text-base font-semibold bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:border-blue-800 dark:text-blue-300">
               <a href={`tel:${customer.phone}`} aria-label={`חייג אל ${customer.name}`}>
-                <Phone className="w-5 h-5 text-primary" /> חייג
+                <Phone className="w-5 h-5" /> חייג
               </a>
             </Button>
           ) : <span className="hidden sm:block" />}
           {waUrl && !isContractor ? (
-            <Button asChild variant="outline" className="h-12 gap-2 text-base text-green-700">
+            <Button asChild variant="outline" className="h-12 gap-2 text-base font-semibold bg-green-50 border-green-200 text-green-700 hover:bg-green-100 dark:bg-green-950/40 dark:border-green-800 dark:text-green-300">
               <a href={waUrl} target="_blank" rel="noopener noreferrer" aria-label={`שלח וואטסאפ אל ${customer.name}`}>
                 <MessageCircle className="w-5 h-5" /> וואטסאפ
               </a>
             </Button>
           ) : <span className="hidden sm:block" />}
           {wazeUrl ? (
-            <Button asChild variant="outline" className="h-12 gap-2 text-base">
+            <Button asChild variant="outline" className="h-12 gap-2 text-base font-semibold bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100 dark:bg-sky-950/40 dark:border-sky-800 dark:text-sky-300">
               <a href={wazeUrl} target="_blank" rel="noopener noreferrer" aria-label={`נווט אל ${fullAddress}`}>
-                <Navigation className="w-5 h-5 text-sky-600" /> ניווט
+                <Navigation className="w-5 h-5" /> ניווט
               </a>
             </Button>
           ) : <span className="hidden sm:block" />}
           {canCreateCall && (
-            <Button onClick={() => navigate(`/service-calls/new/${id}`)} className="h-12 gap-2 text-base">
+            <Button onClick={() => navigate(`/service-calls/new/${id}`)} className="h-12 gap-2 text-base font-semibold bg-gradient-to-l from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md">
               <Plus className="w-5 h-5" /> קריאה חדשה
             </Button>
           )}
