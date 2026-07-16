@@ -12,8 +12,12 @@ import { toast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
 import {
   ArrowRight, Edit, Phone, Mail, MapPin, Plus, Calendar, Trash2, DollarSign, Check, X,
-  FileText, MessageCircle, ExternalLink,
+  FileText, MessageCircle, ExternalLink, MoreVertical, Navigation, Wrench, Wallet, User as UserIcon, Loader2,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { createCollectionReport, toWhatsApp } from "@/lib/collection-report";
 import { Input } from "@/components/ui/input";
 import { BillingTab } from "@/components/billing/BillingTab";
 import { CustomerBillingBadge } from "@/components/billing/CustomerBillingBadge";
@@ -79,7 +83,32 @@ const CustomerDetail = () => {
   const [savingLeadCost, setSavingLeadCost] = useState(false);
   const [showCreateReportDialog, setShowCreateReportDialog] = useState(false);
   const [creatingReport, setCreatingReport] = useState(false);
+  const [sendingDebtReport, setSendingDebtReport] = useState(false);
   const billing = useCustomerBilling(id);
+
+  // דוח גבייה מפורט בוואטסאפ — אותה פעולה כמו במחלקת הגבייה
+  const sendDebtReport = async () => {
+    if (!user || !customer) return;
+    setSendingDebtReport(true);
+    try {
+      const report = await createCollectionReport({
+        customerId: id!,
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        userId: user.id,
+      });
+      if (report.waUrl) {
+        window.open(report.waUrl, "_blank");
+      } else {
+        await navigator.clipboard.writeText(report.payUrl);
+        toast({ title: "הקישור הועתק", description: "אין טלפון ללקוח — קישור הדוח הועתק לשליחה ידנית" });
+      }
+    } catch (e: any) {
+      toast({ title: "שגיאה", description: e.message || "לא ניתן ליצור דוח גבייה", variant: "destructive" });
+    } finally {
+      setSendingDebtReport(false);
+    }
+  };
 
   useEffect(() => {
     if (!user || !id) return;
@@ -176,76 +205,154 @@ const CustomerDetail = () => {
 
   if (!customer) return null;
 
+  const fullAddress = [customer.address, customer.city].filter(Boolean).join(", ");
+  const wazeUrl = fullAddress ? `https://waze.com/ul?q=${encodeURIComponent(fullAddress)}&navigate=yes` : null;
+  const waUrl = customer.phone ? toWhatsApp(customer.phone) : null;
+  const hasDebt = !billing.loading && billing.balance > 0.5;
+  const canManage = isAdmin || role === "secretary";
+
   return (
     <AppLayout title={customer.name}>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3 flex-wrap">
-          <Button variant="ghost" onClick={() => navigate("/customers")} className="gap-2">
-            <ArrowRight className="w-4 h-4" /> חזרה ללקוחות
-          </Button>
-          <CustomerBillingBadge summary={billing} size="md" />
-          {(customer as any).is_walkin && (
-            <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10">
-              לקוח מזדמן
-            </Badge>
+      {/* שורה עליונה: חזרה + תפריט פעולות מתקדמות */}
+      <div className="flex items-center justify-between mb-3">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/customers")} className="gap-1.5 text-muted-foreground">
+          <ArrowRight className="w-4 h-4" /> כל הלקוחות
+        </Button>
+        {(isAdmin || canEdit) && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" aria-label="פעולות נוספות">
+                <MoreVertical className="w-4 h-4" /> עוד
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" dir="rtl">
+              <DropdownMenuItem onClick={() => navigate(`/customers/${id}/edit`)} className="gap-2">
+                <Edit className="w-4 h-4" /> עריכת פרטי לקוח
+              </DropdownMenuItem>
+              {isAdmin && (customer as any).is_walkin && (
+                <DropdownMenuItem
+                  className="gap-2"
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from("customers")
+                      .update({ is_walkin: false } as any)
+                      .eq("id", id!);
+                    if (error) {
+                      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+                    } else {
+                      setCustomer({ ...customer, ...({ is_walkin: false } as any) });
+                      toast({ title: "נשמר", description: "הלקוח נוסף לרשימת הלקוחות הקבועים" });
+                    }
+                  }}
+                >
+                  <Check className="w-4 h-4" /> שמור כלקוח קבוע
+                </DropdownMenuItem>
+              )}
+              {isAdmin && (
+                <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="gap-2 text-destructive focus:text-destructive">
+                  <Trash2 className="w-4 h-4" /> מחיקת לקוח
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      {/* כרטיס לקוח יוקרתי: שם, כתובת, סטטוס ופעולות מהירות */}
+      <div className="rounded-2xl overflow-hidden border border-border bg-card shadow-sm mb-5">
+        <div className="bg-gradient-to-l from-slate-900 to-slate-700 text-white p-5">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center text-2xl font-bold shrink-0" aria-hidden="true">
+              {(customer.name || "?").trim().charAt(0)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-xl font-bold truncate">{customer.name}</h2>
+                {(customer as any).is_walkin && (
+                  <Badge variant="outline" className="border-amber-300/50 text-amber-200 bg-amber-500/20">מזדמן</Badge>
+                )}
+              </div>
+              {fullAddress && (
+                <p className="text-white/70 text-sm mt-0.5 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 shrink-0" /> {fullAddress}
+                </p>
+              )}
+              {customer.phone && !isContractor && (
+                <p className="text-white/70 text-sm mt-0.5 flex items-center gap-1.5" dir="ltr">
+                  <Phone className="w-3.5 h-3.5 shrink-0" /> {customer.phone}
+                </p>
+              )}
+            </div>
+            <CustomerBillingBadge summary={billing} size="md" />
+          </div>
+        </div>
+
+        {/* פעולות מהירות — גדולות וברורות */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3">
+          {customer.phone && !isContractor ? (
+            <Button asChild variant="outline" className="h-12 gap-2 text-base">
+              <a href={`tel:${customer.phone}`} aria-label={`חייג אל ${customer.name}`}>
+                <Phone className="w-5 h-5 text-primary" /> חייג
+              </a>
+            </Button>
+          ) : <span className="hidden sm:block" />}
+          {waUrl && !isContractor ? (
+            <Button asChild variant="outline" className="h-12 gap-2 text-base text-green-700">
+              <a href={waUrl} target="_blank" rel="noopener noreferrer" aria-label={`שלח וואטסאפ אל ${customer.name}`}>
+                <MessageCircle className="w-5 h-5" /> וואטסאפ
+              </a>
+            </Button>
+          ) : <span className="hidden sm:block" />}
+          {wazeUrl ? (
+            <Button asChild variant="outline" className="h-12 gap-2 text-base">
+              <a href={wazeUrl} target="_blank" rel="noopener noreferrer" aria-label={`נווט אל ${fullAddress}`}>
+                <Navigation className="w-5 h-5 text-sky-600" /> ניווט
+              </a>
+            </Button>
+          ) : <span className="hidden sm:block" />}
+          {canCreateCall && (
+            <Button onClick={() => navigate(`/service-calls/new/${id}`)} className="h-12 gap-2 text-base">
+              <Plus className="w-5 h-5" /> קריאה חדשה
+            </Button>
           )}
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {isAdmin && (customer as any).is_walkin && (
+
+        {/* פס חוב — מופיע רק אם יש חוב פתוח */}
+        {hasDebt && canManage && (
+          <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3 bg-amber-50 dark:bg-amber-950/30 border-t border-amber-200 dark:border-amber-800">
+            <p className="text-sm">
+              <span className="text-amber-800 dark:text-amber-300">יתרת חוב פתוחה: </span>
+              <b className="text-destructive text-base">₪{Math.round(billing.balance).toLocaleString("he-IL")}</b>
+              {billing.overdueDays > 0 && (
+                <span className="text-amber-700/70 dark:text-amber-400/70 text-xs"> · {billing.overdueDays} ימים</span>
+              )}
+            </p>
             <Button
-              variant="default"
-              className="gap-2"
-              onClick={async () => {
-                const { error } = await supabase
-                  .from("customers")
-                  .update({ is_walkin: false } as any)
-                  .eq("id", id!);
-                if (error) {
-                  toast({ title: "שגיאה", description: error.message, variant: "destructive" });
-                } else {
-                  setCustomer({ ...customer, ...({ is_walkin: false } as any) });
-                  toast({ title: "נשמר", description: "הלקוח נוסף לרשימת הלקוחות הקבועים" });
-                }
-              }}
+              size="sm"
+              className="h-9 gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+              disabled={sendingDebtReport}
+              onClick={sendDebtReport}
             >
-              <Check className="w-4 h-4" /> שמור לקוח
+              {sendingDebtReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+              דוח גבייה בוואטסאפ
             </Button>
-          )}
-          {isAdmin && (
-            <>
-              <Button variant="outline" onClick={() => navigate(`/customers/${id}/edit`)} className="gap-2">
-                <Edit className="w-4 h-4" /> עריכה
-              </Button>
-              <Button
-                variant="outline"
-                className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => setShowDeleteDialog(true)}
-              >
-                <Trash2 className="w-4 h-4" /> מחיקה
-              </Button>
-            </>
-          )}
-          {!isAdmin && canEdit && (
-            <Button variant="outline" onClick={() => navigate(`/customers/${id}/edit`)} className="gap-2">
-              <Edit className="w-4 h-4" /> עריכה
-            </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <Tabs defaultValue={(typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab")) || "calls"} dir="rtl">
-        <TabsList className="mb-4 h-12 w-full justify-start">
-          <TabsTrigger value="calls" className="text-base px-4 h-10">
-            קריאות ({calls.length})
+        <TabsList className="mb-4 h-12 w-full grid grid-cols-4">
+          <TabsTrigger value="calls" className="text-sm sm:text-base h-10 gap-1.5">
+            <Wrench className="w-4 h-4 hidden sm:block" /> קריאות ({calls.length})
           </TabsTrigger>
-          <TabsTrigger value="reports" className="text-base px-4 h-10">
-            דוחות {reports.length > 0 && `(${reports.length})`}
+          <TabsTrigger value="billing" className="text-sm sm:text-base h-10 gap-1.5">
+            <Wallet className="w-4 h-4 hidden sm:block" /> כסף וחובות
           </TabsTrigger>
-          <TabsTrigger value="details" className="text-base px-4 h-10">
-            פרטים
+          <TabsTrigger value="reports" className="text-sm sm:text-base h-10 gap-1.5">
+            <FileText className="w-4 h-4 hidden sm:block" /> דוחות {reports.length > 0 && `(${reports.length})`}
           </TabsTrigger>
-          <TabsTrigger value="billing" className="text-base px-4 h-10">
-            חשבון
+          <TabsTrigger value="details" className="text-sm sm:text-base h-10 gap-1.5">
+            <UserIcon className="w-4 h-4 hidden sm:block" /> עוד פרטים
           </TabsTrigger>
         </TabsList>
 
