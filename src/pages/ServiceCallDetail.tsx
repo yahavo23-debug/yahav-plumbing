@@ -17,7 +17,13 @@ import { MediaUploader } from "@/components/media/MediaUploader";
 import { Tables } from "@/integrations/supabase/types";
 import {
   ArrowRight, Edit, FileText, Calendar, User, MapPin, Phone, Trash2, Receipt,
+  MoreVertical, Navigation, MessageCircle, Check, X,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { CompleteCallDialog } from "@/components/service-calls/CompleteCallDialog";
+import { toWhatsApp } from "@/lib/collection-report";
 import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -30,9 +36,6 @@ import { QuotesList } from "@/components/quotes/QuotesList";
 import { DiagnosisTab } from "@/components/diagnosis/DiagnosisTab";
 import { ShareButton } from "@/components/sharing/ShareButton";
 import { MaterialsTab } from "@/components/inventory/MaterialsTab";
-import { ReceiptUpload } from "@/components/billing/ReceiptUpload";
-import { financePaymentMethods } from "@/lib/finance-constants";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PendingPaymentDialog } from "@/components/service-calls/PendingPaymentDialog";
 import { Wallet } from "lucide-react";
 
@@ -84,14 +87,8 @@ const ServiceCallDetail = () => {
   const [invoiceDesc, setInvoiceDesc] = useState("");
   const [invoiceLoading, setInvoiceLoading] = useState(false);
 
-  // Complete-call dialog state
+  // סגירת קריאה — דרך הדיאלוג המשותף (כולל התאמה חכמה לחוב פתוח)
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
-  const [completeAmount, setCompleteAmount] = useState("");
-  const [completeDesc, setCompleteDesc] = useState("");
-  const [completeMethod, setCompleteMethod] = useState("");
-  const [completeReceipt, setCompleteReceipt] = useState<string | null>(null);
-  const [completePhotos, setCompletePhotos] = useState<File[]>([]);
-  const [completing, setCompleting] = useState(false);
 
   // Pending-payment dialog
   const [showPendingPaymentDialog, setShowPendingPaymentDialog] = useState(false);
@@ -214,91 +211,6 @@ const ServiceCallDetail = () => {
     }
   };
 
-  const handleCompleteCall = async () => {
-    if (!user || !id || !call) return;
-    const amt = parseFloat(completeAmount);
-    if (!completeAmount || isNaN(amt) || amt <= 0) {
-      toast({ title: "חסר סכום", description: "יש להזין סכום שנגבה", variant: "destructive" });
-      return;
-    }
-    if (!completeDesc.trim()) {
-      toast({ title: "חסר פירוט", description: "יש לפרט על מה נגבה הסכום", variant: "destructive" });
-      return;
-    }
-    if (!completeMethod) {
-      toast({ title: "חסר אמצעי תשלום", description: "יש לבחור אמצעי תשלום", variant: "destructive" });
-      return;
-    }
-    if (!completeReceipt) {
-      toast({ title: "חובה לצרף קבלה", description: "לא ניתן לסגור קריאה ללא קבלה", variant: "destructive" });
-      return;
-    }
-
-    setCompleting(true);
-    try {
-      // 1) Upload extra completion photos (if any)
-      for (const file of completePhotos) {
-        const ext = file.name.split(".").pop() || "jpg";
-        const path = `${id}/complete-${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("photos").upload(path, file, { contentType: file.type });
-        if (upErr) throw upErr;
-        await supabase.from("service_call_photos").insert({
-          service_call_id: id,
-          storage_path: path,
-          tag: "after",
-          uploaded_by: user.id,
-          caption: "תיעוד סיום קריאה",
-        });
-      }
-
-      // 2) Create ledger payment entry
-      const { error: ledgerErr } = await (supabase as any).from("customer_ledger").insert({
-        customer_id: call.customer_id,
-        service_call_id: id,
-        entry_date: new Date().toISOString().slice(0, 10),
-        entry_type: "payment",
-        amount: amt,
-        description: completeDesc.trim(),
-        receipt_path: completeReceipt,
-        payment_method: completeMethod,
-        created_by: user.id,
-      });
-      if (ledgerErr) throw ledgerErr;
-
-      // 3) Auto-create income transaction
-      await (supabase as any).from("financial_transactions").insert({
-        direction: "income",
-        amount: amt,
-        txn_date: new Date().toISOString().slice(0, 10),
-        category: "service_income",
-        payment_method: completeMethod,
-        customer_id: call.customer_id,
-        service_call_id: id,
-        notes: completeDesc.trim(),
-        status: "paid",
-        created_by: user.id,
-      });
-
-      // 4) Mark call completed
-      const { error: callErr } = await supabase
-        .from("service_calls")
-        .update({ status: "completed", completed_at: new Date().toISOString() } as any)
-        .eq("id", id);
-      if (callErr) throw callErr;
-
-      toast({ title: "הקריאה הושלמה", description: `נגבו ₪${amt.toLocaleString()} ונשמרה קבלה` });
-      setCall({ ...call, status: "completed" });
-      setShowCompleteDialog(false);
-      setCompleteAmount(""); setCompleteDesc(""); setCompleteMethod("");
-      setCompleteReceipt(null); setCompletePhotos([]);
-      refreshPhotos();
-    } catch (err: any) {
-      console.error("Complete call error:", err);
-      toast({ title: "שגיאה בסגירת קריאה", description: err.message, variant: "destructive" });
-    } finally {
-      setCompleting(false);
-    }
-  };
 
 
   if (loading) {
@@ -309,120 +221,158 @@ const ServiceCallDetail = () => {
 
   return (
     <AppLayout title={`קריאה #${(call as any)?.call_number || ""} — ${customer?.name || ""}`}>
-      <div className="flex items-center justify-between mb-6">
-        <Button variant="ghost" onClick={() => navigate(`/customers/${call.customer_id}`)} className="gap-2">
+      {/* שורה עליונה: חזרה + תפריט פעולות מתקדמות */}
+      <div className="flex items-center justify-between mb-3">
+        <Button variant="ghost" size="sm" onClick={() => navigate(`/customers/${call.customer_id}`)} className="gap-1.5 text-muted-foreground">
           <ArrowRight className="w-4 h-4" /> חזרה ללקוח
         </Button>
         {canEdit && (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate(`/service-calls/${id}/edit`)} className="gap-2">
-              <Edit className="w-4 h-4" /> עריכה
-            </Button>
-            {call.status === "cancelled" ? (
-              <Button
-                variant="outline"
-                className="gap-2"
-                onClick={async () => {
-                  const { error } = await supabase
-                    .from("service_calls")
-                    .update({ status: "open" } as any)
-                    .eq("id", id!);
-                  if (error) {
-                    toast({ title: "שגיאה", description: error.message, variant: "destructive" });
-                  } else {
-                    toast({ title: "שוחזר", description: "הקריאה הוחזרה לסטטוס פתוח" });
-                    setCall({ ...call, status: "open" });
-                  }
-                }}
-              >
-                החזר קריאה
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" aria-label="פעולות נוספות">
+                <MoreVertical className="w-4 h-4" /> עוד
               </Button>
-            ) : call.status === "pending_customer" ? (
-              <>
-                <Button
-                  variant="outline"
-                  className="gap-2 text-success hover:bg-success hover:text-success-foreground"
-                  onClick={() => {
-                    setCompleteDesc(call?.job_type ? `שירות: ${call.job_type}` : "");
-                    setShowCompleteDialog(true);
-                  }}
-                >
-                  טופל
-                </Button>
-                <Button
-                  variant="outline"
-                  className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" dir="rtl">
+              <DropdownMenuItem onClick={() => navigate(`/service-calls/${id}/edit`)} className="gap-2">
+                <Edit className="w-4 h-4" /> עריכת הקריאה
+              </DropdownMenuItem>
+              {call.status !== "pending_customer" && call.status !== "cancelled" && call.status !== "completed" && (
+                <DropdownMenuItem
+                  className="gap-2"
                   onClick={async () => {
                     const { error } = await supabase
-                      .from("service_calls")
-                      .update({ status: "cancelled" } as any)
-                      .eq("id", id!);
-                    if (error) {
-                      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
-                    } else {
-                      toast({ title: "בוטל", description: "הקריאה בוטלה" });
-                      setCall({ ...call, status: "cancelled" });
-                    }
+                      .from("service_calls").update({ status: "pending_customer" } as any).eq("id", id!);
+                    if (error) toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+                    else { toast({ title: "עודכן", description: "הקריאה הועברה לממתין לאישור לקוח" }); setCall({ ...call, status: "pending_customer" }); }
                   }}
                 >
-                  בוטל
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="outline"
-                className="gap-2"
-                onClick={async () => {
-                  const { error } = await supabase
-                    .from("service_calls")
-                    .update({ status: "cancelled" } as any)
-                    .eq("id", id!);
-                  if (error) {
-                    toast({ title: "שגיאה", description: error.message, variant: "destructive" });
-                  } else {
-                    toast({ title: "בוטל", description: "הקריאה בוטלה בהצלחה" });
-                    setCall({ ...call, status: "cancelled" });
-                  }
-                }}
+                  <User className="w-4 h-4" /> ממתין לאישור לקוח
+                </DropdownMenuItem>
+              )}
+              {call.status !== "completed" && call.status !== "cancelled" && call.status !== "awaiting_payment" && (
+                <DropdownMenuItem className="gap-2" onClick={() => setShowPendingPaymentDialog(true)}>
+                  <Wallet className="w-4 h-4" /> בוצע — ממתין לתשלום
+                </DropdownMenuItem>
+              )}
+              {call.status === "cancelled" ? (
+                <DropdownMenuItem
+                  className="gap-2"
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from("service_calls").update({ status: "open" } as any).eq("id", id!);
+                    if (error) toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+                    else { toast({ title: "שוחזר", description: "הקריאה הוחזרה לסטטוס פתוח" }); setCall({ ...call, status: "open" }); }
+                  }}
+                >
+                  <ArrowRight className="w-4 h-4" /> החזר קריאה לפתוח
+                </DropdownMenuItem>
+              ) : call.status !== "completed" && (
+                <DropdownMenuItem
+                  className="gap-2 text-destructive focus:text-destructive"
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from("service_calls").update({ status: "cancelled" } as any).eq("id", id!);
+                    if (error) toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+                    else { toast({ title: "בוטל", description: "הקריאה בוטלה" }); setCall({ ...call, status: "cancelled" }); }
+                  }}
+                >
+                  <X className="w-4 h-4" /> ביטול קריאה
+                </DropdownMenuItem>
+              )}
+              {isAdmin && (
+                <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="gap-2 text-destructive focus:text-destructive">
+                  <Trash2 className="w-4 h-4" /> מחיקת קריאה
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      {/* כרטיס קריאה יוקרתי: מי, מה, מתי + פעולות מהירות */}
+      <div className="rounded-2xl overflow-hidden border border-border bg-card shadow-sm mb-5">
+        <div className="bg-gradient-to-l from-slate-900 to-slate-700 text-white p-5">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/15 flex flex-col items-center justify-center shrink-0" aria-hidden="true">
+              <span className="text-[10px] text-white/60 leading-none">קריאה</span>
+              <span className="text-lg font-bold leading-tight">#{(call as any).call_number || "—"}</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-bold truncate">{getJobTypeLabel(call.job_type)}</h2>
+                <Badge className={statusColors[call.status]}>{statusLabels[call.status]}</Badge>
+                {(call as any).priority && (call as any).priority !== "medium" && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColors[(call as any).priority]}`}>
+                    {priorityLabels[(call as any).priority] || (call as any).priority}
+                  </span>
+                )}
+              </div>
+              <button
+                className="text-white/80 text-sm mt-0.5 flex items-center gap-1.5 hover:underline"
+                onClick={() => navigate(`/customers/${call.customer_id}`)}
               >
-                ביטול קריאה
-              </Button>
-            )}
-            {call.status !== "pending_customer" && call.status !== "cancelled" && call.status !== "completed" && (
-              <Button
-                variant="outline"
-                className="gap-2"
-                onClick={async () => {
-                  const { error } = await supabase
-                    .from("service_calls")
-                    .update({ status: "pending_customer" } as any)
-                    .eq("id", id!);
-                  if (error) {
-                    toast({ title: "שגיאה", description: error.message, variant: "destructive" });
-                  } else {
-                    toast({ title: "עודכן", description: "הקריאה הועברה לממתין לאישור לקוח" });
-                    setCall({ ...call, status: "pending_customer" });
-                  }
-                }}
+                <User className="w-3.5 h-3.5 shrink-0" /> {customer?.name}
+              </button>
+              {(customer?.city || customer?.address) && (
+                <p className="text-white/70 text-sm mt-0.5 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 shrink-0" /> {[customer?.city, customer?.address].filter(Boolean).join(" ")}
+                </p>
+              )}
+              {call.scheduled_date && (
+                <p className="text-white/70 text-sm mt-0.5 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 shrink-0" /> {new Date(call.scheduled_date).toLocaleDateString("he-IL")}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* פעולות מהירות */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3">
+          {customer?.phone && !isContractor ? (
+            <Button asChild variant="outline" className="h-12 gap-2 text-base">
+              <a href={`tel:${customer.phone}`} aria-label={`חייג אל ${customer?.name}`}>
+                <Phone className="w-5 h-5 text-primary" /> חייג
+              </a>
+            </Button>
+          ) : <span className="hidden sm:block" />}
+          {customer?.phone && !isContractor ? (
+            <Button asChild variant="outline" className="h-12 gap-2 text-base text-green-700">
+              <a href={toWhatsApp(customer.phone)} target="_blank" rel="noopener noreferrer" aria-label={`וואטסאפ אל ${customer?.name}`}>
+                <MessageCircle className="w-5 h-5" /> וואטסאפ
+              </a>
+            </Button>
+          ) : <span className="hidden sm:block" />}
+          {(customer?.address || customer?.city) ? (
+            <Button asChild variant="outline" className="h-12 gap-2 text-base">
+              <a
+                href={`https://waze.com/ul?q=${encodeURIComponent([customer?.address, customer?.city].filter(Boolean).join(", "))}&navigate=yes`}
+                target="_blank" rel="noopener noreferrer" aria-label="נווט לכתובת הלקוח"
               >
-                ממתין לאישור לקוח
-              </Button>
-            )}
-            {call.status !== "completed" && call.status !== "cancelled" && call.status !== "awaiting_payment" && (
-              <Button
-                variant="outline"
-                className="gap-2 text-rose-700 border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-                onClick={() => setShowPendingPaymentDialog(true)}
-              >
-                <Wallet className="w-4 h-4" /> בוצע — ממתין לתשלום
-              </Button>
-            )}
-            <Button onClick={handleCreateReport} className="gap-2">
+                <Navigation className="w-5 h-5 text-sky-600" /> ניווט
+              </a>
+            </Button>
+          ) : <span className="hidden sm:block" />}
+          {canEdit && call.status !== "completed" && call.status !== "cancelled" && (
+            <Button
+              className="h-12 gap-2 text-base bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => setShowCompleteDialog(true)}
+            >
+              <Check className="w-5 h-5" /> סגור קריאה
+            </Button>
+          )}
+        </div>
+
+        {/* פעולות מסמכים */}
+        {canEdit && (
+          <div className="flex gap-2 flex-wrap px-3 pb-3">
+            <Button variant="outline" size="sm" onClick={handleCreateReport} className="h-9 gap-1.5">
               <FileText className="w-4 h-4" /> דוח עבודה
             </Button>
             <Button
-              variant="outline"
-              className="gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+              variant="outline" size="sm"
+              className="h-9 gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
               onClick={() => {
                 setInvoiceDesc(call?.job_type || "שירות אינסטלציה");
                 setShowInvoiceDialog(true);
@@ -430,63 +380,9 @@ const ServiceCallDetail = () => {
             >
               <Receipt className="w-4 h-4" /> צור חשבונית
             </Button>
-            {isAdmin && (
-              <Button
-                variant="outline"
-                className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => setShowDeleteDialog(true)}
-              >
-                <Trash2 className="w-4 h-4" /> מחיקה
-              </Button>
-            )}
           </div>
         )}
       </div>
-
-      {/* Info summary */}
-      <Card className="mb-6">
-        <CardContent className="p-6">
-          <div className="flex flex-wrap gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-muted-foreground" />
-                <span
-                  className="font-medium cursor-pointer hover:underline"
-                  onClick={() => navigate(`/customers/${call.customer_id}`)}
-                >
-                  {customer?.name}
-                </span>
-              </div>
-              {customer?.phone && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Phone className="w-3.5 h-3.5" /> {customer.phone}
-                </div>
-              )}
-              {customer?.address && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="w-3.5 h-3.5" /> {customer.city} {customer.address}
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge className={`${statusColors[call.status]}`}>{statusLabels[call.status]}</Badge>
-                {(call as any).priority && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColors[(call as any).priority]}`}>
-                    {priorityLabels[(call as any).priority] || (call as any).priority}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm"><strong>סוג:</strong> {getJobTypeLabel(call.job_type)}</p>
-              {call.scheduled_date && (
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Calendar className="w-3.5 h-3.5" /> {new Date(call.scheduled_date).toLocaleDateString("he-IL")}
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Tabs */}
       <Tabs defaultValue="details" dir="rtl">
@@ -724,81 +620,16 @@ const ServiceCallDetail = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Complete call dialog */}
-      <Dialog open={showCompleteDialog} onOpenChange={(o) => { if (!completing) setShowCompleteDialog(o); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>סגירת קריאה - גביית תשלום</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="mb-1.5 block">סכום שנגבה (₪) <span className="text-destructive">*</span></Label>
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  value={completeAmount}
-                  onChange={(e) => setCompleteAmount(e.target.value)}
-                  placeholder="0"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <Label className="mb-1.5 block">אמצעי תשלום <span className="text-destructive">*</span></Label>
-                <Select value={completeMethod} onValueChange={setCompleteMethod}>
-                  <SelectTrigger><SelectValue placeholder="בחר אמצעי" /></SelectTrigger>
-                  <SelectContent>
-                    {financePaymentMethods.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label className="mb-1.5 block">על מה נגבה <span className="text-destructive">*</span></Label>
-              <Textarea
-                value={completeDesc}
-                onChange={(e) => setCompleteDesc(e.target.value)}
-                rows={3}
-                placeholder="פירוט העבודה / החלקים שהוחלפו..."
-              />
-            </div>
-
-            <div>
-              <Label className="mb-1.5 block">קבלה <span className="text-destructive">*</span></Label>
-              <ReceiptUpload
-                customerId={call?.customer_id}
-                currentPath={completeReceipt}
-                onUploaded={(p) => setCompleteReceipt(p)}
-                onRemoved={() => setCompleteReceipt(null)}
-              />
-              <p className="text-xs text-muted-foreground mt-1">חובה לצרף קבלה - לא ניתן לסגור קריאה ללא קבלה.</p>
-            </div>
-
-            <div>
-              <Label className="mb-1.5 block">תמונות סיום (אופציונלי)</Label>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => setCompletePhotos(Array.from(e.target.files || []))}
-                className="block w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-md file:border file:border-input file:bg-background file:text-sm file:font-medium hover:file:bg-accent"
-              />
-              {completePhotos.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">{completePhotos.length} תמונות נבחרו</p>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowCompleteDialog(false)} disabled={completing}>ביטול</Button>
-            <Button onClick={handleCompleteCall} disabled={completing || !completeReceipt} className="gap-2">
-              {completing ? "שומר..." : "סגור קריאה"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* סגירת קריאה — דיאלוג משותף עם התאמה חכמה לחוב פתוח */}
+      <CompleteCallDialog
+        open={showCompleteDialog}
+        onOpenChange={setShowCompleteDialog}
+        call={call ? { id: id!, customer_id: call.customer_id, job_type: call.job_type, customers: customer } : null}
+        onCompleted={() => {
+          setCall({ ...call, status: "completed" });
+          refreshPhotos();
+        }}
+      />
     {showPendingPaymentDialog && (
       <PendingPaymentDialog
         open={showPendingPaymentDialog}
