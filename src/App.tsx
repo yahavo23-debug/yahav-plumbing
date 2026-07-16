@@ -55,6 +55,7 @@ import Reports from "./pages/Reports";
 import ReportEditor from "./pages/ReportEditor";
 import PublicReport from "./pages/PublicReport";
 import PublicShare from "./pages/PublicShare";
+import PublicPayment from "./pages/PublicPayment";
 import Settings from "./pages/Settings";
 import DispatchBoard from "./pages/DispatchBoard";
 import Finance from "./pages/Finance";
@@ -107,6 +108,7 @@ function AppRoutes() {
       <Route path="/r/:token" element={<PublicReport />} />
       <Route path="/q/:token" element={<PublicQuote />} />
       <Route path="/s/:token" element={<PublicShare />} />
+      <Route path="/pay/:token" element={<PublicPayment />} />
 
       {/* Protected routes — each wrapped in ErrorBoundary so crashes show a message not a white screen */}
       <Route path="/" element={<ProtectedRoute><ErrorBoundary><Dashboard /></ErrorBoundary></ProtectedRoute>} />

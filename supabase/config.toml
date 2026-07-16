@@ -1,5 +1,8 @@
 project_id = "xglagkbblribtztkkovo"
 
+[functions.get-payment-request]
+verify_jwt = false
+
 [functions.get-public-report]
 verify_jwt = false
 

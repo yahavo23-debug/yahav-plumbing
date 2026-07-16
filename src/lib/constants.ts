@@ -55,6 +55,9 @@ export const BANK_DETAILS = {
   beneficiaryName: "יהב אוחנה",
 };
 
+/** מספר ביט לתשלומים (ברירת מחדל: טלפון העסק). */
+export const BIT_PHONE = "054-2121204";
+
 /**
  * Resolve a job_type value to a display label.
  * If the value is a known key, return its Hebrew label.

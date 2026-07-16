@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import {
   AlertCircle, FileDown, ChevronLeft, Search, Phone, MessageCircle,
-  Wallet, Scale, Clock,
+  Wallet, Scale, Clock, Send, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +68,49 @@ const Debts = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"days" | "amount">("days");
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  // יצירת עמוד תשלום יוקרתי ושליחה בוואטסאפ
+  const sendPaymentPage = async (r: DebtorRow) => {
+    if (!user) return;
+    setSendingId(r.customer_id);
+    try {
+      const firstName = (r.name || "").trim().split(" ")[0] || "";
+      const note = `יתרת תשלום עבור עבודות אינסטלציה`;
+      const { data, error } = await (supabase as any)
+        .from("payment_requests")
+        .insert({
+          customer_id: r.customer_id,
+          customer_name: r.name,
+          customer_phone: r.phone,
+          amount: Math.round(r.balance),
+          note,
+          created_by: user.id,
+        })
+        .select("share_token")
+        .single();
+      if (error) throw error;
+
+      const origin = window.location.origin.includes("lovable.app")
+        ? window.location.origin
+        : "https://yahav-plumbing.lovable.app";
+      const payUrl = `${origin}/pay/${data.share_token}`;
+      const msg =
+        `היי ${firstName}, מצרף קישור נוח לתשלום יתרה של ₪${Math.round(r.balance).toLocaleString("he-IL")} 🙏\n` +
+        `אפשר בביט או בהעברה בנקאית בלחיצה אחת:\n${payUrl}\n\n` +
+        `יהב אינסטלציה - פתרונות ביוב ומים`;
+      if (r.phone) {
+        window.open(toWhatsApp(r.phone, msg), "_blank");
+      } else {
+        await navigator.clipboard.writeText(payUrl);
+        toast({ title: "הקישור הועתק", description: "אין טלפון ללקוח — הקישור הועתק לשליחה ידנית" });
+      }
+    } catch (e: any) {
+      toast({ title: "שגיאה", description: e.message || "לא ניתן ליצור קישור תשלום", variant: "destructive" });
+    } finally {
+      setSendingId(null);
+    }
+  };
 
   useEffect(() => {
     if (!user || !canSee) return;
@@ -291,6 +334,16 @@ const Debts = () => {
                       </Button>
                     </>
                   )}
+                  <Button
+                    size="sm"
+                    className="h-9 gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+                    onClick={() => sendPaymentPage(r)}
+                    disabled={sendingId === r.customer_id}
+                    title="שלח ללקוח עמוד תשלום יוקרתי (ביט + העברה בנקאית)"
+                  >
+                    {sendingId === r.customer_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    שלח בקשת תשלום
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
