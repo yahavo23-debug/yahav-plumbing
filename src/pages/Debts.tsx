@@ -169,9 +169,10 @@ const Debts = () => {
           .from("customer_ledger")
           .select("customer_id, entry_type, amount, entry_date")
           .order("entry_date", { ascending: true }),
+        // select * — עמיד גם אם עמודת collection_flag עוד לא קיימת ב-DB
         (supabase as any)
           .from("customers")
-          .select("id, name, phone, city, address, has_legal_action, collection_flag")
+          .select("*")
           .eq("is_walkin", false),
       ]);
       const customers = (customersRes.data || []) as any[];
