@@ -532,7 +532,7 @@ const Dashboard = () => {
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <Card
-          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] border-blue-200 bg-gradient-to-br from-blue-50 to-white dark:border-blue-900 dark:from-blue-950/40 dark:to-transparent"
+          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] border-blue-200 bg-gradient-to-br from-blue-50 to-white dark:border-blue-700/50 dark:from-blue-900/40 dark:to-blue-950/10 dark:shadow-[0_4px_20px_-8px_rgba(56,189,248,0.45)]"
           onClick={() => navigate("/service-calls?status=open")}
         >
           <CardContent className="p-4 flex items-center gap-3">
@@ -547,7 +547,7 @@ const Dashboard = () => {
         </Card>
 
         <Card
-          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] border-amber-200 bg-gradient-to-br from-amber-50 to-white dark:border-amber-900 dark:from-amber-950/40 dark:to-transparent"
+          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] border-amber-200 bg-gradient-to-br from-amber-50 to-white dark:border-amber-600/50 dark:from-amber-900/40 dark:to-amber-950/10 dark:shadow-[0_4px_20px_-8px_rgba(251,191,36,0.4)]"
           onClick={() => navigate("/service-calls?status=in_progress")}
         >
           <CardContent className="p-4 flex items-center gap-3">
@@ -562,7 +562,7 @@ const Dashboard = () => {
         </Card>
 
         <Card
-          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] border-teal-200 bg-gradient-to-br from-teal-50 to-white dark:border-teal-900 dark:from-teal-950/40 dark:to-transparent"
+          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] border-teal-200 bg-gradient-to-br from-teal-50 to-white dark:border-teal-600/50 dark:from-teal-900/40 dark:to-teal-950/10 dark:shadow-[0_4px_20px_-8px_rgba(45,212,191,0.4)]"
           onClick={() => navigate("/customers")}
         >
           <CardContent className="p-4 flex items-center gap-3">
@@ -577,7 +577,7 @@ const Dashboard = () => {
         </Card>
 
         <Card
-          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] border-rose-200 bg-gradient-to-br from-rose-50 to-white dark:border-rose-900 dark:from-rose-950/40 dark:to-transparent"
+          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] border-rose-200 bg-gradient-to-br from-rose-50 to-white dark:border-rose-600/50 dark:from-rose-900/40 dark:to-rose-950/10 dark:shadow-[0_4px_20px_-8px_rgba(244,63,94,0.45)]"
           onClick={() => navigate("/service-calls")}
         >
           <CardContent className="p-4 flex items-center gap-3">

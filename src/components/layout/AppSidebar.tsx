@@ -114,7 +114,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium",
                         isActive
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          ? "bg-gradient-to-l from-blue-600 to-cyan-500 text-white shadow-md shadow-cyan-950/50"
                           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       )}
                       title={collapsed ? item.label : undefined}

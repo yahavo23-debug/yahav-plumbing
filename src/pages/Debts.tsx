@@ -274,28 +274,28 @@ const Debts = () => {
             <p className="text-2xl font-bold">{fmtILS(totals.total)}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50 to-white dark:border-indigo-600/50 dark:from-indigo-900/40 dark:to-indigo-950/10 dark:shadow-[0_4px_20px_-8px_rgba(129,140,248,0.4)]">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
               <AlertCircle className="w-3.5 h-3.5" /> לקוחות חייבים
             </div>
-            <p className="text-2xl font-bold">{totals.count}</p>
+            <p className="text-2xl font-bold text-indigo-800 dark:text-indigo-200">{totals.count}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-white dark:border-orange-600/50 dark:from-orange-900/40 dark:to-orange-950/10 dark:shadow-[0_4px_20px_-8px_rgba(251,146,60,0.4)]">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
               <Clock className="w-3.5 h-3.5" /> בפיגור מעל 90 יום
             </div>
-            <p className="text-2xl font-bold text-orange-600">{fmtILS(totals.over90)}</p>
+            <p className="text-2xl font-bold text-orange-600 dark:text-orange-300">{fmtILS(totals.over90)}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-rose-200 bg-gradient-to-br from-rose-50 to-white dark:border-rose-600/50 dark:from-rose-900/40 dark:to-rose-950/10 dark:shadow-[0_4px_20px_-8px_rgba(244,63,94,0.4)]">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
               <Scale className="w-3.5 h-3.5" /> בטיפול משפטי
             </div>
-            <p className="text-2xl font-bold">{totals.legal}</p>
+            <p className="text-2xl font-bold text-rose-800 dark:text-rose-200">{totals.legal}</p>
           </CardContent>
         </Card>
       </div>
