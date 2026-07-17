@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.yesh-webhook]
 verify_jwt = false
+
+[functions.check-warranties]
+verify_jwt = false

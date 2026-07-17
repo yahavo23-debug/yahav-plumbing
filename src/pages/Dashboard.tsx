@@ -19,6 +19,7 @@ import { toast } from "@/hooks/use-toast";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Bell } from "lucide-react";
 import { OpenQuotesPanel } from "@/components/dashboard/OpenQuotesPanel";
+import { WarrantyAlertsPanel } from "@/components/dashboard/WarrantyAlertsPanel";
 import { CompleteCallDialog } from "@/components/service-calls/CompleteCallDialog";
 
 interface DashboardStats {
@@ -685,6 +686,8 @@ const Dashboard = () => {
           )}
         </div>
       )}
+
+      <WarrantyAlertsPanel />
 
       <OpenQuotesPanel />
 
