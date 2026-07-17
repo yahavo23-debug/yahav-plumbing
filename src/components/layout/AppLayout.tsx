@@ -5,6 +5,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { Menu, Eye } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
@@ -49,6 +50,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
           <div className="flex-1">
             <GlobalSearch />
           </div>
+          <ThemeToggle />
         </header>
         <main className="p-4">{children}</main>
       </div>
@@ -69,6 +71,9 @@ export function AppLayout({ children, title }: AppLayoutProps) {
           {title && <h1 className="text-xl font-bold shrink-0">{title}</h1>}
           <div className="flex-1 max-w-sm">
             <GlobalSearch />
+          </div>
+          <div className="mr-auto">
+            <ThemeToggle />
           </div>
         </header>
         <div className="p-6">{children}</div>
