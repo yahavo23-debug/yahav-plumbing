@@ -1519,6 +1519,63 @@ export type Database = {
           },
         ]
       }
+      warranties: {
+        Row: {
+          certificate_path: string | null
+          created_at: string
+          created_by: string
+          customer_id: string
+          description: string | null
+          id: string
+          installed_at: string
+          notes: string | null
+          product_name: string
+          service_call_id: string | null
+          warranty_until: string
+        }
+        Insert: {
+          certificate_path?: string | null
+          created_at?: string
+          created_by: string
+          customer_id: string
+          description?: string | null
+          id?: string
+          installed_at?: string
+          notes?: string | null
+          product_name: string
+          service_call_id?: string | null
+          warranty_until: string
+        }
+        Update: {
+          certificate_path?: string | null
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          description?: string | null
+          id?: string
+          installed_at?: string
+          notes?: string | null
+          product_name?: string
+          service_call_id?: string | null
+          warranty_until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranties_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranties_service_call_id_fkey"
+            columns: ["service_call_id"]
+            isOneToOne: false
+            referencedRelation: "service_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       yesh_invoices: {
         Row: {
           created_at: string
