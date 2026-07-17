@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   Users, Wrench, AlertCircle, Plus, CheckCircle2, Clock,
   PhoneCall, ChevronLeft, CalendarClock, Flame, ChevronDown,
-  MessageCircle, HourglassIcon, Navigation, Wallet, FileDown,
+  MessageCircle, HourglassIcon, Navigation, Wallet, FileDown, FileText,
 } from "lucide-react";
 import { getJobTypeLabel, statusColors, statusLabels } from "@/lib/constants";
 import { format } from "date-fns";
@@ -20,6 +20,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { Bell } from "lucide-react";
 import { OpenQuotesPanel } from "@/components/dashboard/OpenQuotesPanel";
 import { WarrantyAlertsPanel } from "@/components/dashboard/WarrantyAlertsPanel";
+import { NewQuoteDialog } from "@/components/quotes/NewQuoteDialog";
 import { CompleteCallDialog } from "@/components/service-calls/CompleteCallDialog";
 
 interface DashboardStats {
@@ -264,6 +265,7 @@ const Dashboard = () => {
   const [inProgressList, setInProgressList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [quickCallOpen, setQuickCallOpen] = useState(false);
+  const [newQuoteOpen, setNewQuoteOpen] = useState(false);
   const [completeDialogCall, setCompleteDialogCall] = useState<any | null>(null);
   const [debtsSummary, setDebtsSummary] = useState<{ total: number; count: number; topName: string | null; topAmount: number; over90Count: number }>({ total: 0, count: 0, topName: null, topAmount: 0, over90Count: 0 });
   const navigate = useNavigate();
@@ -479,6 +481,7 @@ const Dashboard = () => {
   return (
     <AppLayout title="לוח בקרה">
       <QuickCallDialog open={quickCallOpen} onClose={() => setQuickCallOpen(false)} />
+      <NewQuoteDialog open={newQuoteOpen} onOpenChange={setNewQuoteOpen} />
       {/* כותרת יוקרתית: ברכה, תאריך ופעולות מהירות */}
       <div className="relative rounded-2xl overflow-hidden bg-gradient-to-l from-blue-950 via-blue-800 to-cyan-600 text-white p-5 mb-6 shadow-md">
         <div className="pointer-events-none absolute -top-10 -left-10 w-44 h-44 rounded-full bg-cyan-400/20 blur-2xl" aria-hidden="true" />
@@ -514,6 +517,14 @@ const Dashboard = () => {
               >
                 <Plus className="w-5 h-5" />
                 קריאה חדשה
+              </Button>
+              <Button
+                size="lg"
+                className="h-12 gap-2 text-base font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/25 shadow-none"
+                onClick={() => setNewQuoteOpen(true)}
+              >
+                <FileText className="w-5 h-5" />
+                הצעת מחיר
               </Button>
               {(isAdmin || isSecretary) && (
                 <Button

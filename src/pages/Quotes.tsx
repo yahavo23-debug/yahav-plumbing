@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { FileText, Phone, UserPlus } from "lucide-react";
-import { WalkInQuoteDialog } from "@/components/quotes/WalkInQuoteDialog";
+import { NewQuoteDialog } from "@/components/quotes/NewQuoteDialog";
 
 type QuoteFilter = "all" | "open" | "approved" | "rejected";
 
@@ -152,15 +152,15 @@ const Quotes = () => {
         </div>
         <Button
           size="sm"
-          className="gap-2"
+          className="gap-2 font-semibold bg-gradient-to-l from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md"
           onClick={() => setWalkInOpen(true)}
         >
-          <UserPlus className="w-4 h-4" />
-          הצעה ללקוח מזדמן
+          <FileText className="w-4 h-4" />
+          הצעת מחיר חדשה
         </Button>
       </div>
 
-      <WalkInQuoteDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
+      <NewQuoteDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
 
       {loading ? (
         <div className="space-y-3">
