@@ -233,7 +233,7 @@ const ServiceCallDetail = () => {
                 <MoreVertical className="w-4 h-4" /> עוד
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" dir="rtl">
+            <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => navigate(`/service-calls/${id}/edit`)} className="gap-2">
                 <Edit className="w-4 h-4" /> עריכת הקריאה
               </DropdownMenuItem>
