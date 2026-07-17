@@ -12,8 +12,9 @@ import { toast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
 import {
   ArrowRight, Edit, Phone, Mail, MapPin, Plus, Calendar, Trash2, DollarSign, Check, X,
-  FileText, MessageCircle, ExternalLink, MoreVertical, Navigation, Wrench, Wallet, User as UserIcon, Loader2,
+  FileText, MessageCircle, ExternalLink, MoreVertical, Navigation, Wrench, Wallet, User as UserIcon, Loader2, ShieldCheck,
 } from "lucide-react";
+import { WarrantiesTab } from "@/components/customers/WarrantiesTab";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -343,20 +344,28 @@ const CustomerDetail = () => {
       </div>
 
       <Tabs defaultValue={(typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab")) || "calls"} dir="rtl">
-        <TabsList className="mb-4 h-12 w-full grid grid-cols-4">
-          <TabsTrigger value="calls" className="text-sm sm:text-base h-10 gap-1.5">
+        <TabsList className="mb-4 h-12 w-full grid grid-cols-5">
+          <TabsTrigger value="calls" className="text-xs sm:text-base h-10 gap-1.5">
             <Wrench className="w-4 h-4 hidden sm:block" /> קריאות ({calls.length})
           </TabsTrigger>
-          <TabsTrigger value="billing" className="text-sm sm:text-base h-10 gap-1.5">
+          <TabsTrigger value="billing" className="text-xs sm:text-base h-10 gap-1.5">
             <Wallet className="w-4 h-4 hidden sm:block" /> כסף וחובות
           </TabsTrigger>
-          <TabsTrigger value="reports" className="text-sm sm:text-base h-10 gap-1.5">
+          <TabsTrigger value="warranties" className="text-xs sm:text-base h-10 gap-1.5">
+            <ShieldCheck className="w-4 h-4 hidden sm:block" /> אחריות
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="text-xs sm:text-base h-10 gap-1.5">
             <FileText className="w-4 h-4 hidden sm:block" /> דוחות {reports.length > 0 && `(${reports.length})`}
           </TabsTrigger>
-          <TabsTrigger value="details" className="text-sm sm:text-base h-10 gap-1.5">
+          <TabsTrigger value="details" className="text-xs sm:text-base h-10 gap-1.5">
             <UserIcon className="w-4 h-4 hidden sm:block" /> עוד פרטים
           </TabsTrigger>
         </TabsList>
+
+        {/* Warranties Tab */}
+        <TabsContent value="warranties">
+          <WarrantiesTab customerId={id!} customerName={customer.name} />
+        </TabsContent>
 
         {/* Service Calls Tab (DEFAULT) */}
         <TabsContent value="calls">

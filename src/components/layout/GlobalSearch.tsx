@@ -44,14 +44,18 @@ export function GlobalSearch() {
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
+  /** חיפוש טלפון חכם: משווה ספרות בלבד, כך שכל פורמט נמצא (050-1234567, +972 וכו') */
+  const digitsOnly = (s: string | null | undefined) => (s || "").replace(/\D/g, "").replace(/^972/, "0");
+
   const search = async (q: string) => {
     setLoading(true);
+    const qDigits = digitsOnly(q);
+    const qLower = q.toLowerCase();
     const [custRes, callRes] = await Promise.all([
+      // לקוחות נשלפים במלואם (רשימה קטנה) ומסוננים אצלנו — מאפשר התאמת טלפון בכל פורמט
       supabase
         .from("customers")
-        .select("id, name, phone, city")
-        .or(`name.ilike.%${q}%,phone.ilike.%${q}%,city.ilike.%${q}%`)
-        .limit(5),
+        .select("id, name, phone, city, address"),
       supabase
         .from("service_calls")
         .select("id, job_type, description, customers(name)")
@@ -59,7 +63,16 @@ export function GlobalSearch() {
         .limit(4),
     ]);
 
-    const customers: Result[] = (custRes.data || []).map((c) => ({
+    const matched = ((custRes.data || []) as any[]).filter((c) => {
+      const byText =
+        (c.name || "").toLowerCase().includes(qLower) ||
+        (c.city || "").toLowerCase().includes(qLower) ||
+        (c.address || "").toLowerCase().includes(qLower);
+      const byPhone = qDigits.length >= 3 && digitsOnly(c.phone).includes(qDigits);
+      return byText || byPhone;
+    }).slice(0, 6);
+
+    const customers: Result[] = matched.map((c) => ({
       type: "customer",
       id: c.id,
       title: c.name,
