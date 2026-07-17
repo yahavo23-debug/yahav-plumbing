@@ -478,112 +478,114 @@ const Dashboard = () => {
   return (
     <AppLayout title="לוח בקרה">
       <QuickCallDialog open={quickCallOpen} onClose={() => setQuickCallOpen(false)} />
-      {/* Date + greeting */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <p className="text-muted-foreground text-sm">{todayStr}</p>
-          <p className="text-2xl font-bold mt-1">שלום, בוא נראה מה קורה היום 👋</p>
-        </div>
-        {/* Notification toggle */}
-        {permission !== "granted" ? (
-          <button
-            onClick={handleEnableNotifications}
-            aria-label="הפעל התראות דחיפה"
-            className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-border bg-background hover:bg-accent transition-colors shrink-0"
-          >
-            <Bell className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-            הפעל התראות
-          </button>
-        ) : (
-          <span className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-green-200 bg-green-50 text-green-700 shrink-0">
-            <Bell className="w-3.5 h-3.5 text-green-500" />
-            התראות פעילות
-          </span>
-        )}
-      </div>
-
-      {/* Quick action buttons */}
-      {canCreate && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          <Button
-            size="lg"
-            className="h-12 gap-2 text-base shadow-sm"
-            onClick={() => setQuickCallOpen(true)}
-          >
-            <Plus className="w-5 h-5" />
-            קריאה חדשה
-          </Button>
-          {(isAdmin || isSecretary) && (
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-12 gap-2"
-              onClick={() => navigate("/customers/new")}
-            >
-              <Users className="w-5 h-5" />
-              לקוח חדש
-            </Button>
+      {/* כותרת יוקרתית: ברכה, תאריך ופעולות מהירות */}
+      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-l from-blue-950 via-blue-800 to-cyan-600 text-white p-5 mb-6 shadow-md">
+        <div className="pointer-events-none absolute -top-10 -left-10 w-44 h-44 rounded-full bg-cyan-400/20 blur-2xl" aria-hidden="true" />
+        <div className="pointer-events-none absolute -bottom-14 right-1/3 w-40 h-40 rounded-full bg-orange-400/15 blur-2xl" aria-hidden="true" />
+        <div className="relative">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-white/70 text-sm">{todayStr}</p>
+              <p className="text-2xl font-bold mt-1">שלום, בוא נראה מה קורה היום 👋</p>
+            </div>
+            {permission !== "granted" ? (
+              <button
+                onClick={handleEnableNotifications}
+                aria-label="הפעל התראות דחיפה"
+                className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-white/25 bg-white/10 hover:bg-white/20 transition-colors shrink-0"
+              >
+                <Bell className="w-3.5 h-3.5" aria-hidden="true" />
+                הפעל התראות
+              </button>
+            ) : (
+              <span className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-white/25 bg-white/10 text-emerald-200 shrink-0">
+                <Bell className="w-3.5 h-3.5" />
+                התראות פעילות
+              </span>
+            )}
+          </div>
+          {canCreate && (
+            <div className="flex flex-wrap gap-2 mt-4">
+              <Button
+                size="lg"
+                className="h-12 gap-2 text-base font-semibold bg-gradient-to-l from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md border-0"
+                onClick={() => setQuickCallOpen(true)}
+              >
+                <Plus className="w-5 h-5" />
+                קריאה חדשה
+              </Button>
+              {(isAdmin || isSecretary) && (
+                <Button
+                  size="lg"
+                  className="h-12 gap-2 text-base font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/25 shadow-none"
+                  onClick={() => navigate("/customers/new")}
+                >
+                  <Users className="w-5 h-5" />
+                  לקוח חדש
+                </Button>
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <Card
-          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
+          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] border-blue-200 bg-gradient-to-br from-blue-50 to-white dark:border-blue-900 dark:from-blue-950/40 dark:to-transparent"
           onClick={() => navigate("/service-calls?status=open")}
         >
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-              <AlertCircle className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{loading ? "—" : stats.openCalls}</p>
+              <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">{loading ? "—" : stats.openCalls}</p>
               <p className="text-xs text-muted-foreground">קריאות פתוחות</p>
             </div>
           </CardContent>
         </Card>
 
         <Card
-          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
+          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] border-amber-200 bg-gradient-to-br from-amber-50 to-white dark:border-amber-900 dark:from-amber-950/40 dark:to-transparent"
           onClick={() => navigate("/service-calls?status=in_progress")}
         >
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5 text-yellow-600" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{loading ? "—" : stats.inProgressCalls}</p>
+              <p className="text-2xl font-bold text-amber-800 dark:text-amber-200">{loading ? "—" : stats.inProgressCalls}</p>
               <p className="text-xs text-muted-foreground">בטיפול</p>
             </div>
           </CardContent>
         </Card>
 
         <Card
-          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
+          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] border-teal-200 bg-gradient-to-br from-teal-50 to-white dark:border-teal-900 dark:from-teal-950/40 dark:to-transparent"
           onClick={() => navigate("/customers")}
         >
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5 text-primary" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 shadow flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{loading ? "—" : stats.totalCustomers}</p>
+              <p className="text-2xl font-bold text-teal-800 dark:text-teal-200">{loading ? "—" : stats.totalCustomers}</p>
               <p className="text-xs text-muted-foreground">לקוחות</p>
             </div>
           </CardContent>
         </Card>
 
         <Card
-          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
+          className="cursor-pointer hover:shadow-md transition-all active:scale-[0.98] border-rose-200 bg-gradient-to-br from-rose-50 to-white dark:border-rose-900 dark:from-rose-950/40 dark:to-transparent"
           onClick={() => navigate("/service-calls")}
         >
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
-              <Flame className="w-5 h-5 text-destructive" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-red-500 shadow flex items-center justify-center shrink-0">
+              <Flame className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{loading ? "—" : stats.urgentCalls}</p>
+              <p className="text-2xl font-bold text-rose-800 dark:text-rose-200">{loading ? "—" : stats.urgentCalls}</p>
               <p className="text-xs text-muted-foreground">דחוף / גבוה</p>
             </div>
           </CardContent>
