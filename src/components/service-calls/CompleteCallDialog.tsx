@@ -104,10 +104,11 @@ export function CompleteCallDialog({ open, onOpenChange, call, onCompleted }: Co
 
   /**
    * שמירה בפועל.
-   * coversDebt=true  → התשלום מכסה את החוב הישן (רישום תשלום רגיל שמקזז את הכרטסת).
-   * coversDebt=false → תשלום נפרד על הקריאה: נרשם גם חיוב מקביל על העבודה הנוכחית
-   *                    כדי שהחוב הישן יישאר פתוח, והלקוח מסומן בדגל "לתזכר" בגבייה.
-   * coversDebt=null  → אין חוב פתוח, זרימה רגילה.
+   * coversDebt=true  → התשלום מכסה את החוב הישן (רישום תשלום בלבד, שמקזז את החיוב הקיים).
+   * coversDebt=false → תשלום נפרד על הקריאה: חיוב+תשלום על העבודה הנוכחית,
+   *                    החוב הישן נשאר פתוח והלקוח מסומן בדגל "לתזכר" בגבייה.
+   * coversDebt=null  → אין חוב פתוח: חיוב+תשלום יחד, כך שהחשבון נסגר על אפס
+   *                    (בלי זה הלקוח היה מופיע בטעות "בזכות").
    */
   const doSave = async (amt: number, coversDebt: boolean | null) => {
     if (!user || !call) return;
@@ -129,8 +130,8 @@ export function CompleteCallDialog({ open, onOpenChange, call, onCompleted }: Co
 
       const today = new Date().toISOString().slice(0, 10);
 
-      if (coversDebt === false) {
-        // חיוב מקביל על העבודה הנוכחית — כך התשלום לא "בולע" את החוב הישן
+      if (coversDebt !== true) {
+        // חיוב על העבודה הנוכחית מול התשלום — הכרטסת מאוזנת והחוב הישן (אם יש) לא נבלע
         const { error: chargeErr } = await (supabase as any).from("customer_ledger").insert({
           customer_id: call.customer_id,
           service_call_id: call.id,
