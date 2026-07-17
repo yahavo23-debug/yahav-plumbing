@@ -112,7 +112,7 @@ export function CustomerCard({ customer, isAdmin, isContractor, hasPendingCall, 
                     href={toWhatsApp(customer.phone)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1 rounded hover:bg-green-100 text-green-600 transition-colors"
+                    className="p-1 rounded hover:bg-green-100 text-green-600 dark:hover:bg-green-900/40 dark:text-green-400 transition-colors"
                     title="WhatsApp"
                   >
                     <MessageCircle className="w-3.5 h-3.5" />

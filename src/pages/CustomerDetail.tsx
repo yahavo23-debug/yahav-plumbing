@@ -503,7 +503,7 @@ const CustomerDetail = () => {
                           href={waUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 rounded-lg hover:bg-green-100 text-green-600 transition-colors"
+                          className="p-2 rounded-lg hover:bg-green-100 text-green-600 dark:hover:bg-green-900/40 dark:text-green-400 transition-colors"
                           title={customerPhone ? `שלח לוואטסאפ ${customerPhone}` : "שלח בוואטסאפ"}
                         >
                           <MessageCircle className="w-4 h-4" />

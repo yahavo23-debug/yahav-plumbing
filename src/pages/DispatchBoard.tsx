@@ -242,7 +242,7 @@ export default function DispatchBoard() {
               <Inbox className="w-4 h-4" />
               ממתינות
               {filteredUnscheduled.length > 0 && (
-                <span className="text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full">
+                <span className="text-xs bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-300 px-1.5 py-0.5 rounded-full">
                   {filteredUnscheduled.length}
                 </span>
               )}

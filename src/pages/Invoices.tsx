@@ -162,11 +162,11 @@ const Invoices = () => {
                         <span className="text-xs text-muted-foreground">#{inv.doc_number}</span>
                       )}
                       {inv.service_call_id ? (
-                        <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">
+                        <Badge className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800 text-xs">
                           <CheckCircle2 className="w-3 h-3 ml-1" /> משויך לקריאה
                         </Badge>
                       ) : (
-                        <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">
+                        <Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800 text-xs">
                           <AlertCircle className="w-3 h-3 ml-1" /> לא משויך
                         </Badge>
                       )}

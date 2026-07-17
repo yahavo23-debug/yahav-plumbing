@@ -78,12 +78,12 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 const EVENT_COLORS = [
-  { label: "כתום",   value: "bg-orange-400",  ring: "ring-orange-400",  badge: "bg-orange-100 text-orange-700" },
+  { label: "כתום",   value: "bg-orange-400",  ring: "ring-orange-400",  badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" },
   { label: "ורוד",   value: "bg-pink-400",    ring: "ring-pink-400",    badge: "bg-pink-100 text-pink-700" },
-  { label: "טורקיז", value: "bg-teal-400",    ring: "ring-teal-400",    badge: "bg-teal-100 text-teal-700" },
-  { label: "אדום",   value: "bg-red-400",     ring: "ring-red-400",     badge: "bg-red-100 text-red-700" },
+  { label: "טורקיז", value: "bg-teal-400",    ring: "ring-teal-400",    badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" },
+  { label: "אדום",   value: "bg-red-400",     ring: "ring-red-400",     badge: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
   { label: "סגול",   value: "bg-violet-400",  ring: "ring-violet-400",  badge: "bg-violet-100 text-violet-700" },
-  { label: "ירוק",   value: "bg-emerald-400", ring: "ring-emerald-400", badge: "bg-emerald-100 text-emerald-700" },
+  { label: "ירוק",   value: "bg-emerald-400", ring: "ring-emerald-400", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
 ];
 
 const NOTES_KEY = "calendar_notes";
@@ -647,7 +647,7 @@ const CalendarPage = () => {
                       <p className="text-xs opacity-70">{vac.from === vac.to ? vac.from : `${vac.from} עד ${vac.to}`}</p>
                     </div>
                     <button onClick={() => deleteVacation(vac.id)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-600 text-xs font-medium transition-colors shrink-0">
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-600 dark:bg-red-900/40 dark:hover:bg-red-900/60 dark:text-red-300 text-xs font-medium transition-colors shrink-0">
                       <Trash2 className="w-3 h-3" /> מחק
                     </button>
                   </div>
@@ -748,7 +748,7 @@ const CalendarPage = () => {
                           <p className="text-xs opacity-70">{e.time}</p>
                         </div>
                         <button onClick={() => deleteEvent(e.id)}
-                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-600 text-xs font-medium transition-colors shrink-0">
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-600 dark:bg-red-900/40 dark:hover:bg-red-900/60 dark:text-red-300 text-xs font-medium transition-colors shrink-0">
                           <Trash2 className="w-3 h-3" /> מחק
                         </button>
                       </div>

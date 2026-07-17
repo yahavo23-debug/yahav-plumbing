@@ -213,7 +213,7 @@ export function OpenQuotesPanel() {
                         className={cn(
                           "text-[10px]",
                           q.status === "sent"
-                            ? "bg-blue-100 text-blue-700"
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
                             : "bg-muted"
                         )}
                       >

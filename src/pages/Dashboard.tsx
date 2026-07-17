@@ -123,7 +123,7 @@ const CallRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: CallRow
             <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium shrink-0">דחוף</span>
           )}
           {call.priority === "high" && (
-            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium shrink-0">גבוהה</span>
+            <span className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 px-2 py-0.5 rounded-full font-medium shrink-0">גבוהה</span>
           )}
         </div>
         <p className="text-xs text-muted-foreground truncate mt-0.5">
@@ -139,7 +139,7 @@ const CallRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: CallRow
         )}
         {wazeUrl(call.customers?.address, call.customers?.city) && (
           <a href={wazeUrl(call.customers?.address, call.customers?.city)!} target="_blank" rel="noopener noreferrer"
-            className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors" title="נווט בוויז">
+            className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="נווט בוויז">
             <Navigation className="w-4 h-4" />
           </a>
         )}
@@ -205,14 +205,14 @@ const PendingRow = ({ call, onNavigate, onStatusChange, updateCallStatus }: Pend
               <PhoneCall className="w-4 h-4" />
             </a>
             <a href={toWhatsApp(phone)} target="_blank" rel="noopener noreferrer"
-              className="p-1.5 rounded-lg hover:bg-green-100 text-green-600 transition-colors" title="שלח WhatsApp">
+              className="p-1.5 rounded-lg hover:bg-green-100 text-green-600 dark:hover:bg-green-900/40 dark:text-green-400 transition-colors" title="שלח WhatsApp">
               <MessageCircle className="w-4 h-4" />
             </a>
           </>
         )}
         {wazeUrl(call.customers?.address, call.customers?.city) && (
           <a href={wazeUrl(call.customers?.address, call.customers?.city)!} target="_blank" rel="noopener noreferrer"
-            className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors" title="נווט בוויז">
+            className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600 dark:hover:bg-blue-900/40 dark:text-blue-400 transition-colors" title="נווט בוויז">
             <Navigation className="w-4 h-4" />
           </a>
         )}

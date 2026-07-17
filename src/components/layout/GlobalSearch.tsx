@@ -149,7 +149,7 @@ export function GlobalSearch() {
                   >
                     <div className={cn(
                       "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                      r.type === "customer" ? "bg-primary/10" : "bg-orange-100"
+                      r.type === "customer" ? "bg-primary/10" : "bg-orange-100 dark:bg-orange-900/40"
                     )}>
                       {r.type === "customer"
                         ? <Users className="w-4 h-4 text-primary" />

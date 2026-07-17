@@ -482,7 +482,7 @@ const ReportEditor = () => {
                 onClick={e => !customWaUrl && e.preventDefault()}
                 className={`flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm font-medium transition-colors ${
                   customWaUrl
-                    ? "bg-green-100 hover:bg-green-200 text-green-700"
+                    ? "bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/40 dark:hover:bg-green-900/60 dark:text-green-300"
                     : "bg-muted text-muted-foreground cursor-not-allowed"
                 }`}
               >

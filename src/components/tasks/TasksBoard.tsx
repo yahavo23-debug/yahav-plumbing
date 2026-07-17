@@ -43,9 +43,9 @@ export interface Task {
 interface CustomerLite { id: string; name: string; }
 
 const PRIORITY_META: Record<Task["priority"], { label: string; color: string; ring: string; bar: string }> = {
-  high:   { label: "דחוף",  color: "bg-red-100 text-red-700 border-red-300",        ring: "ring-red-400",    bar: "bg-red-500" },
-  medium: { label: "רגיל",   color: "bg-amber-100 text-amber-700 border-amber-300",  ring: "ring-amber-400",  bar: "bg-amber-500" },
-  low:    { label: "נמוך",   color: "bg-slate-100 text-slate-600 border-slate-300",  ring: "ring-slate-400",  bar: "bg-slate-400" },
+  high:   { label: "דחוף",  color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800",        ring: "ring-red-400",    bar: "bg-red-500" },
+  medium: { label: "רגיל",   color: "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700",  ring: "ring-amber-400",  bar: "bg-amber-500" },
+  low:    { label: "נמוך",   color: "bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",  ring: "ring-slate-400",  bar: "bg-slate-400" },
 };
 
 const COLOR_PALETTE = ["#3b82f6", "#ef4444", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899", "#06b6d4", "#64748b"];
@@ -136,7 +136,7 @@ function SortableTaskRow({ task, onToggle, onDelete, onEdit }: SortableTaskProps
               <span className="text-[11px] text-sky-600 flex items-center gap-0.5"><Bell className="w-3 h-3" /></span>
             )}
             {task.customer && (
-              <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 flex items-center gap-1">
+              <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-800 rounded px-1.5 py-0.5 flex items-center gap-1">
                 <UserIcon className="w-3 h-3" />{task.customer.name}
               </span>
             )}
@@ -538,7 +538,7 @@ export function TasksBoard({ className, onTasksChange }: TasksBoardProps) {
                       <span
                         role="button"
                         tabIndex={0}
-                        className="inline-flex items-center justify-center rounded-sm px-1.5 py-0.5 text-[11px] bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                        className="inline-flex items-center justify-center rounded-sm px-1.5 py-0.5 text-[11px] bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors"
                         onClick={(e) => { e.stopPropagation(); setForm(f => ({ ...f, customer_id: null, customer_name: null })); }}
                         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); setForm(f => ({ ...f, customer_id: null, customer_name: null })); }}}
                       >

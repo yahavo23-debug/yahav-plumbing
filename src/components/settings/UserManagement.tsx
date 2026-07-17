@@ -540,7 +540,7 @@ export function UserManagement() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 text-xs gap-1 text-orange-600 border-orange-300 hover:bg-orange-50"
+                          className="h-7 text-xs gap-1 text-orange-600 border-orange-300 hover:bg-orange-50 dark:hover:bg-orange-950/40"
                           onClick={() =>
                             setBanDialog({
                               open: true,

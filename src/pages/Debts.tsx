@@ -393,7 +393,7 @@ const Debts = () => {
                             </span>
                           )}
                           {r.collection_flag && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-800 border border-amber-300">
+                            <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700">
                               ⚠ לתזכר
                             </span>
                           )}
@@ -476,10 +476,10 @@ const Debts = () => {
             <div className="space-y-2">
               {reports.map((rep) => {
                 const status = !rep.is_active
-                  ? { label: "בוטל", cls: "bg-slate-100 text-slate-500" }
+                  ? { label: "בוטל", cls: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400" }
                   : rep.paid_at
-                  ? { label: "שולם ✓", cls: "bg-emerald-100 text-emerald-700" }
-                  : { label: "ממתין לתשלום", cls: "bg-amber-100 text-amber-800" };
+                  ? { label: "שולם ✓", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" }
+                  : { label: "ממתין לתשלום", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" };
                 return (
                   <div key={rep.id} className="rounded-xl border border-border bg-card p-4">
                     <div className="flex flex-wrap items-center gap-3">
