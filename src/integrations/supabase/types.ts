@@ -1526,6 +1526,8 @@ export type Database = {
           created_by: string
           customer_id: string
           description: string | null
+          expired_notified_at: string | null
+          expiry_notified_at: string | null
           id: string
           installed_at: string
           notes: string | null
@@ -1539,6 +1541,8 @@ export type Database = {
           created_by: string
           customer_id: string
           description?: string | null
+          expired_notified_at?: string | null
+          expiry_notified_at?: string | null
           id?: string
           installed_at?: string
           notes?: string | null
@@ -1552,6 +1556,8 @@ export type Database = {
           created_by?: string
           customer_id?: string
           description?: string | null
+          expired_notified_at?: string | null
+          expiry_notified_at?: string | null
           id?: string
           installed_at?: string
           notes?: string | null
