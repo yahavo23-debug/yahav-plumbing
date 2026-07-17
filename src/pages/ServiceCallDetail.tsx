@@ -374,7 +374,7 @@ const ServiceCallDetail = () => {
             </Button>
             <Button
               variant="outline" size="sm"
-              className="h-9 gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+              className="h-9 gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/40"
               onClick={() => {
                 setInvoiceDesc(call?.job_type || "שירות אינסטלציה");
                 setShowInvoiceDialog(true);

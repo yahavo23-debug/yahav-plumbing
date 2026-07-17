@@ -302,13 +302,13 @@ const Debts = () => {
 
       {/* לתזכר — לקוחות עם דגל תזכורת מסגירת קריאה */}
       {flagged.length > 0 && (
-        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3">
+        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 p-3">
           <div className="flex items-center gap-2 text-amber-800 font-semibold text-sm mb-2">
             <BellRing className="w-4 h-4" /> לתזכר — לקוחות ששילמו על קריאה אבל החוב הישן עדיין פתוח
           </div>
           <div className="flex flex-wrap gap-2">
             {flagged.map((r) => (
-              <span key={r.customer_id} className="inline-flex items-center gap-1.5 bg-white border border-amber-300 rounded-full pl-1 pr-3 py-1 text-sm">
+              <span key={r.customer_id} className="inline-flex items-center gap-1.5 bg-white dark:bg-card border border-amber-300 dark:border-amber-700 rounded-full pl-1 pr-3 py-1 text-sm">
                 <button className="font-medium hover:underline" onClick={() => navigate(`/customers/${r.customer_id}`)}>
                   {r.name}
                 </button>
