@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 import { zipSync, strToU8 } from "https://esm.sh/fflate@0.8.2";
+import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,9 +82,12 @@ serve(async (req) => {
       throw new Error("אין הרשאה לייצוא");
     }
 
-    const { month } = await req.json();
+    const { month, direction = "all" } = await req.json();
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
       throw new Error("Invalid month format");
+    }
+    if (!["all", "income", "expense"].includes(direction)) {
+      throw new Error("Invalid direction");
     }
 
     const [year, mon] = month.split("-").map(Number);
@@ -100,7 +104,15 @@ serve(async (req) => {
       .order("txn_date", { ascending: true });
 
     if (txnError) throw txnError;
-    const txns = transactions || [];
+    // סינון לפי בחירת המשתמש: הכל / רק הכנסות / רק הוצאות
+    const txns = (transactions || []).filter(
+      (t: Record<string, unknown>) => direction === "all" || t.direction === direction
+    );
+    const directionTitles: Record<string, string> = {
+      all: "הכנסות והוצאות",
+      income: "הכנסות בלבד",
+      expense: "הוצאות בלבד",
+    };
 
     // Totals — computed early for the summary sheet
     const totalIncome = txns
@@ -123,19 +135,15 @@ serve(async (req) => {
       return [...m.entries()].sort((a, b) => b[1] - a[1]);
     };
     const summaryAoa: (string | number)[][] = [
-      ["דוח כספים — יהב אינסטלציה", month],
+      [`דוח כספים (${directionTitles[direction]}) — יהב אינסטלציה`, month],
       [],
-      ["סה\"כ הכנסות", totalIncome],
-      ["סה\"כ הוצאות", totalExpenses],
-      ["רווח נקי", totalIncome - totalExpenses],
+      ...(direction !== "expense" ? [["סה\"כ הכנסות", totalIncome] as (string | number)[]] : []),
+      ...(direction !== "income" ? [["סה\"כ הוצאות", totalExpenses] as (string | number)[]] : []),
+      ...(direction === "all" ? [["רווח נקי", totalIncome - totalExpenses] as (string | number)[]] : []),
       ["מס' רשומות", txns.length],
       ["מס' קבלות ומסמכים מצורפים", docCount],
-      [],
-      ["הכנסות לפי קטגוריה", ""],
-      ...catSum("income"),
-      [],
-      ["הוצאות לפי קטגוריה", ""],
-      ...catSum("expense"),
+      ...(direction !== "expense" ? [[], ["הכנסות לפי קטגוריה", ""], ...catSum("income")] : []),
+      ...(direction !== "income" ? [[], ["הוצאות לפי קטגוריה", ""], ...catSum("expense")] : []),
     ];
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryAoa);
     wsSummary["!cols"] = [{ wch: 28 }, { wch: 16 }];
@@ -152,9 +160,7 @@ serve(async (req) => {
       "סטטוס": statusLabels[t.status as string] || t.status,
       "סוג מסמך": docTypeLabels[t.doc_type as string] || t.doc_type || "—",
       "הערות": t.notes || "",
-      "קובץ מצורף": t.doc_path
-        ? `${t.txn_date}_${sanitizeFilename(categoryLabels[t.category as string] || t.category as string || "other")}_${t.amount}ILS${getFileExtension(t.doc_path as string)}`
-        : "—",
+      "קבלה/מסמך": t.doc_path ? "כן — בקובץ ה-PDF המאוחד" : "—",
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelRows);
@@ -189,43 +195,84 @@ serve(async (req) => {
     // Add XLSX to zip
     zipFiles[`Finance_${month}.xlsx`] = new Uint8Array(xlsxBuffer);
 
-    // Download each attached document
-    const docPromises = txns
-      .filter((t: Record<string, unknown>) => t.doc_path)
-      .map(async (t: Record<string, unknown>) => {
-        try {
-          const docPath = t.doc_path as string;
-          const ext = getFileExtension(docPath);
-          const catLabel = sanitizeFilename(
-            categoryLabels[t.category as string] || (t.category as string) || "other"
-          );
-          const amount = t.amount;
-          const renamedFile = `${t.txn_date}_${catLabel}_${amount}ILS${ext}`;
+    // הורדת כל המסמכים המצורפים (לפי סדר תאריכים) לצורך איחוד ל-PDF אחד
+    const docTxns = txns.filter((t: Record<string, unknown>) => t.doc_path);
+    const downloaded: { t: Record<string, unknown>; bytes: Uint8Array; ext: string }[] = [];
 
-          // קבלות הכנסה שמורות ב-bucket "receipts", מסמכי הוצאות ב-"finance-docs" — מנסים את שניהם
-          let file = await adminClient.storage.from("finance-docs").download(docPath);
-          if (file.error || !file.data) {
-            file = await adminClient.storage.from("receipts").download(docPath);
-          }
-          if (file.error || !file.data) {
-            console.error(`Failed to download ${docPath} from both buckets:`, file.error?.message);
-            return;
-          }
-
-          const arrayBuffer = await file.data.arrayBuffer();
-          zipFiles[`${receiptsFolder}/${renamedFile}`] = new Uint8Array(arrayBuffer);
-        } catch (err) {
-          console.error(`Error downloading doc for txn ${t.id}:`, err);
+    await Promise.all(docTxns.map(async (t: Record<string, unknown>) => {
+      try {
+        const docPath = t.doc_path as string;
+        // קבלות הכנסה שמורות ב-bucket "receipts", מסמכי הוצאות ב-"finance-docs" — מנסים את שניהם
+        let file = await adminClient.storage.from("finance-docs").download(docPath);
+        if (file.error || !file.data) {
+          file = await adminClient.storage.from("receipts").download(docPath);
         }
-      });
+        if (file.error || !file.data) {
+          console.error(`Failed to download ${docPath} from both buckets:`, file.error?.message);
+          return;
+        }
+        const arrayBuffer = await file.data.arrayBuffer();
+        downloaded.push({ t, bytes: new Uint8Array(arrayBuffer), ext: getFileExtension(docPath).toLowerCase() });
+      } catch (err) {
+        console.error(`Error downloading doc for txn ${t.id}:`, err);
+      }
+    }));
 
-    await Promise.all(docPromises);
+    // מיון לפי תאריך כדי שה-PDF יהיה כרונולוגי
+    downloaded.sort((a, b) => String(a.t.txn_date).localeCompare(String(b.t.txn_date)));
+
+    // ========== 2.5 איחוד כל הקבלות ל-PDF אחד ==========
+    const mergedPdf = await PDFDocument.create();
+    const font = await mergedPdf.embedFont(StandardFonts.Helvetica);
+    let mergedCount = 0;
+
+    for (let i = 0; i < downloaded.length; i++) {
+      const { t, bytes, ext } = downloaded[i];
+      // כותרת באנגלית/ספרות בלבד (הפונט הסטנדרטי לא תומך בעברית)
+      const dirTag = t.direction === "income" ? "INCOME" : "EXPENSE";
+      const label = `${i + 1}/${downloaded.length}  |  ${t.txn_date}  |  ${dirTag}  |  ${Number(t.amount).toFixed(2)} ILS`;
+      try {
+        if (ext === ".pdf") {
+          const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+          const pages = await mergedPdf.copyPages(src, src.getPageIndices());
+          pages.forEach((p, pi) => {
+            mergedPdf.addPage(p);
+            if (pi === 0) {
+              p.drawText(label, { x: 12, y: p.getHeight() - 16, size: 10, font, color: rgb(0.8, 0.1, 0.1) });
+            }
+          });
+          mergedCount++;
+        } else if (ext === ".jpg" || ext === ".jpeg" || ext === ".png") {
+          const img = ext === ".png" ? await mergedPdf.embedPng(bytes) : await mergedPdf.embedJpg(bytes);
+          const headerH = 34;
+          const page = mergedPdf.addPage([img.width, img.height + headerH]);
+          page.drawRectangle({ x: 0, y: img.height, width: img.width, height: headerH, color: rgb(0.95, 0.95, 0.95) });
+          page.drawText(label, { x: 14, y: img.height + 11, size: Math.max(12, Math.min(22, img.width / 40)), font, color: rgb(0.1, 0.1, 0.1) });
+          page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+          mergedCount++;
+        } else {
+          throw new Error(`unsupported ext ${ext}`);
+        }
+      } catch (err) {
+        // קובץ שלא ניתן לאחד — נכנס ל-ZIP כקובץ נפרד כדי שלא יאבד
+        console.error(`Cannot merge doc for txn ${t.id}:`, err);
+        const catLabel = sanitizeFilename(
+          categoryLabels[t.category as string] || (t.category as string) || "other"
+        );
+        zipFiles[`${receiptsFolder}/${t.txn_date}_${catLabel}_${t.amount}ILS${ext}`] = bytes;
+      }
+    }
+
+    if (mergedCount > 0) {
+      const pdfBytes = await mergedPdf.save();
+      zipFiles[`Receipts_${month}${direction === "all" ? "" : "_" + direction}.pdf`] = new Uint8Array(pdfBytes);
+    }
 
     // ========== 3. Create ZIP ==========
     const zipped = zipSync(zipFiles);
 
     // ========== 4. Upload ZIP to storage ==========
-    const zipFileName = `Finance_${month}.zip`;
+    const zipFileName = `Finance_${month}${direction === "all" ? "" : "_" + direction}.zip`;
     const zipPath = `exports/${zipFileName}`;
 
     await adminClient.storage
@@ -246,6 +293,7 @@ serve(async (req) => {
       JSON.stringify({
         url: signedData!.signedUrl,
         filename: zipFileName,
+        direction,
         month,
         transactions_count: txns.length,
         documents_count: docCount,

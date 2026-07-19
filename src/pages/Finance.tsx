@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
@@ -58,6 +61,7 @@ export default function Finance() {
   const [exportInfo, setExportInfo] = useState<{
     total_income: number; total_expenses: number; net: number;
     transactions_count: number; documents_count: number; month: string;
+    direction?: "all" | "income" | "expense";
   } | null>(null);
 
   // Active filter label
@@ -161,12 +165,12 @@ export default function Finance() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (direction: "all" | "income" | "expense" = "all") => {
     setExporting(true);
     setExportUrl(null);
     try {
       const { data, error } = await supabase.functions.invoke("export-finance", {
-        body: { month },
+        body: { month, direction },
       });
       if (error) throw error;
       if (data?.url) {
@@ -190,19 +194,25 @@ export default function Finance() {
     }
   };
 
-  /** הודעה מסודרת לרו״ח: סיכום הכנסות מול הוצאות + קישור לחבילה המלאה */
+  const directionLabel = (d?: string) =>
+    d === "income" ? "הכנסות בלבד" : d === "expense" ? "הוצאות בלבד" : "הכנסות והוצאות";
+
+  /** הודעה מסודרת לרו״ח: סיכום + קישור לחבילה (אקסל + PDF קבלות מאוחד) */
   const buildAccountantMessage = () => {
     if (!exportUrl || !exportInfo) return "";
     const [y, m] = (exportInfo.month || month).split("-").map(Number);
     const monthLabel = `${HEBREW_MONTHS[(m || 1) - 1]} ${y}`;
     const ils = (n: number) => "₪" + Number(n || 0).toLocaleString("he-IL", { maximumFractionDigits: 0 });
+    const d = exportInfo.direction || "all";
+    const lines: string[] = [];
+    if (d !== "expense") lines.push(`💰 הכנסות: ${ils(exportInfo.total_income)}`);
+    if (d !== "income") lines.push(`💸 הוצאות: ${ils(exportInfo.total_expenses)}`);
+    if (d === "all") lines.push(`📊 רווח נקי: ${ils(exportInfo.net)}`);
+    lines.push(`🧾 ${exportInfo.transactions_count} רשומות, ${exportInfo.documents_count} קבלות ומסמכים`);
     return (
-      `שלום, מצורף דוח כספים לחודש ${monthLabel} — יהב אוחנה (יהב אינסטלציה):\n\n` +
-      `💰 הכנסות: ${ils(exportInfo.total_income)}\n` +
-      `💸 הוצאות: ${ils(exportInfo.total_expenses)}\n` +
-      `📊 רווח נקי: ${ils(exportInfo.net)}\n` +
-      `🧾 ${exportInfo.transactions_count} רשומות, ${exportInfo.documents_count} קבלות ומסמכים\n\n` +
-      `בקישור: קובץ אקסל מסודר (כולל גיליון סיכום) + כל הקבלות והמסמכים:\n${exportUrl}\n\n` +
+      `שלום, מצורף דוח כספים (${directionLabel(d)}) לחודש ${monthLabel} — יהב אוחנה (יהב אינסטלציה):\n\n` +
+      lines.join("\n") + "\n\n" +
+      `בקישור: קובץ אקסל מסודר (כולל גיליון סיכום) + כל הקבלות מאוחדות בקובץ PDF אחד לפי סדר תאריכים:\n${exportUrl}\n\n` +
       `הקישור תקף ל-7 ימים. לכל שאלה: 054-2121204`
     );
   };
@@ -252,10 +262,25 @@ export default function Finance() {
             </Button>
           )}
           {canEdit && (
-            <Button variant="outline" onClick={handleExport} disabled={exporting} className="gap-1.5">
-              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              ייצוא לרו״ח
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={exporting} className="gap-1.5">
+                  {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  ייצוא לרו״ח
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport("all")} className="gap-2">
+                  <ArrowDownUp className="w-4 h-4" /> הכל — הכנסות והוצאות
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("income")} className="gap-2 text-green-700 dark:text-green-400">
+                  <TrendingUp className="w-4 h-4" /> רק הכנסות
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("expense")} className="gap-2 text-red-700 dark:text-red-400">
+                  <TrendingDown className="w-4 h-4" /> רק הוצאות
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>
@@ -281,10 +306,11 @@ export default function Finance() {
           <CardContent className="p-4 flex items-center gap-3">
             <FileText className="w-5 h-5 text-primary shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">📦 הדוח לרו״ח מוכן (ZIP)</p>
+              <p className="text-sm font-medium">📦 הדוח לרו״ח מוכן — {directionLabel(exportInfo?.direction)}</p>
               <p className="text-xs text-muted-foreground">
-                אקסל עם גיליון סיכום הכנסות/הוצאות + כל הקבלות והמסמכים • תקף 7 ימים
-                {exportInfo && ` • הכנסות ₪${Number(exportInfo.total_income).toLocaleString("he-IL", { maximumFractionDigits: 0 })} / הוצאות ₪${Number(exportInfo.total_expenses).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`}
+                אקסל עם גיליון סיכום + כל הקבלות ב-PDF אחד מסודר • תקף 7 ימים
+                {exportInfo && exportInfo.direction !== "expense" && ` • הכנסות ₪${Number(exportInfo.total_income).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`}
+                {exportInfo && exportInfo.direction !== "income" && ` • הוצאות ₪${Number(exportInfo.total_expenses).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`}
               </p>
             </div>
             <div className="flex gap-2 flex-wrap shrink-0">
