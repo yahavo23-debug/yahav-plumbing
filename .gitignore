@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# סודות וקבצי סביבה — לעולם לא לדחוף ל-git
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
