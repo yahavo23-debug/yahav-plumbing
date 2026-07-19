@@ -19,14 +19,40 @@ const Auth = () => {
   const [phone, setPhone] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [loading, setLoading] = useState(false);
+  // שלב אימות דו-שלבי בהתחברות
+  const [mfaStep, setMfaStep] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { logoUrl } = useLogo();
 
-  if (user) {
+  if (user && !mfaStep) {
     navigate("/", { replace: true });
     return null;
   }
+
+  /** אחרי סיסמה נכונה — אם למשתמש יש 2FA, דורשים גם קוד לפני כניסה */
+  const verifyMfa = async () => {
+    if (!mfaFactorId || mfaCode.trim().length < 6) {
+      toast({ title: "קוד חסר", description: "הזן את הקוד בן 6 הספרות מהאפליקציה", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
+      if (chErr || !ch) throw chErr || new Error("challenge failed");
+      const { error: vErr } = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId, challengeId: ch.id, code: mfaCode.trim(),
+      });
+      if (vErr) throw vErr;
+      navigate("/");
+    } catch (e: any) {
+      toast({ title: "הקוד שגוי", description: "נסה שוב עם הקוד העדכני מהאפליקציה", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +92,17 @@ const Auth = () => {
             toast({ title: "שגיאה", description: error.message, variant: "destructive" });
           }
         } else {
+          // אם למשתמש מוגדר אימות דו-שלבי — דורשים קוד לפני כניסה
+          const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2") {
+            const { data: f } = await supabase.auth.mfa.listFactors();
+            const totp = (f?.totp || []).find((x: any) => x.status === "verified");
+            setMfaFactorId(totp?.id ?? null);
+            setMfaStep(true);
+            setMfaCode("");
+            setLoading(false);
+            return;
+          }
           navigate("/");
         }
       } else {
@@ -115,10 +152,12 @@ const Auth = () => {
             </div>
           )}
           <h1 className="text-2xl font-bold leading-none tracking-tight">
-            {forgotMode ? "שחזור סיסמה" : isLogin ? "כניסה למערכת" : "הרשמה"}
+            {mfaStep ? "אימות דו-שלבי" : forgotMode ? "שחזור סיסמה" : isLogin ? "כניסה למערכת" : "הרשמה"}
           </h1>
           <CardDescription>
-            {forgotMode
+            {mfaStep
+              ? "הזן את הקוד בן 6 הספרות מאפליקציית המאמת שלך"
+              : forgotMode
               ? "הזן את כתובת האימייל שלך ונשלח לך קישור לאיפוס הסיסמה"
               : isLogin
               ? "הזן את הפרטים שלך כדי להתחבר"
@@ -126,6 +165,31 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {mfaStep ? (
+            <div className="space-y-4">
+              <Input
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                onKeyDown={(e) => { if (e.key === "Enter") verifyMfa(); }}
+                placeholder="000000"
+                inputMode="numeric"
+                dir="ltr"
+                className="text-center text-2xl tracking-[0.5em] font-mono h-14"
+                autoFocus
+              />
+              <Button onClick={verifyMfa} className="w-full h-12 text-base" disabled={loading || mfaCode.length < 6}>
+                {loading ? "בודק..." : "אמת והתחבר"}
+              </Button>
+              <button
+                type="button"
+                onClick={() => { setMfaStep(false); setMfaCode(""); supabase.auth.signOut(); }}
+                className="w-full text-sm text-muted-foreground hover:underline"
+              >
+                חזרה למסך הכניסה
+              </button>
+            </div>
+          ) : (
+          <>
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && !forgotMode && (
 
@@ -227,6 +291,8 @@ const Auth = () => {
               </button>
             )}
           </div>
+          </>
+          )}
         </CardContent>
       </Card>
     </main>
