@@ -82,18 +82,37 @@ serve(async (req) => {
       throw new Error("אין הרשאה לייצוא");
     }
 
-    const { month, direction = "all" } = await req.json();
+    const { month, direction = "all", period = "month" } = await req.json();
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
       throw new Error("Invalid month format");
     }
     if (!["all", "income", "expense"].includes(direction)) {
       throw new Error("Invalid direction");
     }
+    if (!["month", "year", "all"].includes(period)) {
+      throw new Error("Invalid period");
+    }
 
+    // טווח התאריכים לפי התקופה שנבחרה במסך: חודש / שנה / כל התקופות
     const [year, mon] = month.split("-").map(Number);
-    const startDate = `${month}-01`;
-    const lastDay = new Date(year, mon, 0).getDate();
-    const endDate = `${month}-${String(lastDay).padStart(2, "0")}`;
+    let startDate: string, endDate: string, fileTag: string, periodLabel: string;
+    if (period === "all") {
+      startDate = "2000-01-01";
+      endDate = "2100-01-01";
+      fileTag = "All";
+      periodLabel = "כל התקופות";
+    } else if (period === "year") {
+      startDate = `${year}-01-01`;
+      endDate = `${year}-12-31`;
+      fileTag = String(year);
+      periodLabel = `שנת ${year}`;
+    } else {
+      const lastDay = new Date(year, mon, 0).getDate();
+      startDate = `${month}-01`;
+      endDate = `${month}-${String(lastDay).padStart(2, "0")}`;
+      fileTag = month;
+      periodLabel = month;
+    }
 
     // Fetch transactions
     const { data: transactions, error: txnError } = await adminClient
@@ -135,7 +154,7 @@ serve(async (req) => {
       return [...m.entries()].sort((a, b) => b[1] - a[1]);
     };
     const summaryAoa: (string | number)[][] = [
-      [`דוח כספים (${directionTitles[direction]}) — יהב אינסטלציה`, month],
+      [`דוח כספים (${directionTitles[direction]}) — יהב אינסטלציה`, periodLabel],
       [],
       ...(direction !== "expense" ? [["סה\"כ הכנסות", totalIncome] as (string | number)[]] : []),
       ...(direction !== "income" ? [["סה\"כ הוצאות", totalExpenses] as (string | number)[]] : []),
@@ -185,15 +204,15 @@ serve(async (req) => {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, wsSummary, "סיכום");
-    XLSX.utils.book_append_sheet(wb, ws, `כספים ${month}`);
+    XLSX.utils.book_append_sheet(wb, ws, `כספים ${fileTag}`);
     const xlsxBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Uint8Array;
 
     // ========== 2. Download all receipt files ==========
-    const receiptsFolder = `Receipts_${month}`;
+    const receiptsFolder = `Receipts_${fileTag}`;
     const zipFiles: Record<string, Uint8Array> = {};
 
     // Add XLSX to zip
-    zipFiles[`Finance_${month}.xlsx`] = new Uint8Array(xlsxBuffer);
+    zipFiles[`Finance_${fileTag}.xlsx`] = new Uint8Array(xlsxBuffer);
 
     // הורדת כל המסמכים המצורפים (לפי סדר תאריכים) לצורך איחוד ל-PDF אחד
     const docTxns = txns.filter((t: Record<string, unknown>) => t.doc_path);
@@ -265,14 +284,14 @@ serve(async (req) => {
 
     if (mergedCount > 0) {
       const pdfBytes = await mergedPdf.save();
-      zipFiles[`Receipts_${month}${direction === "all" ? "" : "_" + direction}.pdf`] = new Uint8Array(pdfBytes);
+      zipFiles[`Receipts_${fileTag}${direction === "all" ? "" : "_" + direction}.pdf`] = new Uint8Array(pdfBytes);
     }
 
     // ========== 3. Create ZIP ==========
     const zipped = zipSync(zipFiles);
 
     // ========== 4. Upload ZIP to storage ==========
-    const zipFileName = `Finance_${month}${direction === "all" ? "" : "_" + direction}.zip`;
+    const zipFileName = `Finance_${fileTag}${direction === "all" ? "" : "_" + direction}.zip`;
     const zipPath = `exports/${zipFileName}`;
 
     await adminClient.storage
@@ -294,6 +313,8 @@ serve(async (req) => {
         url: signedData!.signedUrl,
         filename: zipFileName,
         direction,
+        period,
+        period_label: periodLabel,
         month,
         transactions_count: txns.length,
         documents_count: docCount,

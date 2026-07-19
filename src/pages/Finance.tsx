@@ -62,6 +62,7 @@ export default function Finance() {
     total_income: number; total_expenses: number; net: number;
     transactions_count: number; documents_count: number; month: string;
     direction?: "all" | "income" | "expense";
+    period?: "month" | "year" | "all"; period_label?: string;
   } | null>(null);
 
   // Active filter label
@@ -170,7 +171,7 @@ export default function Finance() {
     setExportUrl(null);
     try {
       const { data, error } = await supabase.functions.invoke("export-finance", {
-        body: { month, direction },
+        body: { month, direction, period },
       });
       if (error) throw error;
       if (data?.url) {
@@ -201,7 +202,11 @@ export default function Finance() {
   const buildAccountantMessage = () => {
     if (!exportUrl || !exportInfo) return "";
     const [y, m] = (exportInfo.month || month).split("-").map(Number);
-    const monthLabel = `${HEBREW_MONTHS[(m || 1) - 1]} ${y}`;
+    const monthLabel = exportInfo.period === "all"
+      ? "כל התקופות"
+      : exportInfo.period === "year"
+      ? `שנת ${y}`
+      : `${HEBREW_MONTHS[(m || 1) - 1]} ${y}`;
     const ils = (n: number) => "₪" + Number(n || 0).toLocaleString("he-IL", { maximumFractionDigits: 0 });
     const d = exportInfo.direction || "all";
     const lines: string[] = [];
@@ -210,7 +215,7 @@ export default function Finance() {
     if (d === "all") lines.push(`📊 רווח נקי: ${ils(exportInfo.net)}`);
     lines.push(`🧾 ${exportInfo.transactions_count} רשומות, ${exportInfo.documents_count} קבלות ומסמכים`);
     return (
-      `שלום, מצורף דוח כספים (${directionLabel(d)}) לחודש ${monthLabel} — יהב אוחנה (יהב אינסטלציה):\n\n` +
+      `שלום, מצורף דוח כספים (${directionLabel(d)}) — ${monthLabel} — יהב אוחנה (יהב אינסטלציה):\n\n` +
       lines.join("\n") + "\n\n" +
       `בקישור: קובץ אקסל מסודר (כולל גיליון סיכום) + כל הקבלות מאוחדות בקובץ PDF אחד לפי סדר תאריכים:\n${exportUrl}\n\n` +
       `הקישור תקף ל-7 ימים. לכל שאלה: 054-2121204`
@@ -306,7 +311,10 @@ export default function Finance() {
           <CardContent className="p-4 flex items-center gap-3">
             <FileText className="w-5 h-5 text-primary shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">📦 הדוח לרו״ח מוכן — {directionLabel(exportInfo?.direction)}</p>
+              <p className="text-sm font-medium">
+                📦 הדוח לרו״ח מוכן — {directionLabel(exportInfo?.direction)}
+                {exportInfo?.period_label && ` • ${exportInfo.period_label}`}
+              </p>
               <p className="text-xs text-muted-foreground">
                 אקסל עם גיליון סיכום + כל הקבלות ב-PDF אחד מסודר • תקף 7 ימים
                 {exportInfo && exportInfo.direction !== "expense" && ` • הכנסות ₪${Number(exportInfo.total_income).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`}
