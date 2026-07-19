@@ -102,7 +102,45 @@ serve(async (req) => {
     if (txnError) throw txnError;
     const txns = transactions || [];
 
+    // Totals — computed early for the summary sheet
+    const totalIncome = txns
+      .filter((t: Record<string, unknown>) => t.direction === "income")
+      .reduce((s: number, t: Record<string, unknown>) => s + Number(t.amount), 0);
+    const totalExpenses = txns
+      .filter((t: Record<string, unknown>) => t.direction === "expense")
+      .reduce((s: number, t: Record<string, unknown>) => s + Number(t.amount), 0);
+    const docCount = txns.filter((t: Record<string, unknown>) => t.doc_path).length;
+
     // ========== 1. Build XLSX ==========
+    // גיליון סיכום — הכנסות מול הוצאות + פירוט לפי קטגוריה
+    const catSum = (dir: string): [string, number][] => {
+      const m = new Map<string, number>();
+      txns.filter((t: Record<string, unknown>) => t.direction === dir)
+        .forEach((t: Record<string, unknown>) => {
+          const label = categoryLabels[t.category as string] || (t.category as string) || "אחר";
+          m.set(label, (m.get(label) || 0) + Number(t.amount));
+        });
+      return [...m.entries()].sort((a, b) => b[1] - a[1]);
+    };
+    const summaryAoa: (string | number)[][] = [
+      ["דוח כספים — יהב אינסטלציה", month],
+      [],
+      ["סה\"כ הכנסות", totalIncome],
+      ["סה\"כ הוצאות", totalExpenses],
+      ["רווח נקי", totalIncome - totalExpenses],
+      ["מס' רשומות", txns.length],
+      ["מס' קבלות ומסמכים מצורפים", docCount],
+      [],
+      ["הכנסות לפי קטגוריה", ""],
+      ...catSum("income"),
+      [],
+      ["הוצאות לפי קטגוריה", ""],
+      ...catSum("expense"),
+    ];
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryAoa);
+    wsSummary["!cols"] = [{ wch: 28 }, { wch: 16 }];
+    wsSummary["!sheetViews"] = [{ rightToLeft: true }];
+
     const excelRows = txns.map((t: Record<string, unknown>, idx: number) => ({
       "מס׳": idx + 1,
       "תאריך": t.txn_date,
@@ -140,6 +178,7 @@ serve(async (req) => {
     ws["!sheetViews"] = [{ rightToLeft: true }];
 
     const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsSummary, "סיכום");
     XLSX.utils.book_append_sheet(wb, ws, `כספים ${month}`);
     const xlsxBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Uint8Array;
 
@@ -163,16 +202,17 @@ serve(async (req) => {
           const amount = t.amount;
           const renamedFile = `${t.txn_date}_${catLabel}_${amount}ILS${ext}`;
 
-          const { data, error } = await adminClient.storage
-            .from("finance-docs")
-            .download(docPath);
-
-          if (error || !data) {
-            console.error(`Failed to download ${docPath}:`, error?.message);
+          // קבלות הכנסה שמורות ב-bucket "receipts", מסמכי הוצאות ב-"finance-docs" — מנסים את שניהם
+          let file = await adminClient.storage.from("finance-docs").download(docPath);
+          if (file.error || !file.data) {
+            file = await adminClient.storage.from("receipts").download(docPath);
+          }
+          if (file.error || !file.data) {
+            console.error(`Failed to download ${docPath} from both buckets:`, file.error?.message);
             return;
           }
 
-          const arrayBuffer = await data.arrayBuffer();
+          const arrayBuffer = await file.data.arrayBuffer();
           zipFiles[`${receiptsFolder}/${renamedFile}`] = new Uint8Array(arrayBuffer);
         } catch (err) {
           console.error(`Error downloading doc for txn ${t.id}:`, err);
@@ -201,16 +241,6 @@ serve(async (req) => {
       .createSignedUrl(zipPath, 7 * 24 * 60 * 60);
 
     if (signError) throw signError;
-
-    // Calculate totals for response
-    const totalIncome = txns
-      .filter((t: Record<string, unknown>) => t.direction === "income")
-      .reduce((s: number, t: Record<string, unknown>) => s + Number(t.amount), 0);
-    const totalExpenses = txns
-      .filter((t: Record<string, unknown>) => t.direction === "expense")
-      .reduce((s: number, t: Record<string, unknown>) => s + Number(t.amount), 0);
-
-    const docCount = txns.filter((t: Record<string, unknown>) => t.doc_path).length;
 
     return new Response(
       JSON.stringify({

@@ -18,7 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Plus, TrendingUp, TrendingDown, ArrowDownUp, Trash2,
   Pencil, Download, Loader2, FileText, Copy, RotateCcw,
-  Calendar, CalendarDays, ListChecks, Search,
+  Calendar, CalendarDays, ListChecks, Search, MessageCircle, Mail,
 } from "lucide-react";
 import {
   categoryLabels, paymentMethodLabels,
@@ -55,6 +55,10 @@ export default function Finance() {
 
   const [exporting, setExporting] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
+  const [exportInfo, setExportInfo] = useState<{
+    total_income: number; total_expenses: number; net: number;
+    transactions_count: number; documents_count: number; month: string;
+  } | null>(null);
 
   // Active filter label
   const periodLabel = useMemo(() => {
@@ -167,7 +171,8 @@ export default function Finance() {
       if (error) throw error;
       if (data?.url) {
         setExportUrl(data.url);
-        toast({ title: "הייצוא מוכן", description: "לחץ על העתק קישור או הורד" });
+        setExportInfo(data);
+        toast({ title: "הדוח מוכן", description: "אפשר לשלוח לרו״ח בוואטסאפ/אימייל או להוריד" });
       } else {
         throw new Error("No URL returned");
       }
@@ -183,6 +188,23 @@ export default function Finance() {
       navigator.clipboard.writeText(exportUrl);
       toast({ title: "הקישור הועתק" });
     }
+  };
+
+  /** הודעה מסודרת לרו״ח: סיכום הכנסות מול הוצאות + קישור לחבילה המלאה */
+  const buildAccountantMessage = () => {
+    if (!exportUrl || !exportInfo) return "";
+    const [y, m] = (exportInfo.month || month).split("-").map(Number);
+    const monthLabel = `${HEBREW_MONTHS[(m || 1) - 1]} ${y}`;
+    const ils = (n: number) => "₪" + Number(n || 0).toLocaleString("he-IL", { maximumFractionDigits: 0 });
+    return (
+      `שלום, מצורף דוח כספים לחודש ${monthLabel} — יהב אוחנה (יהב אינסטלציה):\n\n` +
+      `💰 הכנסות: ${ils(exportInfo.total_income)}\n` +
+      `💸 הוצאות: ${ils(exportInfo.total_expenses)}\n` +
+      `📊 רווח נקי: ${ils(exportInfo.net)}\n` +
+      `🧾 ${exportInfo.transactions_count} רשומות, ${exportInfo.documents_count} קבלות ומסמכים\n\n` +
+      `בקישור: קובץ אקסל מסודר (כולל גיליון סיכום) + כל הקבלות והמסמכים:\n${exportUrl}\n\n` +
+      `הקישור תקף ל-7 ימים. לכל שאלה: 054-2121204`
+    );
   };
 
   return (
@@ -259,15 +281,37 @@ export default function Finance() {
           <CardContent className="p-4 flex items-center gap-3">
             <FileText className="w-5 h-5 text-primary shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">📦 חבילת הייצוא מוכנה להורדה (ZIP)</p>
-              <p className="text-xs text-muted-foreground">כולל קובץ Excel + כל המסמכים המצורפים • תקף 7 ימים</p>
+              <p className="text-sm font-medium">📦 הדוח לרו״ח מוכן (ZIP)</p>
+              <p className="text-xs text-muted-foreground">
+                אקסל עם גיליון סיכום הכנסות/הוצאות + כל הקבלות והמסמכים • תקף 7 ימים
+                {exportInfo && ` • הכנסות ₪${Number(exportInfo.total_income).toLocaleString("he-IL", { maximumFractionDigits: 0 })} / הוצאות ₪${Number(exportInfo.total_expenses).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`}
+              </p>
             </div>
-            <Button size="sm" variant="outline" onClick={copyExportUrl} className="gap-1.5 shrink-0">
-              <Copy className="w-3.5 h-3.5" /> העתק קישור
-            </Button>
-            <Button size="sm" asChild className="shrink-0">
-              <a href={exportUrl} target="_blank" rel="noopener noreferrer">הורד</a>
-            </Button>
+            <div className="flex gap-2 flex-wrap shrink-0">
+              <Button size="sm" asChild className="gap-1.5 bg-green-600 hover:bg-green-700 text-white">
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(buildAccountantMessage())}`}
+                  target="_blank" rel="noopener noreferrer"
+                  title="נפתח וואטסאפ — בחר את איש הקשר של הרו״ח"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" /> שלח בוואטסאפ
+                </a>
+              </Button>
+              <Button size="sm" variant="outline" asChild className="gap-1.5">
+                <a
+                  href={`mailto:?subject=${encodeURIComponent("דוח כספים — יהב אינסטלציה")}&body=${encodeURIComponent(buildAccountantMessage())}`}
+                  title="נפתח אימייל עם הדוח — הזן את כתובת הרו״ח"
+                >
+                  <Mail className="w-3.5 h-3.5" /> שלח באימייל
+                </a>
+              </Button>
+              <Button size="sm" variant="outline" onClick={copyExportUrl} className="gap-1.5">
+                <Copy className="w-3.5 h-3.5" /> העתק קישור
+              </Button>
+              <Button size="sm" asChild>
+                <a href={exportUrl} target="_blank" rel="noopener noreferrer">הורד</a>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
