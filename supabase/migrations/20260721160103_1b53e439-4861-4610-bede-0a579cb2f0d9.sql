@@ -1,0 +1,1 @@
+CREATE POLICY "Admin secretary update finance docs" ON storage.objects FOR UPDATE USING ((bucket_id = 'finance-docs'::text) AND (public.is_admin(auth.uid()) OR public.has_role(auth.uid(), 'secretary'::app_role))) WITH CHECK ((bucket_id = 'finance-docs'::text) AND (public.is_admin(auth.uid()) OR public.has_role(auth.uid(), 'secretary'::app_role)));
