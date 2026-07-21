@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import {
   Landmark, CreditCard, Shield, AlertTriangle, Plus, Trash2, ChevronDown,
-  CalendarClock, Pencil, Check, X,
+  CalendarClock, Pencil, Check, X, Repeat,
 } from "lucide-react";
 import { differenceInDays, parseISO, format } from "date-fns";
 
@@ -22,14 +22,39 @@ const STORAGE_PATH = "personal/finance-items.json";
 interface LoanItem { id: string; name: string; remaining: number; monthly: number; endDate?: string }
 interface CreditItem { id: string; name: string; monthly: number; day?: string }
 interface InsuranceItem { id: string; name: string; monthly: number; renewDate?: string }
-interface ItemsFile { loans: LoanItem[]; credit: CreditItem[]; insurance: InsuranceItem[] }
+interface FixedItem { id: string; name: string; monthly: number; day?: string; note?: string }
+interface ItemsFile { loans: LoanItem[]; credit: CreditItem[]; insurance: InsuranceItem[]; fixed: FixedItem[]; seededBank?: boolean }
 
 interface Txn { amount: number; txn_date: string; counterparty_name?: string | null; direction: string; notes?: string | null }
 
 const fmtILS = (n: number) => "₪" + Math.round(n).toLocaleString("he-IL");
 const uid = () => Math.random().toString(36).slice(2, 9);
 
-const empty: ItemsFile = { loans: [], credit: [], insurance: [] };
+const empty: ItemsFile = { loans: [], credit: [], insurance: [], fixed: [] };
+
+/**
+ * נתוני פתיחה — התשלומים הקבועים שאותרו בחשבון לאומי (סנכרון 21.07.2026).
+ * נטענים אוטומטית בפעם הראשונה; אחר כך יהב עורך חופשי מהמסך.
+ */
+const BANK_SEED: Partial<ItemsFile> = {
+  fixed: [
+    { id: "seed-rent", name: "העברה לירון בוכובזה (שכירות)", monthly: 6000, day: "8" },
+    { id: "seed-vaad", name: "ועד בית", monthly: 400, day: "10" },
+    { id: "seed-mofet", name: "מופ\"ת", monthly: 1330, day: "1" },
+    { id: "seed-bituah-leumi", name: "ביטוח לאומי", monthly: 1088, day: "14" },
+  ],
+  loans: [
+    { id: "seed-loan-leumi", name: "הלוואת לאומי (מוחזרה מ-8.7.26)", remaining: 148334, monthly: 2296, endDate: "2033-07-10" },
+  ],
+  insurance: [
+    { id: "seed-idi", name: "ביטוח ישיר (איי.די.איי) — 2 פוליסות", monthly: 338 },
+  ],
+  credit: [
+    { id: "seed-mc", name: "לאומי מאסטרקארד 6819 (משתנה)", monthly: 1221, day: "10" },
+    { id: "seed-visa", name: "לאומי ויזה 4745 (משתנה)", monthly: 841, day: "10" },
+    { id: "seed-max", name: "כרטיס מקס (משתנה, כמה חיובים בחודש)", monthly: 1500 },
+  ],
+};
 
 export function FinanceHubExtras({ txns }: { txns: Txn[] }) {
   const [items, setItems] = useState<ItemsFile>(empty);
@@ -38,13 +63,32 @@ export function FinanceHubExtras({ txns }: { txns: Txn[] }) {
 
   useEffect(() => {
     (async () => {
+      let current: ItemsFile = { ...empty };
       try {
         const { data } = await supabase.storage.from("finance-docs").download(STORAGE_PATH);
         if (data) {
           const parsed = JSON.parse(await data.text());
-          setItems({ ...empty, ...parsed });
+          current = { ...empty, ...parsed };
         }
       } catch { /* קובץ עוד לא קיים — נתחיל ריק */ }
+
+      // מילוי חד-פעמי של מה שאותר בסנכרון הבנק — רק לסקציות שעדיין ריקות
+      if (!current.seededBank) {
+        const seeded: ItemsFile = {
+          ...current,
+          fixed: current.fixed.length ? current.fixed : (BANK_SEED.fixed as FixedItem[]),
+          loans: current.loans.length ? current.loans : (BANK_SEED.loans as LoanItem[]),
+          insurance: current.insurance.length ? current.insurance : (BANK_SEED.insurance as InsuranceItem[]),
+          credit: current.credit.length ? current.credit : (BANK_SEED.credit as CreditItem[]),
+          seededBank: true,
+        };
+        setItems(seeded);
+        setLoaded(true);
+        persist(seeded);
+        return;
+      }
+
+      setItems(current);
       setLoaded(true);
     })();
   }, []);
@@ -99,11 +143,50 @@ export function FinanceHubExtras({ txns }: { txns: Txn[] }) {
   const loanMonthly = items.loans.reduce((s, l) => s + Number(l.monthly || 0), 0);
   const creditMonthly = items.credit.reduce((s, c) => s + Number(c.monthly || 0), 0);
   const insuranceMonthly = items.insurance.reduce((s, c) => s + Number(c.monthly || 0), 0);
+  const fixedMonthly = items.fixed.reduce((s, f) => s + Number(f.monthly || 0), 0);
+  const totalMonthly = fixedMonthly + loanMonthly + creditMonthly + insuranceMonthly;
 
   if (!loaded) return <div className="h-24 rounded-2xl bg-muted animate-pulse" />;
 
   return (
     <div className="space-y-4">
+      {/* ── כמה יוצא בקבוע כל חודש ── */}
+      {totalMonthly > 0 && (
+        <div className="rounded-2xl bg-gradient-to-l from-rose-600 to-orange-500 text-white p-4 flex items-center justify-between shadow">
+          <div>
+            <p className="text-white/85 text-sm">💸 סך התשלומים הקבועים שלך בחודש</p>
+            <p className="text-3xl font-bold mt-0.5">{fmtILS(totalMonthly)}</p>
+            <p className="text-xs text-white/75 mt-1">
+              העברות קבועות {fmtILS(fixedMonthly)} · הלוואות {fmtILS(loanMonthly)} · אשראי {fmtILS(creditMonthly)} · ביטוחים {fmtILS(insuranceMonthly)}
+            </p>
+          </div>
+          <Repeat className="w-10 h-10 opacity-60 shrink-0" />
+        </div>
+      )}
+
+      {/* ── תשלומים קבועים והוראות קבע ── */}
+      <ManagedSection
+        title="תשלומים קבועים והוראות קבע"
+        icon={Repeat}
+        color="text-rose-600"
+        summary={items.fixed.length ? `${fmtILS(fixedMonthly)} בחודש · ${items.fixed.length} תשלומים` : "אין תשלומים קבועים רשומים"}
+        addLabel="הוסף תשלום קבוע"
+        fields={[
+          { key: "name", label: "שם התשלום (למשל: שכירות / גן ילדים)", type: "text" },
+          { key: "monthly", label: "סכום חודשי (₪)", type: "number" },
+          { key: "day", label: "יום חיוב בחודש (לא חובה)", type: "text" },
+        ]}
+        rows={items.fixed}
+        onAdd={(v) => persist({ ...items, fixed: [...items.fixed, { id: uid(), name: v.name, monthly: Number(v.monthly) || 0, day: v.day } as FixedItem] })}
+        onDelete={(id) => persist({ ...items, fixed: items.fixed.filter((x) => x.id !== id) })}
+        renderRow={(f: FixedItem) => (
+          <>
+            <span className="font-medium flex-1">{f.name}</span>
+            <span className="text-sm text-red-600">{fmtILS(f.monthly)}/חודש</span>
+            {f.day && <span className="text-xs text-muted-foreground">ב-{f.day} לחודש</span>}
+          </>
+        )}
+      />
       {/* ── כפילויות ── */}
       {duplicates.length > 0 && (
         <Card className="rounded-2xl border-amber-300 bg-amber-50 dark:bg-amber-900/10">
