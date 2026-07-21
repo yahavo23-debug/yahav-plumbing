@@ -76,6 +76,25 @@ export default function InventoryPage() {
   function openNew() { setEditing(null); setEditorOpen(true); }
   function openEdit(i: InventoryItemRow) { setEditing(i); setEditorOpen(true); }
 
+  /** עדכון מלאי מהיר ישירות מהכרטיס: מינוס = לקחתי לעבודה (שימוש), פלוס = הוספתי למלאי */
+  async function quickAdjust(item: InventoryItemRow, delta: number) {
+    const next = Math.max(0, Number(item.quantity_in_stock) + delta);
+    if (next === Number(item.quantity_in_stock)) return;
+    setItems(prev => prev.map(x => x.id === item.id ? { ...x, quantity_in_stock: next } : x));
+    const { error } = await supabase.from("inventory_items").update({ quantity_in_stock: next }).eq("id", item.id);
+    if (error) {
+      setItems(prev => prev.map(x => x.id === item.id ? { ...x, quantity_in_stock: item.quantity_in_stock } : x));
+      toast({ title: "שגיאה בעדכון", description: error.message, variant: "destructive" });
+      return;
+    }
+    await supabase.from("inventory_movements").insert({
+      inventory_item_id: item.id,
+      movement_type: delta < 0 ? "use" : "restock",
+      quantity: Math.abs(delta),
+    });
+    if (delta < 0) setUsageStats(s => ({ ...s, [item.id]: (s[item.id] || 0) + Math.abs(delta) }));
+  }
+
   async function confirmDelete() {
     if (!deleteId) return;
     const { error } = await supabase.from("inventory_items").update({ is_archived: true }).eq("id", deleteId);
@@ -147,7 +166,7 @@ export default function InventoryPage() {
             ) : filtered.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">אין מוצרים</p>
             ) : (
-              <ItemGrid items={filtered} categories={categories} usage={usageStats} onEdit={openEdit} onDelete={isAdmin ? setDeleteId : undefined} />
+              <ItemGrid items={filtered} categories={categories} usage={usageStats} onEdit={openEdit} onDelete={isAdmin ? setDeleteId : undefined} onAdjust={quickAdjust} />
             )}
           </TabsContent>
         </Tabs>
@@ -269,13 +288,14 @@ function TopSellersList({
 }
 
 function ItemGrid({
-  items, categories, usage, onEdit, onDelete,
+  items, categories, usage, onEdit, onDelete, onAdjust,
 }: {
   items: InventoryItemRow[];
   categories: CategoryRow[];
   usage: Record<string, number>;
   onEdit: (i: InventoryItemRow) => void;
   onDelete?: (id: string) => void;
+  onAdjust: (i: InventoryItemRow, delta: number) => void;
 }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -292,9 +312,29 @@ function ItemGrid({
                 <h4 className="font-semibold text-sm leading-tight line-clamp-2 min-h-[2.5rem]">{i.name}</h4>
                 {cat && <span className="inline-block text-[10px] px-2 py-0.5 rounded-full mt-1" style={{ background: cat.color + "22", color: cat.color }}>{cat.name}</span>}
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className={`font-bold text-base ${low ? "text-warning" : ""}`}>{i.quantity_in_stock}</span>
-                <span className="text-muted-foreground">מינ׳ {i.minimum_stock}</span>
+              {/* עדכון מלאי מהיר: מינוס = לקחתי לעבודה, פלוס = הוספתי */}
+              <div className="flex items-center justify-between gap-1">
+                <Button
+                  size="sm" variant="outline"
+                  className="h-9 w-9 p-0 shrink-0 border-red-300 dark:border-red-900/60 text-red-600 dark:text-red-400"
+                  onClick={() => onAdjust(i, -1)}
+                  disabled={i.quantity_in_stock <= 0}
+                  title="לקחתי אחד לעבודה"
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+                <div className="text-center leading-tight">
+                  <div className={`font-bold text-lg ${low ? "text-warning" : ""}`}>{i.quantity_in_stock}</div>
+                  <div className="text-[10px] text-muted-foreground">מינ׳ {i.minimum_stock}</div>
+                </div>
+                <Button
+                  size="sm" variant="outline"
+                  className="h-9 w-9 p-0 shrink-0 border-emerald-300 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400"
+                  onClick={() => onAdjust(i, 1)}
+                  title="הוספתי אחד למלאי"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
               </div>
               {i.recommended_sale_price > 0 && (
                 <div className="text-xs text-muted-foreground">₪{i.recommended_sale_price} ללקוח</div>
@@ -332,12 +372,28 @@ function PurchaseList({
     return <p className="text-center text-muted-foreground py-8">אין מוצרים שצריך לקנות</p>;
   }
 
+  /** כמות מומלצת לקנייה: להגיע לכפול מהמינימום (לפחות 1) */
+  function suggestedQty(i: InventoryItemRow) {
+    return Math.max(i.minimum_stock * 2 - i.quantity_in_stock, 1);
+  }
+
   function toggle(id: string) {
     setCart(c => {
       const next = { ...c };
-      if (next[id]) delete next[id]; else next[id] = 1;
+      const item = items.find(i => i.id === id);
+      if (next[id]) delete next[id]; else next[id] = item ? suggestedQty(item) : 1;
       return next;
     });
+  }
+
+  /** רשימת קנייה מוכנה לוואטסאפ — כל מה שחסר עם כמות מומלצת */
+  function sendWhatsAppList() {
+    const lines = items.map(i => {
+      const qty = cart[i.id] || suggestedQty(i);
+      return `▫️ ${i.name} — ${qty} יח׳ (נשארו ${i.quantity_in_stock})`;
+    });
+    const text = `🛒 *רשימת קנייה — יהב אינסטלציה*\n${new Date().toLocaleDateString("he-IL")}\n\n${lines.join("\n")}\n\nסה״כ ${items.length} מוצרים`;
+    window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
   }
   function setQty(id: string, q: number) {
     if (q < 1) { const n = { ...cart }; delete n[id]; setCart(n); return; }
@@ -372,6 +428,15 @@ function PurchaseList({
 
   return (
     <div className="space-y-3 pb-24">
+      {/* שליחת רשימת הקנייה לוואטסאפ — לעמוד מול הספק עם הרשימה ביד */}
+      <Button
+        onClick={sendWhatsAppList}
+        className="w-full h-12 gap-2 text-base bg-gradient-to-l from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white"
+      >
+        <ShoppingCart className="w-5 h-5" />
+        שלח רשימת קנייה לוואטסאפ ({items.length} מוצרים)
+      </Button>
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {items.map(i => {
           const cat = categories.find(c => c.id === i.category_id);
