@@ -597,33 +597,58 @@ export type Database = {
       }
       inventory_movements: {
         Row: {
+          borrower: string | null
           created_at: string
           created_by: string
+          customer_id: string | null
+          customer_name: string | null
           id: string
           inventory_item_id: string
+          loan_status: string | null
           movement_type: string
           quantity: number
           service_call_id: string | null
+          supplier: string | null
+          unit_price: number | null
         }
         Insert: {
+          borrower?: string | null
           created_at?: string
           created_by?: string
+          customer_id?: string | null
+          customer_name?: string | null
           id?: string
           inventory_item_id: string
+          loan_status?: string | null
           movement_type: string
           quantity: number
           service_call_id?: string | null
+          supplier?: string | null
+          unit_price?: number | null
         }
         Update: {
+          borrower?: string | null
           created_at?: string
           created_by?: string
+          customer_id?: string | null
+          customer_name?: string | null
           id?: string
           inventory_item_id?: string
+          loan_status?: string | null
           movement_type?: string
           quantity?: number
           service_call_id?: string | null
+          supplier?: string | null
+          unit_price?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_movements_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_movements_inventory_item_id_fkey"
             columns: ["inventory_item_id"]
