@@ -8,13 +8,33 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Search, AlertTriangle, TrendingUp, Package2, Edit, Trash2, Check, ShoppingCart, Minus, Flame, Trophy, Medal } from "lucide-react";
+import { Plus, Search, AlertTriangle, TrendingUp, Package2, Edit, Trash2, Check, ShoppingCart, Minus, Flame, Trophy, Medal, Handshake, Wrench, Undo2, Store, PackageMinus } from "lucide-react";
 import { InventoryImage } from "@/components/inventory/InventoryImage";
 import { ItemEditorDialog, InventoryItemRow, CategoryRow } from "@/components/inventory/ItemEditorDialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+
+/** תנועת מלאי מורחבת (העמודות החדשות מגיעות ממיגרציה — טיפוס ידני עד רענון types) */
+interface MovementRow {
+  id: string;
+  inventory_item_id: string;
+  movement_type: string;
+  quantity: number;
+  created_at: string;
+  customer_id?: string | null;
+  customer_name?: string | null;
+  unit_price?: number | null;
+  supplier?: string | null;
+  borrower?: string | null;
+  loan_status?: string | null;
+}
+
+/** מחיר קנייה מומלץ פר מוצר: הספק הכי זול + הקנייה האחרונה */
+interface PriceInfo { cheapestSupplier: string; cheapestPrice: number; lastSupplier: string; lastPrice: number }
 
 export default function InventoryPage() {
   const { isAdmin } = useAuth();
@@ -29,32 +49,68 @@ export default function InventoryPage() {
   const [usageStats, setUsageStats] = useState<Record<string, number>>({});
   const [usageStats30, setUsageStats30] = useState<Record<string, number>>({});
   const [usageStats90, setUsageStats90] = useState<Record<string, number>>({});
+  // סל הורדה: מוצרים שסומנו להורדה מהמלאי, מאושרים יחד בדיאלוג אחד
+  const [removeCart, setRemoveCart] = useState<Record<string, number>>({});
+  const [removalOpen, setRemovalOpen] = useState(false);
+  // דיאלוג קנייה (פלוס): נרשם מחיר וספק
+  const [restockTarget, setRestockTarget] = useState<InventoryItemRow | null>(null);
+  // השאלות פתוחות לקולגות
+  const [openLoans, setOpenLoans] = useState<MovementRow[]>([]);
+  // מחירי קנייה שנלמדו מהעבר
+  const [priceMap, setPriceMap] = useState<Record<string, PriceInfo>>({});
+  const [supplierNames, setSupplierNames] = useState<string[]>([]);
+  const [borrowerNames, setBorrowerNames] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: its }, { data: cats }, { data: mv }] = await Promise.all([
       supabase.from("inventory_items").select("*").eq("is_archived", false).order("name"),
       supabase.from("inventory_categories").select("id,name,color").order("sort_order"),
-      supabase.from("inventory_movements").select("inventory_item_id, quantity, movement_type, created_at").eq("movement_type", "use"),
+      supabase.from("inventory_movements").select("*").order("created_at", { ascending: true }),
     ]);
     setItems((its as any) || []);
     setCategories((cats as any) || []);
+    const rows = ((mv as any) || []) as MovementRow[];
+
     const stats: Record<string, number> = {};
     const stats30: Record<string, number> = {};
     const stats90: Record<string, number> = {};
     const now = Date.now();
     const d30 = now - 30 * 24 * 60 * 60 * 1000;
     const d90 = now - 90 * 24 * 60 * 60 * 1000;
-    (mv || []).forEach((m: any) => {
+    const prices: Record<string, PriceInfo> = {};
+    const suppliers = new Set<string>();
+    const borrowers = new Set<string>();
+
+    rows.forEach((m) => {
       const q = Number(m.quantity);
       const t = m.created_at ? new Date(m.created_at).getTime() : 0;
-      stats[m.inventory_item_id] = (stats[m.inventory_item_id] || 0) + q;
-      if (t >= d30) stats30[m.inventory_item_id] = (stats30[m.inventory_item_id] || 0) + q;
-      if (t >= d90) stats90[m.inventory_item_id] = (stats90[m.inventory_item_id] || 0) + q;
+      if (m.movement_type === "use") {
+        stats[m.inventory_item_id] = (stats[m.inventory_item_id] || 0) + q;
+        if (t >= d30) stats30[m.inventory_item_id] = (stats30[m.inventory_item_id] || 0) + q;
+        if (t >= d90) stats90[m.inventory_item_id] = (stats90[m.inventory_item_id] || 0) + q;
+      }
+      if (m.movement_type === "restock" && m.supplier && Number(m.unit_price) > 0) {
+        suppliers.add(m.supplier);
+        const p = Number(m.unit_price);
+        const cur = prices[m.inventory_item_id];
+        if (!cur) {
+          prices[m.inventory_item_id] = { cheapestSupplier: m.supplier, cheapestPrice: p, lastSupplier: m.supplier, lastPrice: p };
+        } else {
+          if (p < cur.cheapestPrice) { cur.cheapestPrice = p; cur.cheapestSupplier = m.supplier; }
+          cur.lastPrice = p; cur.lastSupplier = m.supplier; // הרשומות ממוינות מהישן לחדש
+        }
+      }
+      if (m.movement_type === "loan" && m.borrower) borrowers.add(m.borrower);
     });
+
     setUsageStats(stats);
     setUsageStats30(stats30);
     setUsageStats90(stats90);
+    setPriceMap(prices);
+    setSupplierNames([...suppliers]);
+    setBorrowerNames([...borrowers]);
+    setOpenLoans(rows.filter(m => m.movement_type === "loan" && m.loan_status === "open"));
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -76,23 +132,94 @@ export default function InventoryPage() {
   function openNew() { setEditing(null); setEditorOpen(true); }
   function openEdit(i: InventoryItemRow) { setEditing(i); setEditorOpen(true); }
 
-  /** עדכון מלאי מהיר ישירות מהכרטיס: מינוס = לקחתי לעבודה (שימוש), פלוס = הוספתי למלאי */
-  async function quickAdjust(item: InventoryItemRow, delta: number) {
-    const next = Math.max(0, Number(item.quantity_in_stock) + delta);
-    if (next === Number(item.quantity_in_stock)) return;
-    setItems(prev => prev.map(x => x.id === item.id ? { ...x, quantity_in_stock: next } : x));
-    const { error } = await supabase.from("inventory_items").update({ quantity_in_stock: next }).eq("id", item.id);
-    if (error) {
-      setItems(prev => prev.map(x => x.id === item.id ? { ...x, quantity_in_stock: item.quantity_in_stock } : x));
-      toast({ title: "שגיאה בעדכון", description: error.message, variant: "destructive" });
-      return;
+  /** מינוס על כרטיס = מוסיף לסל ההורדה. ההורדה עצמה קורית רק אחרי אישור בדיאלוג. */
+  function addToRemoveCart(item: InventoryItemRow) {
+    setRemoveCart(c => {
+      const cur = c[item.id] || 0;
+      if (cur >= Number(item.quantity_in_stock)) return c; // אין יותר במלאי
+      return { ...c, [item.id]: cur + 1 };
+    });
+  }
+
+  function decRemoveCart(id: string) {
+    setRemoveCart(c => {
+      const next = { ...c };
+      if ((next[id] || 0) <= 1) delete next[id]; else next[id] -= 1;
+      return next;
+    });
+  }
+
+  /** ביצוע ההורדה אחרי אישור: עדכון מלאי + רישום תנועה עם לקוח/קולגה/מחיר */
+  async function confirmRemoval(payload: {
+    purpose: "customer" | "loan" | "adjust";
+    customerId?: string | null;
+    customerName?: string;
+    borrower?: string;
+    prices: Record<string, string>;
+  }) {
+    const entries = Object.entries(removeCart);
+    let ok = 0;
+    for (const [id, qty] of entries) {
+      const item = items.find(i => i.id === id);
+      if (!item) continue;
+      const next = Math.max(0, Number(item.quantity_in_stock) - qty);
+      const { error } = await supabase.from("inventory_items").update({ quantity_in_stock: next }).eq("id", id);
+      if (error) continue;
+      const price = parseFloat(payload.prices[id] || "");
+      await supabase.from("inventory_movements").insert({
+        inventory_item_id: id,
+        movement_type: payload.purpose === "loan" ? "loan" : "use",
+        quantity: qty,
+        customer_id: payload.purpose === "customer" ? (payload.customerId ?? null) : null,
+        customer_name: payload.purpose === "customer" ? (payload.customerName || null) : null,
+        borrower: payload.purpose === "loan" ? (payload.borrower || null) : null,
+        loan_status: payload.purpose === "loan" ? "open" : null,
+        unit_price: Number.isFinite(price) && price > 0 ? price : null,
+      } as any);
+      ok++;
     }
+    setRemoveCart({});
+    setRemovalOpen(false);
+    toast({
+      title: payload.purpose === "loan"
+        ? `נרשמה השאלה ל${payload.borrower} (${ok} מוצרים)`
+        : `המלאי עודכן — ${ok} מוצרים`,
+    });
+    load();
+  }
+
+  /** פלוס על כרטיס = דיאלוג קנייה שרושם מחיר וספק (ולומד מי הכי זול) */
+  async function confirmRestock(item: InventoryItemRow, qty: number, price: string, supplier: string) {
+    const next = Number(item.quantity_in_stock) + qty;
+    const { error } = await supabase.from("inventory_items").update({ quantity_in_stock: next }).eq("id", item.id);
+    if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+    const p = parseFloat(price);
     await supabase.from("inventory_movements").insert({
       inventory_item_id: item.id,
-      movement_type: delta < 0 ? "use" : "restock",
-      quantity: Math.abs(delta),
-    });
-    if (delta < 0) setUsageStats(s => ({ ...s, [item.id]: (s[item.id] || 0) + Math.abs(delta) }));
+      movement_type: "restock",
+      quantity: qty,
+      unit_price: Number.isFinite(p) && p > 0 ? p : null,
+      supplier: supplier.trim() || null,
+    } as any);
+    setRestockTarget(null);
+    toast({ title: `נוספו ${qty} × ${item.name}` });
+    load();
+  }
+
+  /** קולגה החזיר — סוגר את ההשאלה ומחזיר את הכמות למלאי */
+  async function returnLoan(loan: MovementRow) {
+    const item = items.find(i => i.id === loan.inventory_item_id);
+    const { error } = await supabase.from("inventory_movements")
+      .update({ loan_status: "returned" } as any)
+      .eq("id", loan.id);
+    if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+    if (item) {
+      await supabase.from("inventory_items")
+        .update({ quantity_in_stock: Number(item.quantity_in_stock) + Number(loan.quantity) })
+        .eq("id", item.id);
+    }
+    toast({ title: "ההשאלה נסגרה — הוחזר למלאי ✓" });
+    load();
   }
 
   async function confirmDelete() {
@@ -147,6 +274,11 @@ export default function InventoryPage() {
                 <AlertTriangle className="w-4 h-4 ml-1" />רשימת קנייה ({lowStock.length})
               </TabsTrigger>
             )}
+            {openLoans.length > 0 && (
+              <TabsTrigger value="__loans" className="h-9 px-4 text-blue-600 dark:text-blue-400">
+                <Handshake className="w-4 h-4 ml-1" />השאלות ({openLoans.length})
+              </TabsTrigger>
+            )}
             {categories.map(c => {
               const count = items.filter(i => i.category_id === c.id).length;
               if (count === 0) return null;
@@ -158,7 +290,10 @@ export default function InventoryPage() {
             <TopSellersList rows={topUsed} categories={categories} onEdit={openEdit} />
           </TabsContent>
           <TabsContent value="__low" className="mt-4">
-            <PurchaseList items={lowStock} categories={categories} onDone={load} />
+            <PurchaseList items={lowStock} categories={categories} onDone={load} priceMap={priceMap} />
+          </TabsContent>
+          <TabsContent value="__loans" className="mt-4">
+            <LoansList loans={openLoans} items={items} onReturn={returnLoan} />
           </TabsContent>
           <TabsContent value={activeCat} className="mt-4">
             {loading ? (
@@ -166,11 +301,51 @@ export default function InventoryPage() {
             ) : filtered.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">אין מוצרים</p>
             ) : (
-              <ItemGrid items={filtered} categories={categories} usage={usageStats} onEdit={openEdit} onDelete={isAdmin ? setDeleteId : undefined} onAdjust={quickAdjust} />
+              <ItemGrid items={filtered} categories={categories} usage={usageStats} onEdit={openEdit} onDelete={isAdmin ? setDeleteId : undefined} removeCart={removeCart} onMinus={addToRemoveCart} onPlus={setRestockTarget} priceMap={priceMap} />
             )}
           </TabsContent>
         </Tabs>
+
+        {/* ── סרגל אישור הורדה צף ── */}
+        {Object.keys(removeCart).length > 0 && (
+          <div className="fixed bottom-4 left-4 right-4 z-40 max-w-2xl mx-auto">
+            <Card className="shadow-2xl border-2 border-red-400 dark:border-red-800">
+              <CardContent className="p-3 flex items-center gap-3">
+                <PackageMinus className="w-6 h-6 text-red-500 shrink-0" />
+                <div className="flex-1 text-sm">
+                  <div className="font-bold">
+                    {Object.keys(removeCart).length} מוצרים · {Object.values(removeCart).reduce((a, b) => a + b, 0)} יחידות להורדה
+                  </div>
+                  <div className="text-xs text-muted-foreground">שום דבר לא ירד עדיין — לחץ לאישור</div>
+                </div>
+                <Button variant="ghost" size="sm" className="h-9" onClick={() => setRemoveCart({})}>ביטול</Button>
+                <Button onClick={() => setRemovalOpen(true)} className="h-11 px-5 gap-2 bg-gradient-to-l from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white">
+                  <Check className="w-5 h-5" />אישור הורדה
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
+
+      <RemovalDialog
+        open={removalOpen}
+        onOpenChange={setRemovalOpen}
+        cart={removeCart}
+        items={items}
+        borrowerNames={borrowerNames}
+        onInc={addToRemoveCart}
+        onDec={decRemoveCart}
+        onConfirm={confirmRemoval}
+      />
+
+      <RestockDialog
+        item={restockTarget}
+        onOpenChange={(o) => !o && setRestockTarget(null)}
+        priceInfo={restockTarget ? priceMap[restockTarget.id] : undefined}
+        supplierNames={supplierNames}
+        onConfirm={confirmRestock}
+      />
 
       <ItemEditorDialog open={editorOpen} onOpenChange={setEditorOpen} item={editing} categories={categories} onSaved={load} />
 
@@ -288,22 +463,31 @@ function TopSellersList({
 }
 
 function ItemGrid({
-  items, categories, usage, onEdit, onDelete, onAdjust,
+  items, categories, usage, onEdit, onDelete, removeCart, onMinus, onPlus, priceMap,
 }: {
   items: InventoryItemRow[];
   categories: CategoryRow[];
   usage: Record<string, number>;
   onEdit: (i: InventoryItemRow) => void;
   onDelete?: (id: string) => void;
-  onAdjust: (i: InventoryItemRow, delta: number) => void;
+  removeCart: Record<string, number>;
+  onMinus: (i: InventoryItemRow) => void;
+  onPlus: (i: InventoryItemRow) => void;
+  priceMap: Record<string, PriceInfo>;
 }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
       {items.map(i => {
         const cat = categories.find(c => c.id === i.category_id);
         const low = i.quantity_in_stock <= i.minimum_stock;
+        const pending = removeCart[i.id] || 0;
         return (
-          <Card key={i.id} className={low ? "border-warning/60" : ""}>
+          <Card key={i.id} className={`relative ${pending > 0 ? "border-2 border-red-400 dark:border-red-800" : low ? "border-warning/60" : ""}`}>
+            {pending > 0 && (
+              <div className="absolute top-2 left-2 z-10 rounded-full min-w-7 h-7 px-1.5 flex items-center justify-center shadow-md text-white bg-red-500 text-sm font-bold">
+                -{pending}
+              </div>
+            )}
             <CardContent className="p-3 space-y-2">
               <div className="aspect-square w-full rounded-lg overflow-hidden bg-muted">
                 <InventoryImage path={i.image_path} alt={i.name} className="w-full h-full" />
@@ -312,14 +496,14 @@ function ItemGrid({
                 <h4 className="font-semibold text-sm leading-tight line-clamp-2 min-h-[2.5rem]">{i.name}</h4>
                 {cat && <span className="inline-block text-[10px] px-2 py-0.5 rounded-full mt-1" style={{ background: cat.color + "22", color: cat.color }}>{cat.name}</span>}
               </div>
-              {/* עדכון מלאי מהיר: מינוס = לקחתי לעבודה, פלוס = הוספתי */}
+              {/* מינוס = לסל הורדה (מאושר בדיאלוג), פלוס = דיאלוג קנייה עם מחיר וספק */}
               <div className="flex items-center justify-between gap-1">
                 <Button
                   size="sm" variant="outline"
                   className="h-9 w-9 p-0 shrink-0 border-red-300 dark:border-red-900/60 text-red-600 dark:text-red-400"
-                  onClick={() => onAdjust(i, -1)}
-                  disabled={i.quantity_in_stock <= 0}
-                  title="לקחתי אחד לעבודה"
+                  onClick={() => onMinus(i)}
+                  disabled={i.quantity_in_stock - pending <= 0}
+                  title="הורדה מהמלאי (עם אישור)"
                 >
                   <Minus className="w-4 h-4" />
                 </Button>
@@ -330,14 +514,19 @@ function ItemGrid({
                 <Button
                   size="sm" variant="outline"
                   className="h-9 w-9 p-0 shrink-0 border-emerald-300 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400"
-                  onClick={() => onAdjust(i, 1)}
-                  title="הוספתי אחד למלאי"
+                  onClick={() => onPlus(i)}
+                  title="קניתי — רישום מחיר וספק"
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
               {i.recommended_sale_price > 0 && (
                 <div className="text-xs text-muted-foreground">₪{i.recommended_sale_price} ללקוח</div>
+              )}
+              {priceMap[i.id] && (
+                <div className="text-[10px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                  <Store className="w-3 h-3" /> הכי זול: {priceMap[i.id].cheapestSupplier} — ₪{priceMap[i.id].cheapestPrice}
+                </div>
               )}
               {usage[i.id] > 0 && <div className="text-[10px] text-muted-foreground">{usage[i.id]} שימושים</div>}
               <div className="flex gap-1 pt-1">
@@ -359,11 +548,12 @@ function ItemGrid({
 }
 
 function PurchaseList({
-  items, categories, onDone,
+  items, categories, onDone, priceMap,
 }: {
   items: InventoryItemRow[];
   categories: CategoryRow[];
   onDone: () => void;
+  priceMap: Record<string, PriceInfo>;
 }) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
@@ -466,6 +656,11 @@ function PurchaseList({
                   <span className="font-bold text-base text-warning">{i.quantity_in_stock}</span>
                   <span className="text-muted-foreground">מינ׳ {i.minimum_stock}</span>
                 </div>
+                {priceMap[i.id] && (
+                  <div className="text-[10px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                    <Store className="w-3 h-3" /> הכי זול: {priceMap[i.id].cheapestSupplier} — ₪{priceMap[i.id].cheapestPrice}
+                  </div>
+                )}
                 {inCart ? (
                   <div className="flex items-center gap-1 pt-1" onClick={e => e.stopPropagation()}>
                     <Button size="sm" variant="outline" className="h-9 w-9 p-0" onClick={() => setQty(i.id, qty - 1)}>
@@ -508,5 +703,306 @@ function PurchaseList({
         </div>
       )}
     </div>
+  );
+}
+
+// ── רשימת השאלות לקולגות ──
+function LoansList({
+  loans, items, onReturn,
+}: {
+  loans: MovementRow[];
+  items: InventoryItemRow[];
+  onReturn: (loan: MovementRow) => void;
+}) {
+  if (loans.length === 0) {
+    return <p className="text-center text-muted-foreground py-8">אין השאלות פתוחות</p>;
+  }
+  // קיבוץ לפי קולגה
+  const byBorrower = new Map<string, MovementRow[]>();
+  loans.forEach(l => {
+    const k = l.borrower || "לא ידוע";
+    if (!byBorrower.has(k)) byBorrower.set(k, []);
+    byBorrower.get(k)!.push(l);
+  });
+
+  return (
+    <div className="space-y-3">
+      <Card className="rounded-2xl bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/50">
+        <CardContent className="p-3 text-sm flex items-center gap-2">
+          <Handshake className="w-5 h-5 text-blue-600 shrink-0" />
+          <span>ציוד שהשאלת לקולגות. כשמחזירים לך — לחץ "הוחזר" והכמות תחזור למלאי.</span>
+        </CardContent>
+      </Card>
+      {[...byBorrower.entries()].map(([name, list]) => (
+        <Card key={name} className="rounded-2xl">
+          <CardContent className="p-4 space-y-2">
+            <p className="font-bold flex items-center gap-2">
+              <Handshake className="w-4 h-4 text-blue-500" /> {name}
+              <Badge variant="secondary" className="text-xs">{list.length} פריטים</Badge>
+            </p>
+            {list.map(l => {
+              const item = items.find(i => i.id === l.inventory_item_id);
+              return (
+                <div key={l.id} className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 text-sm">
+                  <span className="flex-1 font-medium">{item?.name || "מוצר"}</span>
+                  <span className="text-muted-foreground">× {l.quantity}</span>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                    {new Date(l.created_at).toLocaleDateString("he-IL")}
+                  </span>
+                  <Button size="sm" className="h-8 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => onReturn(l)}>
+                    <Undo2 className="w-3.5 h-3.5" /> הוחזר
+                  </Button>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ── דיאלוג אישור הורדה: למי ולמה ──
+function RemovalDialog({
+  open, onOpenChange, cart, items, borrowerNames, onInc, onDec, onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  cart: Record<string, number>;
+  items: InventoryItemRow[];
+  borrowerNames: string[];
+  onInc: (i: InventoryItemRow) => void;
+  onDec: (id: string) => void;
+  onConfirm: (p: { purpose: "customer" | "loan" | "adjust"; customerId?: string | null; customerName?: string; borrower?: string; prices: Record<string, string> }) => void;
+}) {
+  const [purpose, setPurpose] = useState<"customer" | "loan" | "adjust">("customer");
+  const [borrower, setBorrower] = useState("");
+  const [custQuery, setCustQuery] = useState("");
+  const [custResults, setCustResults] = useState<{ id: string; full_name: string }[]>([]);
+  const [customer, setCustomer] = useState<{ id: string; full_name: string } | null>(null);
+  const [prices, setPrices] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  // חיפוש לקוח תוך כדי הקלדה
+  useEffect(() => {
+    if (!custQuery.trim() || customer) { setCustResults([]); return; }
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, full_name")
+        .ilike("full_name", `%${custQuery.trim()}%`)
+        .limit(5);
+      setCustResults((data as any) || []);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [custQuery, customer]);
+
+  useEffect(() => {
+    if (open) { setPurpose("customer"); setBorrower(""); setCustQuery(""); setCustomer(null); setPrices({}); setSaving(false); }
+  }, [open]);
+
+  const cartItems = Object.entries(cart)
+    .map(([id, qty]) => ({ item: items.find(i => i.id === id), qty }))
+    .filter(x => x.item) as { item: InventoryItemRow; qty: number }[];
+
+  const canConfirm =
+    cartItems.length > 0 &&
+    (purpose === "adjust" ||
+      (purpose === "customer" && (customer || custQuery.trim())) ||
+      (purpose === "loan" && borrower.trim()));
+
+  async function submit() {
+    setSaving(true);
+    onConfirm({
+      purpose,
+      customerId: customer?.id ?? null,
+      customerName: customer?.full_name || custQuery.trim(),
+      borrower: borrower.trim(),
+      prices,
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent dir="rtl" className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <PackageMinus className="w-5 h-5 text-red-500" /> אישור הורדה מהמלאי
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* המוצרים בסל */}
+        <div className="space-y-2">
+          {cartItems.map(({ item, qty }) => (
+            <div key={item.id} className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 text-sm">
+              <span className="flex-1 font-medium truncate">{item.name}</span>
+              <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => onDec(item.id)}><Minus className="w-3 h-3" /></Button>
+              <span className="font-bold w-6 text-center">{qty}</span>
+              <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => onInc(item)} disabled={qty >= item.quantity_in_stock}><Plus className="w-3 h-3" /></Button>
+            </div>
+          ))}
+        </div>
+
+        {/* למה מורידים? */}
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={() => setPurpose("customer")}
+            className={`rounded-xl border-2 p-2.5 text-center text-xs font-semibold transition-colors ${purpose === "customer" ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300" : "border-border text-muted-foreground"}`}
+          >
+            <Wrench className="w-5 h-5 mx-auto mb-1" />עבודה ללקוח
+          </button>
+          <button
+            onClick={() => setPurpose("loan")}
+            className={`rounded-xl border-2 p-2.5 text-center text-xs font-semibold transition-colors ${purpose === "loan" ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300" : "border-border text-muted-foreground"}`}
+          >
+            <Handshake className="w-5 h-5 mx-auto mb-1" />השאלה לקולגה
+          </button>
+          <button
+            onClick={() => setPurpose("adjust")}
+            className={`rounded-xl border-2 p-2.5 text-center text-xs font-semibold transition-colors ${purpose === "adjust" ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300" : "border-border text-muted-foreground"}`}
+          >
+            <Package2 className="w-5 h-5 mx-auto mb-1" />עדכון מלאי
+          </button>
+        </div>
+
+        {purpose === "customer" && (
+          <div className="space-y-3">
+            <div>
+              <Label className="mb-1.5 block text-sm">איזה לקוח?</Label>
+              {customer ? (
+                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/40 rounded-lg px-3 py-2 text-sm">
+                  <span className="flex-1 font-semibold">{customer.full_name}</span>
+                  <Button size="sm" variant="ghost" className="h-7" onClick={() => { setCustomer(null); setCustQuery(""); }}>שנה</Button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Input value={custQuery} onChange={e => setCustQuery(e.target.value)} placeholder="הקלד שם לקוח..." />
+                  {custResults.length > 0 && (
+                    <div className="absolute top-full right-0 left-0 z-20 bg-background border rounded-lg mt-1 shadow-lg overflow-hidden">
+                      {custResults.map(c => (
+                        <button key={c.id} className="w-full text-right px-3 py-2 text-sm hover:bg-muted" onClick={() => { setCustomer(c); setCustResults([]); }}>
+                          {c.full_name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-sm">כמה גבית על החומרים? (לא חובה)</Label>
+              <div className="space-y-1.5">
+                {cartItems.map(({ item }) => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    <span className="text-xs flex-1 truncate text-muted-foreground">{item.name}</span>
+                    <Input
+                      type="number" inputMode="decimal" placeholder="₪"
+                      value={prices[item.id] || ""}
+                      onChange={e => setPrices(p => ({ ...p, [item.id]: e.target.value }))}
+                      className="h-9 w-24 text-center"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {purpose === "loan" && (
+          <div>
+            <Label className="mb-1.5 block text-sm">למי השאלת?</Label>
+            <Input
+              value={borrower}
+              onChange={e => setBorrower(e.target.value)}
+              placeholder="שם הקולגה..."
+              list="borrower-names"
+            />
+            <datalist id="borrower-names">
+              {borrowerNames.map(n => <option key={n} value={n} />)}
+            </datalist>
+            <p className="text-xs text-muted-foreground mt-1.5">יישמר ברשימת ההשאלות עד שיחזירו לך.</p>
+          </div>
+        )}
+
+        <Button onClick={submit} disabled={!canConfirm || saving} className="w-full h-12 gap-2 text-base bg-gradient-to-l from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white">
+          <Check className="w-5 h-5" />
+          {saving ? "שומר..." : purpose === "loan" ? "אשר השאלה" : "אשר הורדה"}
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── דיאלוג קנייה: כמה עלה ומאיפה — המערכת לומדת מי הכי זול ──
+function RestockDialog({
+  item, onOpenChange, priceInfo, supplierNames, onConfirm,
+}: {
+  item: InventoryItemRow | null;
+  onOpenChange: (o: boolean) => void;
+  priceInfo?: PriceInfo;
+  supplierNames: string[];
+  onConfirm: (item: InventoryItemRow, qty: number, price: string, supplier: string) => void;
+}) {
+  const [qty, setQty] = useState(1);
+  const [price, setPrice] = useState("");
+  const [supplier, setSupplier] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (item) { setQty(1); setPrice(""); setSupplier(""); setSaving(false); }
+  }, [item]);
+
+  if (!item) return null;
+
+  return (
+    <Dialog open={!!item} onOpenChange={onOpenChange}>
+      <DialogContent dir="rtl" className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5 text-emerald-600" /> קניתי: {item.name}
+          </DialogTitle>
+        </DialogHeader>
+
+        {priceInfo && (
+          <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 p-2.5 text-xs text-emerald-800 dark:text-emerald-300 space-y-0.5">
+            <p>💡 הכי זול עד היום: <b>{priceInfo.cheapestSupplier}</b> — ₪{priceInfo.cheapestPrice} ליחידה</p>
+            <p className="text-emerald-700/70 dark:text-emerald-400/70">קנייה אחרונה: {priceInfo.lastSupplier} — ₪{priceInfo.lastPrice}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <Label className="mb-1.5 block text-xs">כמות</Label>
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="outline" className="h-9 w-8 p-0" onClick={() => setQty(q => Math.max(1, q - 1))}><Minus className="w-3.5 h-3.5" /></Button>
+              <Input type="number" inputMode="numeric" value={qty} onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))} className="h-9 text-center px-1" />
+              <Button size="sm" variant="outline" className="h-9 w-8 p-0" onClick={() => setQty(q => q + 1)}><Plus className="w-3.5 h-3.5" /></Button>
+            </div>
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs">מחיר ליחידה (₪)</Label>
+            <Input type="number" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} placeholder="0" className="h-9" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs">מאיפה קנית?</Label>
+            <Input value={supplier} onChange={e => setSupplier(e.target.value)} placeholder="שם הספק" list="supplier-names" className="h-9" />
+            <datalist id="supplier-names">
+              {supplierNames.map(n => <option key={n} value={n} />)}
+            </datalist>
+          </div>
+        </div>
+
+        <Button
+          onClick={() => { setSaving(true); onConfirm(item, qty, price, supplier); }}
+          disabled={saving}
+          className="w-full h-12 gap-2 text-base bg-gradient-to-l from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white"
+        >
+          <Check className="w-5 h-5" /> {saving ? "שומר..." : "הוסף למלאי"}
+        </Button>
+        <p className="text-xs text-muted-foreground text-center -mt-1">
+          מחיר וספק לא חובה — אבל אם תמלא, אני אלמד להגיד לך מי הכי זול 😉
+        </p>
+      </DialogContent>
+    </Dialog>
   );
 }
