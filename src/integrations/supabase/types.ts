@@ -319,11 +319,13 @@ export type Database = {
         Row: {
           address: string | null
           billing_notes: string | null
+          business_field: string | null
           city: string | null
           collection_flag: boolean
           collection_flag_at: string | null
           created_at: string
           created_by: string | null
+          customer_type: string
           email: string | null
           has_legal_action: boolean
           id: string
@@ -342,11 +344,13 @@ export type Database = {
         Insert: {
           address?: string | null
           billing_notes?: string | null
+          business_field?: string | null
           city?: string | null
           collection_flag?: boolean
           collection_flag_at?: string | null
           created_at?: string
           created_by?: string | null
+          customer_type?: string
           email?: string | null
           has_legal_action?: boolean
           id?: string
@@ -365,11 +369,13 @@ export type Database = {
         Update: {
           address?: string | null
           billing_notes?: string | null
+          business_field?: string | null
           city?: string | null
           collection_flag?: boolean
           collection_flag_at?: string | null
           created_at?: string
           created_by?: string | null
+          customer_type?: string
           email?: string | null
           has_legal_action?: boolean
           id?: string
