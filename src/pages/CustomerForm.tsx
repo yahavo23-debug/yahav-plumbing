@@ -9,10 +9,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { ArrowRight, History } from "lucide-react";
+import { ArrowRight, History, Home, HardHat } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { leadSources } from "@/lib/constants";
 import { RetroactiveCustomerDialog } from "@/components/customers/RetroactiveCustomerDialog";
+
+/** תחומי עיסוק נפוצים לקבלן עבודות */
+const CONTRACTOR_FIELDS = [
+  "שיפוצים כלליים", "קבלן בניין", "אינסטלציה", "חשמל", "מיזוג אוויר",
+  "איטום וגגות", "ריצוף וחיפוי", "צבע וגבס", "מטבחים ונגרות", "גינון ופיתוח", "אחר",
+];
 
 const CustomerForm = () => {
   const { id } = useParams();
@@ -26,6 +32,8 @@ const CustomerForm = () => {
     name: "", phone: "", email: "", address: "", city: "", notes: "",
     lead_source: "" as string, lead_source_note: "", source_contractor_id: "",
     lead_cost: "" as string,
+    customer_type: "private" as "private" | "contractor",
+    business_field: "", business_field_other: "",
   });
 
   useEffect(() => {
@@ -61,6 +69,15 @@ const CustomerForm = () => {
         lead_source_note: (data as any).lead_source_note || "",
         source_contractor_id: (data as any).source_contractor_id || "",
         lead_cost: (data as any).lead_cost != null ? String((data as any).lead_cost) : "",
+        customer_type: ((data as any).customer_type === "contractor" ? "contractor" : "private") as "private" | "contractor",
+        business_field: (() => {
+          const bf = (data as any).business_field || "";
+          return bf && !CONTRACTOR_FIELDS.includes(bf) ? "אחר" : bf;
+        })(),
+        business_field_other: (() => {
+          const bf = (data as any).business_field || "";
+          return bf && !CONTRACTOR_FIELDS.includes(bf) ? bf : "";
+        })(),
       });
     }
   };
@@ -78,6 +95,10 @@ const CustomerForm = () => {
         lead_source_note: form.lead_source_note || null,
         source_contractor_id: form.source_contractor_id || null,
         lead_cost: (() => { const v = parseFloat(form.lead_cost); return form.lead_cost !== "" && !isNaN(v) ? v : null; })(),
+        customer_type: form.customer_type,
+        business_field: form.customer_type === "contractor"
+          ? (form.business_field === "אחר" ? form.business_field_other.trim() || "אחר" : form.business_field || null)
+          : null,
       };
 
       if (isEdit) {
@@ -132,9 +153,51 @@ const CustomerForm = () => {
             </Button>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* סוג הלקוח: פרטי או קבלן עבודות */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => updateField("customer_type", "private")}
+                className={`rounded-xl border-2 p-3 text-center font-semibold transition-colors ${form.customer_type === "private" ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300" : "border-border text-muted-foreground"}`}
+              >
+                <Home className="w-6 h-6 mx-auto mb-1" />לקוח פרטי
+              </button>
+              <button
+                type="button"
+                onClick={() => updateField("customer_type", "contractor")}
+                className={`rounded-xl border-2 p-3 text-center font-semibold transition-colors ${form.customer_type === "contractor" ? "border-orange-500 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300" : "border-border text-muted-foreground"}`}
+              >
+                <HardHat className="w-6 h-6 mx-auto mb-1" />קבלן עבודות
+              </button>
+            </div>
+
+            {form.customer_type === "contractor" && (
+              <div className="grid gap-4 sm:grid-cols-2 rounded-xl border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20 p-3">
+                <div className="space-y-2">
+                  <Label>במה הוא עוסק?</Label>
+                  <Select value={form.business_field} onValueChange={(v) => updateField("business_field", v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="בחר תחום..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CONTRACTOR_FIELDS.map((f) => (
+                        <SelectItem key={f} value={f}>{f}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {form.business_field === "אחר" && (
+                  <div className="space-y-2">
+                    <Label>פרט את התחום</Label>
+                    <Input value={form.business_field_other} onChange={(e) => updateField("business_field_other", e.target.value)} placeholder="למשל: הריסות" />
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>שם *</Label>
+                <Label>{form.customer_type === "contractor" ? "שם הקבלן / החברה *" : "שם *"}</Label>
                 <Input value={form.name} onChange={(e) => updateField("name", e.target.value)} required />
               </div>
               <div className="space-y-2">

@@ -64,6 +64,11 @@ export function CustomerCard({ customer, isAdmin, isContractor, hasPendingCall, 
               {customer.name}
               {showGold && <Crown className="inline w-4 h-4 mr-1 text-amber-500" />}
             </h3>
+            {(customer as any).customer_type === "contractor" && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-900/60 whitespace-nowrap">
+                🏗️ קבלן{(customer as any).business_field ? ` · ${(customer as any).business_field}` : ""}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1">
             {!isContractor && <CustomerBillingBadgeInline customerId={customer.id} billing={billing} />}

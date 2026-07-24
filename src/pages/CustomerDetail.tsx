@@ -274,6 +274,11 @@ const CustomerDetail = () => {
                 {(customer as any).is_walkin && (
                   <Badge variant="outline" className="border-amber-300/50 text-amber-200 bg-amber-500/20">מזדמן</Badge>
                 )}
+                {(customer as any).customer_type === "contractor" && (
+                  <Badge variant="outline" className="border-orange-300/50 text-orange-200 bg-orange-500/20">
+                    🏗️ קבלן{(customer as any).business_field ? ` — ${(customer as any).business_field}` : ""}
+                  </Badge>
+                )}
               </div>
               {fullAddress && (
                 <p className="text-white/70 text-sm mt-0.5 flex items-center gap-1.5">
