@@ -179,7 +179,7 @@ serve(async (req) => {
       "סטטוס": statusLabels[t.status as string] || t.status,
       "סוג מסמך": docTypeLabels[t.doc_type as string] || t.doc_type || "—",
       "הערות": t.notes || "",
-      "קבלה/מסמך": t.doc_path ? "כן — בקובץ ה-PDF המאוחד" : "—",
+      "קבלה/מסמך": t.doc_path ? "כן — מצורף בחבילה" : "—",
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelRows);
@@ -214,13 +214,43 @@ serve(async (req) => {
     // Add XLSX to zip
     zipFiles[`Finance_${fileTag}.xlsx`] = new Uint8Array(xlsxBuffer);
 
-    // הורדת כל המסמכים המצורפים (לפי סדר תאריכים) לצורך איחוד ל-PDF אחד
-    const docTxns = txns.filter((t: Record<string, unknown>) => t.doc_path);
-    const downloaded: { t: Record<string, unknown>; bytes: Uint8Array; ext: string }[] = [];
+    // הורדת המסמכים המצורפים — סדרתית (לא במקביל) כדי לא לחרוג ממגבלת הזיכרון של הפונקציה
+    const docTxns = txns
+      .filter((t: Record<string, unknown>) => t.doc_path)
+      .sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
+        String(a.txn_date).localeCompare(String(b.txn_date)));
 
-    await Promise.all(docTxns.map(async (t: Record<string, unknown>) => {
+    // איחוד ל-PDF אחד רק בייצוא קטן (חודש רגיל). בייצוא גדול — קבצים נפרדים בתיקייה,
+    // אחרת pdf-lib מפוצץ את הזיכרון (WORKER_RESOURCE_LIMIT) והייצוא נכשל.
+    const MERGE_MAX_DOCS = 30;
+    const MERGE_MAX_FILE_BYTES = 8 * 1024 * 1024;   // קובץ בודד גדול מדי לאיחוד — יכנס כקובץ נפרד
+    const TOTAL_BYTES_LIMIT = 80 * 1024 * 1024;      // תקרת ביטחון כוללת ל-ZIP
+    const mergeMode = docTxns.length <= MERGE_MAX_DOCS;
+
+    const mergedPdf = mergeMode ? await PDFDocument.create() : null;
+    const font = mergedPdf ? await mergedPdf.embedFont(StandardFonts.Helvetica) : null;
+    let mergedCount = 0;
+    let totalBytes = 0;
+    const skipped: string[] = [];
+
+    const addToZip = (t: Record<string, unknown>, bytes: Uint8Array, ext: string) => {
+      const catLabel = sanitizeFilename(
+        categoryLabels[t.category as string] || (t.category as string) || "other"
+      );
+      const dirTag = t.direction === "income" ? "Income" : "Expense";
+      zipFiles[`${receiptsFolder}/${t.txn_date}_${dirTag}_${catLabel}_${t.amount}ILS${ext}`] = bytes;
+    };
+
+    for (let i = 0; i < docTxns.length; i++) {
+      const t = docTxns[i];
+      if (totalBytes > TOTAL_BYTES_LIMIT) {
+        skipped.push(`${t.txn_date} — ${t.amount} ILS (${t.doc_path})`);
+        continue;
+      }
+      let bytes: Uint8Array;
+      const docPath = t.doc_path as string;
+      const ext = getFileExtension(docPath).toLowerCase();
       try {
-        const docPath = t.doc_path as string;
         // קבלות הכנסה שמורות ב-bucket "receipts", מסמכי הוצאות ב-"finance-docs" — מנסים את שניהם
         let file = await adminClient.storage.from("finance-docs").download(docPath);
         if (file.error || !file.data) {
@@ -228,28 +258,23 @@ serve(async (req) => {
         }
         if (file.error || !file.data) {
           console.error(`Failed to download ${docPath} from both buckets:`, file.error?.message);
-          return;
+          continue;
         }
-        const arrayBuffer = await file.data.arrayBuffer();
-        downloaded.push({ t, bytes: new Uint8Array(arrayBuffer), ext: getFileExtension(docPath).toLowerCase() });
+        bytes = new Uint8Array(await file.data.arrayBuffer());
       } catch (err) {
         console.error(`Error downloading doc for txn ${t.id}:`, err);
+        continue;
       }
-    }));
+      totalBytes += bytes.length;
 
-    // מיון לפי תאריך כדי שה-PDF יהיה כרונולוגי
-    downloaded.sort((a, b) => String(a.t.txn_date).localeCompare(String(b.t.txn_date)));
+      if (!mergeMode || !mergedPdf || !font || bytes.length > MERGE_MAX_FILE_BYTES) {
+        addToZip(t, bytes, ext);
+        continue;
+      }
 
-    // ========== 2.5 איחוד כל הקבלות ל-PDF אחד ==========
-    const mergedPdf = await PDFDocument.create();
-    const font = await mergedPdf.embedFont(StandardFonts.Helvetica);
-    let mergedCount = 0;
-
-    for (let i = 0; i < downloaded.length; i++) {
-      const { t, bytes, ext } = downloaded[i];
       // כותרת באנגלית/ספרות בלבד (הפונט הסטנדרטי לא תומך בעברית)
       const dirTag = t.direction === "income" ? "INCOME" : "EXPENSE";
-      const label = `${i + 1}/${downloaded.length}  |  ${t.txn_date}  |  ${dirTag}  |  ${Number(t.amount).toFixed(2)} ILS`;
+      const label = `${i + 1}/${docTxns.length}  |  ${t.txn_date}  |  ${dirTag}  |  ${Number(t.amount).toFixed(2)} ILS`;
       try {
         if (ext === ".pdf") {
           const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
@@ -275,20 +300,24 @@ serve(async (req) => {
       } catch (err) {
         // קובץ שלא ניתן לאחד — נכנס ל-ZIP כקובץ נפרד כדי שלא יאבד
         console.error(`Cannot merge doc for txn ${t.id}:`, err);
-        const catLabel = sanitizeFilename(
-          categoryLabels[t.category as string] || (t.category as string) || "other"
-        );
-        zipFiles[`${receiptsFolder}/${t.txn_date}_${catLabel}_${t.amount}ILS${ext}`] = bytes;
+        addToZip(t, bytes, ext);
       }
     }
 
-    if (mergedCount > 0) {
+    if (mergedPdf && mergedCount > 0) {
       const pdfBytes = await mergedPdf.save();
       zipFiles[`Receipts_${fileTag}${direction === "all" ? "" : "_" + direction}.pdf`] = new Uint8Array(pdfBytes);
     }
 
+    if (skipped.length > 0) {
+      zipFiles["SKIPPED_FILES.txt"] = strToU8(
+        "הקבצים הבאים לא נכללו כי חבילת הייצוא עברה את מגבלת הגודל.\nייצא חודש/שנה ספציפיים כדי לקבל אותם:\n\n" + skipped.join("\n")
+      );
+    }
+
     // ========== 3. Create ZIP ==========
-    const zipped = zipSync(zipFiles);
+    // level 0 — בלי דחיסה: תמונות וקבצי PDF כבר דחוסים, וזה חוסך זיכרון וזמן
+    const zipped = zipSync(zipFiles, { level: 0 });
 
     // ========== 4. Upload ZIP to storage ==========
     const zipFileName = `Finance_${fileTag}${direction === "all" ? "" : "_" + direction}.zip`;
