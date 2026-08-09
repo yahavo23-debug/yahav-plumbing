@@ -16,8 +16,24 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ReceiptUpload } from "@/components/billing/ReceiptUpload";
+import { HandCoins } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createCollectionReport, toWhatsApp, payPageOrigin, buildReportMessage } from "@/lib/collection-report";
+
+const PAYMENT_METHODS = [
+  { value: "cash", label: "מזומן" },
+  { value: "transfer", label: "העברה בנקאית" },
+  { value: "bit", label: "ביט" },
+  { value: "paybox", label: "פייבוקס" },
+  { value: "money", label: "מאני" },
+  { value: "credit_card", label: "סליקה" },
+  { value: "credit", label: "אשראי" },
+];
+const methodLabel = (v: string) => PAYMENT_METHODS.find((m) => m.value === v)?.label || v;
 
 /**
  * מחלקת גבייה — מודול מבודד בניווט אך מסונכרן בזמן אמת עם שאר המערכת:
@@ -40,6 +56,8 @@ interface DebtorRow {
   overdueSince: string | null;
   overdueDays: number;
   lastEntryDate: string | null;
+  /** הכנסה שנרשמה ללקוח בכספים אך לא שויכה לחוב (יש חשבונית / הכנסה ידנית) */
+  separatePaid: number;
 }
 
 interface SentReport {
@@ -95,10 +113,15 @@ const Debts = () => {
   const [sortBy, setSortBy] = useState<"days" | "amount">("days");
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [waiveTarget, setWaiveTarget] = useState<DebtorRow | null>(null);
-  const [waiving, setWaiving] = useState(false);
-  const [paidTarget, setPaidTarget] = useState<DebtorRow | null>(null);
-  const [markingPaid, setMarkingPaid] = useState(false);
+  // דיאלוג ביטול חוב — עם בחירת סוג (ויתור / כבר שולם)
+  const [closeTarget, setCloseTarget] = useState<DebtorRow | null>(null);
+  const [closeMode, setCloseMode] = useState<"paid" | "waive">("waive");
+  const [closing, setClosing] = useState(false);
+  // דיאלוג קבלת תשלום — רושם תשלום + הכנסה + קבלה (מסנכרן את שתי המערכות)
+  const [collectTarget, setCollectTarget] = useState<DebtorRow | null>(null);
+  const [collectMethod, setCollectMethod] = useState("");
+  const [collectReceipt, setCollectReceipt] = useState<string | null>(null);
+  const [collecting, setCollecting] = useState(false);
 
   // יצירת דוח גבייה מפורט ושליחתו בוואטסאפ
   const sendReport = async (r: DebtorRow) => {
@@ -126,69 +149,101 @@ const Debts = () => {
     }
   };
 
-  /**
-   * ביטול חוב — רושם זיכוי (credit) בכרטסת בגובה יתרת החוב, כך שהיתרה מתאפסת.
-   * זה לא רושם תשלום כספי (אין כסף שנכנס) — רק מוחק את החוב מבחינה חשבונאית.
-   */
-  const waiveDebt = async (r: DebtorRow) => {
-    if (!user) return;
-    setWaiving(true);
-    try {
-      const { error } = await (supabase as any).from("customer_ledger").insert({
-        customer_id: r.customer_id,
-        entry_type: "credit",
-        amount: r.balance,
-        entry_date: new Date().toISOString().slice(0, 10),
-        description: `ביטול חוב — זיכוי על יתרה של ${fmtILS(r.balance)}. בוצע ע״י ${user.email || "מנהל"} ב-${new Date().toLocaleDateString("he-IL")}.`,
-        created_by: user.id,
-      });
-      if (error) throw error;
-      // מסירים את הלקוח מהרשימה (החוב אופס) + מנקים דגל תזכורת אם קיים
-      setRows((prev) => prev.filter((x) => x.customer_id !== r.customer_id));
-      if (r.collection_flag) {
-        await (supabase as any).from("customers")
-          .update({ collection_flag: false, collection_flag_at: null })
-          .eq("id", r.customer_id);
-      }
-      toast({ title: "החוב בוטל ✓", description: `חוב של ${fmtILS(r.balance)} מ${r.name} נמחק מהמערכת` });
-    } catch (e: any) {
-      toast({ title: "שגיאה", description: e.message || "לא ניתן לבטל את החוב", variant: "destructive" });
-    } finally {
-      setWaiving(false);
-      setWaiveTarget(null);
+  const removeRowAndFlag = async (r: DebtorRow) => {
+    setRows((prev) => prev.filter((x) => x.customer_id !== r.customer_id));
+    if (r.collection_flag) {
+      await (supabase as any).from("customers")
+        .update({ collection_flag: false, collection_flag_at: null })
+        .eq("id", r.customer_id);
     }
   };
 
   /**
-   * סימון חוב כ"שולם" — למקרה שהלקוח שילם אבל התשלום נרשם במקום אחר (יש חשבונית / הכנסה ידנית),
-   * והחוב עדיין פתוח כאן. רושם payment בכרטסת בגובה היתרה — מאפס את החוב בלי לגעת
-   * בהכנסות שכבר רשומות (טבלאות נפרדות, אין כפל).
+   * סגירת חוב — שתי אפשרויות, שתיהן רק בכרטסת (customer_ledger), בלי לגעת בהכנסות:
+   *  paid  → רושם payment (הלקוח שילם, הכסף כבר נרשם בכספים במקום אחר — בלי כפל)
+   *  waive → רושם credit (ויתור / חוב שגוי)
    */
-  const markDebtPaid = async (r: DebtorRow) => {
+  const closeDebt = async (r: DebtorRow, mode: "paid" | "waive") => {
     if (!user) return;
-    setMarkingPaid(true);
+    setClosing(true);
     try {
+      const today = new Date().toLocaleDateString("he-IL");
+      const desc = mode === "paid"
+        ? `סגירת חוב — הלקוח שילם, התשלום כבר נרשם בכספים במקום אחר (${fmtILS(r.balance)}). נסגר ע״י ${user.email || "מנהל"} ב-${today}.`
+        : `ביטול חוב — זיכוי/ויתור על יתרה של ${fmtILS(r.balance)}. בוצע ע״י ${user.email || "מנהל"} ב-${today}.`;
+      const { error } = await (supabase as any).from("customer_ledger").insert({
+        customer_id: r.customer_id,
+        entry_type: mode === "paid" ? "payment" : "credit",
+        amount: r.balance,
+        entry_date: new Date().toISOString().slice(0, 10),
+        description: desc,
+        created_by: user.id,
+      });
+      if (error) throw error;
+      await removeRowAndFlag(r);
+      toast({
+        title: mode === "paid" ? "החוב נסגר ✓" : "החוב בוטל ✓",
+        description: mode === "paid"
+          ? `${r.name} סומן כשולם — ההכנסה שרשמת לא הושפעה`
+          : `חוב של ${fmtILS(r.balance)} מ${r.name} נמחק מהמערכת`,
+      });
+    } catch (e: any) {
+      toast({ title: "שגיאה", description: e.message || "לא ניתן לסגור את החוב", variant: "destructive" });
+    } finally {
+      setClosing(false);
+      setCloseTarget(null);
+    }
+  };
+
+  /**
+   * קבלת תשלום מהגבייה — כמו "אישור תשלום" בכרטיס הלקוח: רושם payment בכרטסת
+   * וגם יוצר הכנסה בכספים (financial_transactions) + מצרף קבלה. מסנכרן את שתי המערכות.
+   */
+  const collectPayment = async (r: DebtorRow) => {
+    if (!user || !collectMethod) return;
+    setCollecting(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const label = methodLabel(collectMethod);
       const { error } = await (supabase as any).from("customer_ledger").insert({
         customer_id: r.customer_id,
         entry_type: "payment",
         amount: r.balance,
-        entry_date: new Date().toISOString().slice(0, 10),
-        description: `סגירת חוב — הלקוח שילם, התשלום כבר נרשם במערכת במקום אחר (${fmtILS(r.balance)}). נסגר ע״י ${user.email || "מנהל"} ב-${new Date().toLocaleDateString("he-IL")}.`,
+        entry_date: today,
+        description: `אישור תשלום מגבייה - ${label}`,
+        payment_method: collectMethod,
+        receipt_path: collectReceipt,
         created_by: user.id,
       });
       if (error) throw error;
-      setRows((prev) => prev.filter((x) => x.customer_id !== r.customer_id));
-      if (r.collection_flag) {
-        await (supabase as any).from("customers")
-          .update({ collection_flag: false, collection_flag_at: null })
-          .eq("id", r.customer_id);
+      // הכנסה מקבילה בכספים (כמו בכרטיס הלקוח)
+      try {
+        await (supabase as any).from("financial_transactions").insert({
+          direction: "income",
+          amount: r.balance,
+          txn_date: today,
+          category: "service_income",
+          payment_method: collectMethod,
+          counterparty_name: r.name || null,
+          customer_id: r.customer_id,
+          notes: `אישור תשלום מגבייה - ${label}`,
+          status: "paid",
+          doc_path: collectReceipt || null,
+          doc_type: collectReceipt ? "receipt" : null,
+          created_by: user.id,
+        });
+      } catch (finErr) {
+        console.error("Auto finance income error:", finErr);
       }
-      toast({ title: "החוב נסגר ✓", description: `${r.name} סומן כשולם — ההכנסה שרשמת לא הושפעה` });
+      await removeRowAndFlag(r);
+      toast({ title: "תשלום התקבל ✓", description: `${fmtILS(r.balance)} מ${r.name} נרשם — כולל הכנסה בכספים` });
     } catch (e: any) {
-      toast({ title: "שגיאה", description: e.message || "לא ניתן לסמן כשולם", variant: "destructive" });
+      toast({ title: "שגיאה", description: e.message || "לא ניתן לרשום תשלום", variant: "destructive" });
     } finally {
-      setMarkingPaid(false);
-      setPaidTarget(null);
+      setCollecting(false);
+      setCollectTarget(null);
+      setCollectMethod("");
+      setCollectReceipt(null);
     }
   };
 
@@ -238,7 +293,7 @@ const Debts = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const [ledgerRes, customersRes] = await Promise.all([
+      const [ledgerRes, customersRes, incomeRes] = await Promise.all([
         (supabase as any)
           .from("customer_ledger")
           .select("customer_id, entry_type, amount, entry_date")
@@ -248,7 +303,18 @@ const Debts = () => {
           .from("customers")
           .select("*")
           .eq("is_walkin", false),
+        // הכנסות שמשויכות ללקוח בכספים — כדי לזהות תשלומים שנרשמו מחוץ לגבייה
+        (supabase as any)
+          .from("financial_transactions")
+          .select("customer_id, amount")
+          .eq("direction", "income")
+          .not("customer_id", "is", null),
       ]);
+      // סכום הכנסה בכספים פר לקוח (financial_transactions)
+      const incomeByCustomer = new Map<string, number>();
+      for (const t of (incomeRes.data || []) as any[]) {
+        incomeByCustomer.set(t.customer_id, (incomeByCustomer.get(t.customer_id) || 0) + Number(t.amount));
+      }
       const customers = (customersRes.data || []) as any[];
       const custMap = new Map(customers.map((c) => [c.id, c]));
       const grouped = new Map<string, any[]>();
@@ -272,6 +338,9 @@ const Debts = () => {
           ? Math.floor((now - new Date(overdueSince).getTime()) / (1000 * 60 * 60 * 24))
           : 0;
         const last = entries[entries.length - 1]?.entry_date || null;
+        // תשלום שנרשם ללקוח בכספים אבל לא כוסה בכרטסת (הכנסה בכספים פחות תשלומים בכרטסת)
+        const financialIncome = incomeByCustomer.get(cid) || 0;
+        const separatePaid = Math.max(0, financialIncome - totalPayments - totalCredits);
         result.push({
           customer_id: cid,
           name: c.name,
@@ -287,6 +356,7 @@ const Debts = () => {
           overdueSince,
           overdueDays,
           lastEntryDate: last,
+          separatePaid,
         });
       });
       setRows(result);
@@ -482,6 +552,11 @@ const Debts = () => {
                           חיובים ₪{r.totalCharges.toFixed(0)} • תשלומים ₪{r.totalPayments.toFixed(0)}
                           {r.totalCredits > 0 && ` • זיכויים ₪${r.totalCredits.toFixed(0)}`}
                         </div>
+                        {r.separatePaid > 0.5 && (
+                          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 px-2 py-1 text-[11px] text-emerald-800 dark:text-emerald-300">
+                            💡 נמצא תשלום של <b>{fmtILS(r.separatePaid)}</b> שנרשם בכספים אך לא שויך לחוב — כנראה כבר שולם
+                          </div>
+                        )}
                       </button>
 
                       <div className="text-left shrink-0">
@@ -525,22 +600,21 @@ const Debts = () => {
                         <FileDown className="w-4 h-4" /> PDF
                       </Button>
                       <Button
-                        variant="outline"
                         size="sm"
-                        className="h-9 gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-900/50 dark:hover:bg-emerald-950/30"
-                        onClick={() => setPaidTarget(r)}
-                        title="הלקוח שילם והתשלום נרשם במקום אחר — סגור את החוב בלי לגעת בהכנסה"
+                        className="h-9 gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+                        onClick={() => { setCollectTarget(r); setCollectMethod(""); setCollectReceipt(null); }}
+                        title="הלקוח משלם עכשיו — רישום תשלום + הכנסה + קבלה (מסנכרן את הכל)"
                       >
-                        <Check className="w-4 h-4" /> סמן ששולם
+                        <HandCoins className="w-4 h-4" /> קבל תשלום
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         className="h-9 gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/50 dark:hover:bg-rose-950/30"
-                        onClick={() => setWaiveTarget(r)}
-                        title="מחיקת החוב מהמערכת (זיכוי/ויתור — בלי לרשום תשלום)"
+                        onClick={() => { setCloseTarget(r); setCloseMode(r.separatePaid > 0.5 ? "paid" : "waive"); }}
+                        title="ביטול חוב — ויתור, או סגירה ללקוח ששילם ונרשם במקום אחר"
                       >
-                        <Eraser className="w-4 h-4" /> בטל חוב
+                        <Eraser className="w-4 h-4" /> ביטול חוב
                       </Button>
                       <Button
                         variant="ghost"
@@ -630,65 +704,120 @@ const Debts = () => {
         </TabsContent>
       </Tabs>
 
-      {/* דיאלוג אישור סימון כשולם */}
-      <AlertDialog open={!!paidTarget} onOpenChange={(o) => { if (!o) setPaidTarget(null); }}>
-        <AlertDialogContent dir="rtl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Check className="w-5 h-5 text-emerald-600" /> סימון חוב כשולם
-            </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <span className="block">
-                לסגור את החוב של <b>{paidTarget?.name}</b> על סך{" "}
-                <b className="text-emerald-700">{paidTarget ? fmtILS(paidTarget.balance) : ""}</b>?
-              </span>
-              <span className="block text-xs rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 p-2">
-                💡 מתאים כשהלקוח <b>כבר שילם</b> ורשמת את הכסף במקום אחר (יש חשבונית / הכנסה ידנית / סגירת קריאה).
-                החוב ייסגר ויוצג בכרטסת כ<b>שולם</b> — <b>וההכנסה שכבר רשמת לא תיפגע ולא תיספר פעמיים</b> (חובות והכנסות הן מערכות נפרדות).
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-2">
-            <AlertDialogCancel disabled={markingPaid}>ביטול</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
-              disabled={markingPaid}
-              onClick={(e) => { e.preventDefault(); if (paidTarget) markDebtPaid(paidTarget); }}
+      {/* דיאלוג קבלת תשלום — משלם עכשיו: תשלום + הכנסה + קבלה */}
+      <Dialog open={!!collectTarget} onOpenChange={(o) => { if (!o) { setCollectTarget(null); setCollectMethod(""); setCollectReceipt(null); } }}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HandCoins className="w-5 h-5 text-emerald-600" /> קבלת תשלום
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 p-3 text-sm">
+              <b>{collectTarget?.name}</b> משלם עכשיו{" "}
+              <b className="text-emerald-700">{collectTarget ? fmtILS(collectTarget.balance) : ""}</b>.
+              <div className="text-xs text-muted-foreground mt-1">
+                יירשם תשלום בכרטסת <b>וגם</b> הכנסה בכספים — הכל מסונכרן אוטומטית.
+              </div>
+            </div>
+            <div>
+              <Label className="mb-1.5 block">אמצעי תשלום</Label>
+              <Select value={collectMethod} onValueChange={setCollectMethod}>
+                <SelectTrigger><SelectValue placeholder="בחר אמצעי תשלום..." /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block">קבלה (לא חובה)</Label>
+              {collectTarget && (
+                <ReceiptUpload
+                  customerId={collectTarget.customer_id}
+                  currentPath={collectReceipt}
+                  onUploaded={(path) => setCollectReceipt(path)}
+                  onRemoved={() => setCollectReceipt(null)}
+                />
+              )}
+            </div>
+            <Button
+              className="w-full h-12 gap-2 bg-emerald-600 hover:bg-emerald-700 text-base"
+              disabled={collecting || !collectMethod}
+              onClick={() => collectTarget && collectPayment(collectTarget)}
             >
-              {markingPaid ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              כן, סמן כשולם
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              {collecting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+              אשר תשלום של {collectTarget ? fmtILS(collectTarget.balance) : ""}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* דיאלוג אישור ביטול חוב */}
-      <AlertDialog open={!!waiveTarget} onOpenChange={(o) => { if (!o) setWaiveTarget(null); }}>
+      {/* דיאלוג ביטול חוב — בחירה בין ויתור לבין "כבר שולם" */}
+      <AlertDialog open={!!closeTarget} onOpenChange={(o) => { if (!o) setCloseTarget(null); }}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Eraser className="w-5 h-5 text-rose-600" /> ביטול חוב
+              <Eraser className="w-5 h-5 text-rose-600" /> ביטול חוב — {closeTarget?.name}
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <span className="block">
-                למחוק את החוב של <b>{waiveTarget?.name}</b> על סך{" "}
-                <b className="text-rose-600">{waiveTarget ? fmtILS(waiveTarget.balance) : ""}</b>?
-              </span>
-              <span className="block text-xs">
-                החוב יימחק מהמערכת (רישום זיכוי בכרטסת) — <b>בלי</b> לרשום תשלום כספי.
-                מתאים למקרים שהחלטת לוותר על החוב או שהוא נרשם בטעות. הפעולה תיעלם מרשימת החייבים.
-              </span>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 pt-1">
+                <p className="text-sm">
+                  איך לסגור את החוב על סך <b className="text-rose-600">{closeTarget ? fmtILS(closeTarget.balance) : ""}</b>?
+                </p>
+                {closeTarget && closeTarget.separatePaid > 0.5 && (
+                  <p className="text-xs rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 p-2">
+                    💡 נמצא תשלום של <b>{fmtILS(closeTarget.separatePaid)}</b> שכבר רשום בכספים — בחרתי עבורך "כבר שולם".
+                  </p>
+                )}
+                {/* שתי אפשרויות */}
+                <button
+                  type="button"
+                  onClick={() => setCloseMode("paid")}
+                  className={cn(
+                    "w-full text-right rounded-xl border-2 p-3 transition-colors",
+                    closeMode === "paid"
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40"
+                      : "border-border hover:border-emerald-300"
+                  )}
+                >
+                  <div className="font-semibold text-sm flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-600" /> כבר שולם — רשמתי במקום אחר
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    הלקוח שילם והכסף כבר בכספים (יש חשבונית / הכנסה ידנית). ייסגר כ"שולם" — <b>בלי לספור את הכסף פעמיים</b>.
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCloseMode("waive")}
+                  className={cn(
+                    "w-full text-right rounded-xl border-2 p-3 transition-colors",
+                    closeMode === "waive"
+                      ? "border-rose-500 bg-rose-50 dark:bg-rose-950/40"
+                      : "border-border hover:border-rose-300"
+                  )}
+                >
+                  <div className="font-semibold text-sm flex items-center gap-1.5">
+                    <Eraser className="w-4 h-4 text-rose-600" /> ויתור / חוב שגוי
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    ויתרת על החוב או שהוא נרשם בטעות. יימחק כזיכוי — בלי לרשום תשלום.
+                  </div>
+                </button>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-2">
-            <AlertDialogCancel disabled={waiving}>ביטול</AlertDialogCancel>
+            <AlertDialogCancel disabled={closing}>ביטול</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-rose-600 hover:bg-rose-700 text-white gap-1.5"
-              disabled={waiving}
-              onClick={(e) => { e.preventDefault(); if (waiveTarget) waiveDebt(waiveTarget); }}
+              className={cn("text-white gap-1.5", closeMode === "paid" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700")}
+              disabled={closing}
+              onClick={(e) => { e.preventDefault(); if (closeTarget) closeDebt(closeTarget, closeMode); }}
             >
-              {waiving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eraser className="w-4 h-4" />}
-              כן, בטל את החוב
+              {closing ? <Loader2 className="w-4 h-4 animate-spin" /> : closeMode === "paid" ? <Check className="w-4 h-4" /> : <Eraser className="w-4 h-4" />}
+              {closeMode === "paid" ? "סגור כשולם" : "בטל את החוב"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
