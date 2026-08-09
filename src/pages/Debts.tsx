@@ -10,8 +10,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import {
   AlertCircle, FileDown, ChevronLeft, Search, Phone, MessageCircle,
-  Wallet, Scale, Clock, Loader2, FileText, Copy, Check, Ban, ExternalLink, BellRing, X,
+  Wallet, Scale, Clock, Loader2, FileText, Copy, Check, Ban, ExternalLink, BellRing, X, Eraser,
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { createCollectionReport, toWhatsApp, payPageOrigin, buildReportMessage } from "@/lib/collection-report";
 
@@ -91,6 +95,8 @@ const Debts = () => {
   const [sortBy, setSortBy] = useState<"days" | "amount">("days");
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [waiveTarget, setWaiveTarget] = useState<DebtorRow | null>(null);
+  const [waiving, setWaiving] = useState(false);
 
   // יצירת דוח גבייה מפורט ושליחתו בוואטסאפ
   const sendReport = async (r: DebtorRow) => {
@@ -115,6 +121,39 @@ const Debts = () => {
       toast({ title: "שגיאה", description: e.message || "לא ניתן ליצור דוח גבייה", variant: "destructive" });
     } finally {
       setSendingId(null);
+    }
+  };
+
+  /**
+   * ביטול חוב — רושם זיכוי (credit) בכרטסת בגובה יתרת החוב, כך שהיתרה מתאפסת.
+   * זה לא רושם תשלום כספי (אין כסף שנכנס) — רק מוחק את החוב מבחינה חשבונאית.
+   */
+  const waiveDebt = async (r: DebtorRow) => {
+    if (!user) return;
+    setWaiving(true);
+    try {
+      const { error } = await (supabase as any).from("customer_ledger").insert({
+        customer_id: r.customer_id,
+        entry_type: "credit",
+        amount: r.balance,
+        entry_date: new Date().toISOString().slice(0, 10),
+        description: `ביטול חוב — זיכוי על יתרה של ${fmtILS(r.balance)}. בוצע ע״י ${user.email || "מנהל"} ב-${new Date().toLocaleDateString("he-IL")}.`,
+        created_by: user.id,
+      });
+      if (error) throw error;
+      // מסירים את הלקוח מהרשימה (החוב אופס) + מנקים דגל תזכורת אם קיים
+      setRows((prev) => prev.filter((x) => x.customer_id !== r.customer_id));
+      if (r.collection_flag) {
+        await (supabase as any).from("customers")
+          .update({ collection_flag: false, collection_flag_at: null })
+          .eq("id", r.customer_id);
+      }
+      toast({ title: "החוב בוטל ✓", description: `חוב של ${fmtILS(r.balance)} מ${r.name} נמחק מהמערכת` });
+    } catch (e: any) {
+      toast({ title: "שגיאה", description: e.message || "לא ניתן לבטל את החוב", variant: "destructive" });
+    } finally {
+      setWaiving(false);
+      setWaiveTarget(null);
     }
   };
 
@@ -451,6 +490,15 @@ const Debts = () => {
                         <FileDown className="w-4 h-4" /> PDF
                       </Button>
                       <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/50 dark:hover:bg-rose-950/30"
+                        onClick={() => setWaiveTarget(r)}
+                        title="מחיקת החוב מהמערכת (זיכוי מלא — בלי לרשום תשלום)"
+                      >
+                        <Eraser className="w-4 h-4" /> בטל חוב
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="sm"
                         className="h-9 gap-1.5 mr-auto"
@@ -537,6 +585,38 @@ const Debts = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* דיאלוג אישור ביטול חוב */}
+      <AlertDialog open={!!waiveTarget} onOpenChange={(o) => { if (!o) setWaiveTarget(null); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Eraser className="w-5 h-5 text-rose-600" /> ביטול חוב
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                למחוק את החוב של <b>{waiveTarget?.name}</b> על סך{" "}
+                <b className="text-rose-600">{waiveTarget ? fmtILS(waiveTarget.balance) : ""}</b>?
+              </span>
+              <span className="block text-xs">
+                החוב יימחק מהמערכת (רישום זיכוי בכרטסת) — <b>בלי</b> לרשום תשלום כספי.
+                מתאים למקרים שהחלטת לוותר על החוב או שהוא נרשם בטעות. הפעולה תיעלם מרשימת החייבים.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel disabled={waiving}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 hover:bg-rose-700 text-white gap-1.5"
+              disabled={waiving}
+              onClick={(e) => { e.preventDefault(); if (waiveTarget) waiveDebt(waiveTarget); }}
+            >
+              {waiving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eraser className="w-4 h-4" />}
+              כן, בטל את החוב
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
