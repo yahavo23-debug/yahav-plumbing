@@ -12,10 +12,6 @@ import {
   AlertCircle, FileDown, ChevronLeft, Search, Phone, MessageCircle,
   Wallet, Scale, Clock, Loader2, FileText, Copy, Check, Ban, ExternalLink, BellRing, X, Eraser,
 } from "lucide-react";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -755,73 +751,72 @@ const Debts = () => {
       </Dialog>
 
       {/* דיאלוג ביטול חוב — בחירה בין ויתור לבין "כבר שולם" */}
-      <AlertDialog open={!!closeTarget} onOpenChange={(o) => { if (!o) setCloseTarget(null); }}>
-        <AlertDialogContent dir="rtl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
+      <Dialog open={!!closeTarget} onOpenChange={(o) => { if (!o) setCloseTarget(null); }}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
               <Eraser className="w-5 h-5 text-rose-600" /> ביטול חוב — {closeTarget?.name}
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2 pt-1">
-                <p className="text-sm">
-                  איך לסגור את החוב על סך <b className="text-rose-600">{closeTarget ? fmtILS(closeTarget.balance) : ""}</b>?
-                </p>
-                {closeTarget && closeTarget.separatePaid > 0.5 && (
-                  <p className="text-xs rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 p-2">
-                    💡 נמצא תשלום של <b>{fmtILS(closeTarget.separatePaid)}</b> שכבר רשום בכספים — בחרתי עבורך "כבר שולם".
-                  </p>
-                )}
-                {/* שתי אפשרויות */}
-                <button
-                  type="button"
-                  onClick={() => setCloseMode("paid")}
-                  className={cn(
-                    "w-full text-right rounded-xl border-2 p-3 transition-colors",
-                    closeMode === "paid"
-                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40"
-                      : "border-border hover:border-emerald-300"
-                  )}
-                >
-                  <div className="font-semibold text-sm flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-600" /> כבר שולם — רשמתי במקום אחר
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    הלקוח שילם והכסף כבר בכספים (יש חשבונית / הכנסה ידנית). ייסגר כ"שולם" — <b>בלי לספור את הכסף פעמיים</b>.
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCloseMode("waive")}
-                  className={cn(
-                    "w-full text-right rounded-xl border-2 p-3 transition-colors",
-                    closeMode === "waive"
-                      ? "border-rose-500 bg-rose-50 dark:bg-rose-950/40"
-                      : "border-border hover:border-rose-300"
-                  )}
-                >
-                  <div className="font-semibold text-sm flex items-center gap-1.5">
-                    <Eraser className="w-4 h-4 text-rose-600" /> ויתור / חוב שגוי
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    ויתרת על החוב או שהוא נרשם בטעות. יימחק כזיכוי — בלי לרשום תשלום.
-                  </div>
-                </button>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-2">
-            <AlertDialogCancel disabled={closing}>ביטול</AlertDialogCancel>
-            <AlertDialogAction
-              className={cn("text-white gap-1.5", closeMode === "paid" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700")}
-              disabled={closing}
-              onClick={(e) => { e.preventDefault(); if (closeTarget) closeDebt(closeTarget, closeMode); }}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm">
+              איך לסגור את החוב על סך <b className="text-rose-600">{closeTarget ? fmtILS(closeTarget.balance) : ""}</b>?
+            </p>
+            {closeTarget && closeTarget.separatePaid > 0.5 && (
+              <p className="text-xs rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 p-2">
+                💡 נמצא תשלום של <b>{fmtILS(closeTarget.separatePaid)}</b> שכבר רשום בכספים — בחרתי עבורך "כבר שולם".
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => setCloseMode("paid")}
+              className={cn(
+                "w-full text-right rounded-xl border-2 p-3 transition-colors",
+                closeMode === "paid"
+                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40"
+                  : "border-border hover:border-emerald-300"
+              )}
             >
-              {closing ? <Loader2 className="w-4 h-4 animate-spin" /> : closeMode === "paid" ? <Check className="w-4 h-4" /> : <Eraser className="w-4 h-4" />}
-              {closeMode === "paid" ? "סגור כשולם" : "בטל את החוב"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <span className="font-semibold text-sm flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-emerald-600" /> כבר שולם — רשמתי במקום אחר
+              </span>
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                הלקוח שילם והכסף כבר בכספים (יש חשבונית / הכנסה ידנית). ייסגר כ"שולם" — בלי לספור את הכסף פעמיים.
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCloseMode("waive")}
+              className={cn(
+                "w-full text-right rounded-xl border-2 p-3 transition-colors",
+                closeMode === "waive"
+                  ? "border-rose-500 bg-rose-50 dark:bg-rose-950/40"
+                  : "border-border hover:border-rose-300"
+              )}
+            >
+              <span className="font-semibold text-sm flex items-center gap-1.5">
+                <Eraser className="w-4 h-4 text-rose-600" /> ויתור / חוב שגוי
+              </span>
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                ויתרת על החוב או שהוא נרשם בטעות. יימחק כזיכוי — בלי לרשום תשלום.
+              </span>
+            </button>
+            <div className="flex gap-2 pt-2">
+              <Button
+                className={cn("flex-1 h-11 gap-1.5 text-white", closeMode === "paid" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700")}
+                disabled={closing}
+                onClick={() => { if (closeTarget) closeDebt(closeTarget, closeMode); }}
+              >
+                {closing ? <Loader2 className="w-4 h-4 animate-spin" /> : closeMode === "paid" ? <Check className="w-4 h-4" /> : <Eraser className="w-4 h-4" />}
+                {closeMode === "paid" ? "סגור כשולם" : "בטל את החוב"}
+              </Button>
+              <Button variant="outline" className="h-11" disabled={closing} onClick={() => setCloseTarget(null)}>
+                חזרה
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };
