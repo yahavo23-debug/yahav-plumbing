@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReceiptUpload } from "@/components/billing/ReceiptUpload";
 import { HandCoins } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createCollectionReport, toWhatsApp, payPageOrigin, buildReportMessage } from "@/lib/collection-report";
+import { createCollectionReport, toWhatsApp, payPageOrigin, buildReportMessage, isMobileDevice } from "@/lib/collection-report";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "מזומן" },
@@ -128,9 +128,10 @@ const Debts = () => {
   const sendReport = async (r: DebtorRow) => {
     if (!user) return;
     setSendingId(r.customer_id);
-    // פותחים חלון ריק מיד (בתוך הקליק) — אחרת הדפדפן בטלפון חוסם את פתיחת הוואטסאפ
-    // כשהיא מגיעה אחרי פעולה איטית, והמשתמש נשאר בלי כלום.
-    const waWindow = r.phone ? window.open("about:blank", "_blank") : null;
+    const mobile = isMobileDevice();
+    // במחשב: פותחים חלון ריק מיד (בתוך הקליק) — אחרת הדפדפן חוסם את החלון אחרי פעולה איטית.
+    // בטלפון: לא פותחים כלום — נפתח ישירות את אפליקציית הוואטסאפ (whatsapp://) בלי דף ביניים.
+    const waWindow = !mobile && r.phone ? window.open("about:blank", "_blank") : null;
     try {
       const report = await createCollectionReport({
         customerId: r.customer_id,
@@ -139,7 +140,10 @@ const Debts = () => {
         userId: user.id,
       });
       if (report.waUrl) {
-        if (waWindow && !waWindow.closed) {
+        if (mobile) {
+          // פתיחה ישירה של אפליקציית וואטסאפ — בלי טאב חדש ובלי אתר ביניים
+          window.location.href = report.waUrl;
+        } else if (waWindow && !waWindow.closed) {
           waWindow.location.href = report.waUrl;
         } else {
           window.open(report.waUrl, "_blank");

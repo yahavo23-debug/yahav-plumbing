@@ -53,10 +53,23 @@ export function computeOpenItems(entries: LedgerEntryLite[]): { items: ReportIte
   return { items, balance };
 }
 
+/** האם אנחנו בטלפון? (משפיע על אופן פתיחת וואטסאפ) */
+export function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+/**
+ * קישור וואטסאפ: בטלפון — פתיחה ישירה של האפליקציה (whatsapp://, בלי דף ביניים בדפדפן);
+ * במחשב — wa.me שפותח את וואטסאפ ווב.
+ */
 export function toWhatsApp(phone: string, text?: string) {
   const digits = phone.replace(/\D/g, "");
   const intl = digits.startsWith("0") ? "972" + digits.slice(1) : digits;
-  return `https://wa.me/${intl}` + (text ? `?text=${encodeURIComponent(text)}` : "");
+  const encoded = text ? encodeURIComponent(text) : "";
+  if (isMobileDevice()) {
+    return `whatsapp://send?phone=${intl}` + (text ? `&text=${encoded}` : "");
+  }
+  return `https://wa.me/${intl}` + (text ? `?text=${encoded}` : "");
 }
 
 export function payPageOrigin() {

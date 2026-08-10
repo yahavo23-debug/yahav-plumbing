@@ -78,6 +78,7 @@ const PublicPayment = () => {
   const [data, setData] = useState<PaymentData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bitCopied, setBitCopied] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -118,9 +119,17 @@ const PublicPayment = () => {
     );
   }
 
-  const bitLink = `https://www.bitpay.co.il/app/me/${data.bitPhone.replace(/\D/g, "")}`;
   const waBusiness = `https://wa.me/972${data.bitPhone.replace(/\D/g, "").replace(/^0/, "")}`;
   const isReport = !!(data.items && data.items.length > 0);
+
+  /**
+   * פתיחת ביט: מעתיקים אוטומטית את המספר של יהב ופותחים את אפליקציית bit.
+   * (לביט אין קישור עם מספר מוכן מראש לחשבון פרטי — אז ההעתקה האוטומטית חוסכת ללקוח את ההקלדה)
+   */
+  const openBit = async () => {
+    try { await navigator.clipboard.writeText(data.bitPhone); setBitCopied(true); } catch { /* דפדפן ישן */ }
+    window.location.href = "https://www.bitpay.co.il/app/";
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-100 py-8 px-4" dir="rtl">
@@ -207,14 +216,18 @@ const PublicPayment = () => {
                 <p className="font-bold text-slate-800">תשלום מהיר ב-<span className="text-fuchsia-600">bit</span></p>
               </div>
               <CopyRow label="מספר לביט" value={data.bitPhone} />
-              <a
-                href={bitLink}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={openBit}
                 className="mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-l from-pink-500 to-fuchsia-600 text-white font-bold shadow-lg hover:opacity-95 transition-opacity"
               >
                 <Smartphone className="w-5 h-5" /> פתח את bit לתשלום
-              </a>
+              </button>
+              <p className="text-center text-xs mt-1.5 text-slate-500">
+                {bitCopied
+                  ? <span className="text-emerald-600 font-semibold">המספר הועתק ✓ — בתוך ביט: העברת כסף ← הדבק את המספר</span>
+                  : "בלחיצה המספר יועתק אוטומטית — בתוך ביט פשוט מדביקים ושולחים"}
+              </p>
             </div>
 
             <div className="flex items-center gap-3">
