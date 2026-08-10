@@ -54,6 +54,8 @@ interface DebtorRow {
   lastEntryDate: string | null;
   /** הכנסה שנרשמה ללקוח בכספים אך לא שויכה לחוב (יש חשבונית / הכנסה ידנית) */
   separatePaid: number;
+  /** טוקן של דוח גבייה פעיל — כדי לצרף את הקישור האינטראקטיבי גם לתזכורת */
+  payToken: string | null;
 }
 
 interface SentReport {
@@ -70,27 +72,30 @@ interface SentReport {
   created_at: string;
 }
 
-/** הודעת תזכורת אוטומטית — הטון מתאים את עצמו לוותק החוב */
+/** הודעת תזכורת אוטומטית — הטון מתאים את עצמו לוותק החוב, כולל קישור לדוח האינטראקטיבי אם קיים */
 function buildReminder(r: DebtorRow) {
   const amount = "₪" + Math.round(r.balance).toLocaleString("he-IL");
   const firstName = (r.name || "").trim().split(" ")[0] || "";
+  const payLine = r.payToken
+    ? `\nלפירוט מלא + תשלום נוח בביט/העברה: ${payPageOrigin()}/pay/${r.payToken}\n`
+    : "";
   if (r.overdueDays <= 30) {
     return `היי ${firstName}, מה נשמע? 🙂
 רק תזכורת קטנה על יתרת תשלום של ${amount} מהעבודה האחרונה.
-אפשר בהעברה בנקאית / ביט / מזומן — מה שנוח לך.
+אפשר בהעברה בנקאית / ביט / מזומן — מה שנוח לך.${payLine}
 תודה רבה! 🔧
 יהב אינסטלציה - פתרונות ביוב ומים | 054-2121204`;
   }
   if (r.overdueDays <= 90) {
     return `שלום ${firstName},
 מזכיר שקיימת יתרת תשלום פתוחה של ${amount} (מלפני ${r.overdueDays} ימים).
-אשמח להסדרה השבוע — העברה בנקאית / ביט / מזומן.
+אשמח להסדרה השבוע — העברה בנקאית / ביט / מזומן.${payLine}
 לכל שאלה אני זמין 🙏
 יהב אינסטלציה - פתרונות ביוב ומים | 054-2121204`;
   }
   return `שלום ${firstName},
 בהמשך לפניות קודמות — קיימת יתרת חוב פתוחה של ${amount}, מזה ${r.overdueDays} ימים.
-אבקש להסדיר את התשלום עד סוף השבוע.
+אבקש להסדיר את התשלום עד סוף השבוע.${payLine}
 בתודה, יהב אוחנה | יהב אינסטלציה | 054-2121204`;
 }
 
@@ -123,6 +128,9 @@ const Debts = () => {
   const sendReport = async (r: DebtorRow) => {
     if (!user) return;
     setSendingId(r.customer_id);
+    // פותחים חלון ריק מיד (בתוך הקליק) — אחרת הדפדפן בטלפון חוסם את פתיחת הוואטסאפ
+    // כשהיא מגיעה אחרי פעולה איטית, והמשתמש נשאר בלי כלום.
+    const waWindow = r.phone ? window.open("about:blank", "_blank") : null;
     try {
       const report = await createCollectionReport({
         customerId: r.customer_id,
@@ -131,14 +139,20 @@ const Debts = () => {
         userId: user.id,
       });
       if (report.waUrl) {
-        window.open(report.waUrl, "_blank");
+        if (waWindow && !waWindow.closed) {
+          waWindow.location.href = report.waUrl;
+        } else {
+          window.open(report.waUrl, "_blank");
+        }
         toast({ title: "דוח גבייה נוצר", description: `דוח על ${fmtILS(report.balance)} נפתח לשליחה בוואטסאפ` });
       } else {
+        waWindow?.close();
         await navigator.clipboard.writeText(report.payUrl);
         toast({ title: "הקישור הועתק", description: "אין טלפון ללקוח — קישור הדוח הועתק לשליחה ידנית" });
       }
       loadReports();
     } catch (e: any) {
+      waWindow?.close();
       toast({ title: "שגיאה", description: e.message || "לא ניתן ליצור דוח גבייה", variant: "destructive" });
     } finally {
       setSendingId(null);
@@ -306,6 +320,17 @@ const Debts = () => {
           .eq("direction", "income")
           .not("customer_id", "is", null),
       ]);
+      // דוחות גבייה פעילים — כדי לצרף את הקישור האינטראקטיבי לתזכורות
+      const { data: activeReports } = await (supabase as any)
+        .from("payment_requests")
+        .select("customer_id, share_token, created_at")
+        .eq("is_active", true)
+        .is("paid_at", null)
+        .order("created_at", { ascending: false });
+      const tokenByCustomer = new Map<string, string>();
+      for (const p of (activeReports || []) as any[]) {
+        if (p.customer_id && !tokenByCustomer.has(p.customer_id)) tokenByCustomer.set(p.customer_id, p.share_token);
+      }
       // סכום הכנסה בכספים פר לקוח (financial_transactions)
       const incomeByCustomer = new Map<string, number>();
       for (const t of (incomeRes.data || []) as any[]) {
@@ -353,6 +378,7 @@ const Debts = () => {
           overdueDays,
           lastEntryDate: last,
           separatePaid,
+          payToken: tokenByCustomer.get(cid) || null,
         });
       });
       setRows(result);

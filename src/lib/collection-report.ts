@@ -104,21 +104,42 @@ export async function createCollectionReport(params: {
   const { items, balance } = computeOpenItems((entries || []) as LedgerEntryLite[]);
   if (balance <= 0) throw new Error("ללקוח אין חוב פתוח — אין מה לכלול בדוח");
 
-  const { data, error } = await (supabase as any)
+  // אם כבר קיים דוח פעיל שלא שולם על אותו סכום — משתמשים בו במקום ליצור כפילות
+  const { data: existing } = await (supabase as any)
     .from("payment_requests")
-    .insert({
-      customer_id: params.customerId,
-      customer_name: params.customerName,
-      customer_phone: params.customerPhone,
-      amount: Math.round(balance),
-      note: "דוח גבייה — יתרת תשלום עבור עבודות אינסטלציה",
-      items,
-      sent_at: new Date().toISOString(),
-      created_by: params.userId,
-    })
     .select("id, share_token")
-    .single();
-  if (error) throw error;
+    .eq("customer_id", params.customerId)
+    .eq("amount", Math.round(balance))
+    .eq("is_active", true)
+    .is("paid_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  let data: { id: string; share_token: string };
+  if (existing && existing.length > 0) {
+    data = existing[0];
+    // מעדכנים את מועד השליחה האחרון
+    await (supabase as any).from("payment_requests")
+      .update({ sent_at: new Date().toISOString(), items })
+      .eq("id", data.id);
+  } else {
+    const { data: created, error } = await (supabase as any)
+      .from("payment_requests")
+      .insert({
+        customer_id: params.customerId,
+        customer_name: params.customerName,
+        customer_phone: params.customerPhone,
+        amount: Math.round(balance),
+        note: "דוח גבייה — יתרת תשלום עבור עבודות אינסטלציה",
+        items,
+        sent_at: new Date().toISOString(),
+        created_by: params.userId,
+      })
+      .select("id, share_token")
+      .single();
+    if (error) throw error;
+    data = created;
+  }
 
   const payUrl = `${payPageOrigin()}/pay/${data.share_token}`;
   const message = buildReportMessage(params.customerName, balance, payUrl);
