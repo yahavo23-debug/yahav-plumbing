@@ -60,6 +60,7 @@ import Settings from "./pages/Settings";
 import DispatchBoard from "./pages/DispatchBoard";
 import Finance from "./pages/Finance";
 import ProfitabilityReport from "./pages/ProfitabilityReport";
+import SiteAnalytics from "./pages/SiteAnalytics";
 import PublicQuote from "./pages/PublicQuote";
 import NotFound from "./pages/NotFound";
 import CalendarPage from "./pages/CalendarPage";
@@ -131,6 +132,7 @@ function AppRoutes() {
       <Route path="/debts" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><Debts /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/cashflow" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><CashFlow /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/invoices" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><Invoices /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/site" element={<ProtectedRoute allowedRoles={["admin", "secretary"]}><ErrorBoundary><SiteAnalytics /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/profitability" element={<ProtectedRoute allowedRoles={["admin"]}><ErrorBoundary><ProfitabilityReport /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute allowedRoles={["admin"]}><ErrorBoundary><Settings /></ErrorBoundary></ProtectedRoute>} />
 
