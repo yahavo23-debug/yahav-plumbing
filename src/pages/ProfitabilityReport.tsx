@@ -130,6 +130,8 @@ function DataRow({ label, values, totVal, indent, bold, kind, positive, showPct,
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
+import { TaxForecast } from "@/components/finance/TaxForecast";
+
 export default function ProfitabilityReport() {
   const [year, setYear] = useState(getYear);
   const [exporting, setExporting] = useState(false);
@@ -183,7 +185,7 @@ export default function ProfitabilityReport() {
     return Object.values(map).map(m => {
       const grossProfit = m.revenue - m.directCosts; // שכר עבודה = 0
       const operatingProfit = grossProfit - m.ga;
-      const vatProfit = operatingProfit > 0 ? operatingProfit * 0.82 : operatingProfit;
+      const vatProfit = operatingProfit; // עוסק פטור — אין ניכוי מע"מ
       const monthlyBalance = m.receipts - m.payments;
       cum += monthlyBalance;
       return { ...m, grossProfit, operatingProfit, vatProfit, monthlyBalance, cumulative: cum };
@@ -289,7 +291,7 @@ export default function ProfitabilityReport() {
         { type: "data", label: "Operating Profit (EBIT)", values: V("operatingProfit"), total: T.operatingProfit, bold: true, kind: "sub" },
         { type: "section", label: "4. Finance" },
         { type: "data", label: "Finance & other expenses", values: V("finance"), total: T.finance },
-        { type: "data", label: "Profit after VAT (18% est.)", values: V("vatProfit"), total: T.vatProfit, bold: true, kind: "sub" },
+        { type: "data", label: "Net profit (osek patur - no VAT)", values: V("vatProfit"), total: T.vatProfit, bold: true, kind: "sub" },
         { type: "section", label: "5. Cash Flow" },
         { type: "data", label: "Loans & funds (standing orders)", values: V("loans"), total: T.loans },
         { type: "data", label: "Receipts (cash in)", values: V("receipts"), total: T.receipts },
@@ -347,11 +349,14 @@ export default function ProfitabilityReport() {
   return (
     <AppLayout title="דוח רווחיות חודשי">
 
+      {/* ── רואה החשבון שלי: תחזית מסים ── */}
+      <TaxForecast income={T.revenue} expenses={T.payments} />
+
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div>
           <h1 className="text-xl font-bold">דוח רווחיות — {year}</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">אומדן מע״מ 18% | שכר עבודה = ₪0 (אין עובדים)</p>
+          <p className="text-xs text-muted-foreground mt-0.5">עוסק פטור — ללא מע״מ | שכר עבודה = ₪0 (אין עובדים)</p>
         </div>
         <div className="mr-auto flex items-center gap-2">
           {loading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
@@ -520,7 +525,7 @@ export default function ProfitabilityReport() {
                     indent
                   />
                   <DataRow
-                    label="רווח לאחר מע״מ (אומדן 17%)"
+                    label="רווח נקי (עוסק פטור — ללא מע״מ)"
                     values={V("vatProfit")} totVal={T.vatProfit}
                     bold kind="subtotal" positive="auto"
                     showPct revValues={revVals}
